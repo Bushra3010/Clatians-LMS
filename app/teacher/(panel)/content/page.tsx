@@ -86,12 +86,23 @@ export default async function TeacherContentPage() {
           </label>
 
           <label className="block">
-            <span className="block text-xs font-medium text-slate-600 mb-1">Description / notes</span>
+            <span className="block text-xs font-medium text-slate-600 mb-1">Upload file (PDF / video) — optional</span>
+            <input
+              name="file"
+              type="file"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,video/*,image/*"
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gold-600 file:px-4 file:py-2 file:text-white file:text-sm file:font-medium hover:file:bg-gold-700 file:cursor-pointer"
+            />
+            <span className="block text-xs text-slate-400 mt-1">Uploaded here, or paste a link below (e.g. a YouTube URL for video). Max 50 MB.</span>
+          </label>
+
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Link or description</span>
             <textarea
               name="body"
               rows={3}
               className={inputCls + " resize-y"}
-              placeholder="Add a short description, a link, or the content itself."
+              placeholder="Paste a link (YouTube, PDF URL) or a short description. A file upload above takes priority."
             />
           </label>
 

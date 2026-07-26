@@ -9,7 +9,7 @@ import type { VocabItem } from "../lib/resource-types";
 const studyTabs = ["Videos", "Notes", "Tests", "Flashcards", "Current Affairs"] as const;
 type Tab = typeof studyTabs[number];
 
-const isUrl = (s: string) => /^https?:\/\//i.test((s || "").trim());
+const isUrl = (s: string) => /^(https?:\/\/|\/uploads\/)/i.test((s || "").trim());
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
 
 interface StudyScreenProps {

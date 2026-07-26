@@ -18,7 +18,7 @@ const meta: Record<string, { label: string; emoji: string; action: string }> = {
 };
 
 function isUrl(s: string) {
-  return /^https?:\/\//i.test(s.trim());
+  return /^(https?:\/\/|\/uploads\/)/i.test((s || "").trim());
 }
 
 export default function ContentListPage({
