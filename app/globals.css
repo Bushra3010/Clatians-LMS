@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* CLATians brand palette — espresso brown + gold, taken from the logo. */
+@theme {
+  --color-brand-50: #f7f1ea;
+  --color-brand-100: #ece0d3;
+  --color-brand-700: #5c3a1e;
+  --color-brand-800: #3d2411;
+  --color-brand-900: #2b1700;
+
+  --color-gold-50: #fdf6e9;
+  --color-gold-100: #f9e9c8;
+  --color-gold-500: #c8860a;
+  --color-gold-600: #a06f08;
+  --color-gold-700: #7d5606;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #d1d5db;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.no-scroll::-webkit-scrollbar { display: none; }
+.no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse-dot { animation: pulse-dot 1.5s infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}

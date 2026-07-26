@@ -1,0 +1,99 @@
+import { db } from "@/app/lib/db";
+import { updateLeadStatusAction, saveLeadNoteAction, deleteLeadAction } from "@/app/lib/lead-actions";
+
+export const dynamic = "force-dynamic";
+
+type Lead = {
+  id: string; name: string; phone: string; email: string; interest: string;
+  demo_date: string; message: string; status: string; notes: string; created_at: string;
+};
+
+const STATUSES = ["new", "contacted", "demo", "enrolled", "lost"] as const;
+const statusStyle: Record<string, string> = {
+  new: "bg-sky-50 text-sky-700",
+  contacted: "bg-amber-50 text-amber-700",
+  demo: "bg-purple-50 text-purple-700",
+  enrolled: "bg-green-50 text-green-700",
+  lost: "bg-slate-100 text-slate-500",
+};
+const statusLabel: Record<string, string> = { new: "New", contacted: "Contacted", demo: "Demo booked", enrolled: "Enrolled", lost: "Lost" };
+
+function fmt(iso: string) {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+export default function AdminLeadsPage() {
+  const leads = db.prepare(
+    `SELECT * FROM leads
+     ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 WHEN 'demo' THEN 2 WHEN 'enrolled' THEN 3 ELSE 4 END, created_at DESC`
+  ).all() as Lead[];
+
+  const counts = STATUSES.map((s) => ({ s, n: leads.filter((l) => l.status === s).length }));
+  const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900">Admissions &amp; Leads</h1>
+        <p className="text-sm text-slate-500">{leads.length} enquiries · public form at <span className="font-mono">/enquiry</span></p>
+      </header>
+
+      {/* Pipeline counts */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        {counts.map(({ s, n }) => (
+          <div key={s} className="rounded-xl bg-white border border-slate-200 p-4">
+            <div className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusStyle[s]}`}>{statusLabel[s]}</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900 tabular-nums">{n}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Leads */}
+      <div className="space-y-3">
+        {leads.length === 0 && <p className="text-sm text-slate-400">No enquiries yet.</p>}
+        {leads.map((l) => (
+          <div key={l.id} className="rounded-xl bg-white border border-slate-200 p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusStyle[l.status]}`}>{statusLabel[l.status]}</span>
+                  {l.interest && <span className="text-xs text-slate-400">{l.interest}</span>}
+                </div>
+                <h3 className="text-sm font-semibold text-slate-900 mt-1">{l.name}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  📞 {l.phone}{l.email ? ` · ✉ ${l.email}` : ""}{l.demo_date ? ` · 🎟 demo ${l.demo_date}` : ""}
+                </p>
+                {l.message && <p className="text-sm text-slate-600 mt-2">“{l.message}”</p>}
+                <p className="text-xs text-slate-400 mt-2">Enquired {fmt(l.created_at)}</p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <form action={updateLeadStatusAction} className="flex items-center gap-2">
+                  <input type="hidden" name="leadId" value={l.id} />
+                  <select name="status" defaultValue={l.status} className={inputCls + " !w-36"}>
+                    {STATUSES.map((s) => <option key={s} value={s}>{statusLabel[s]}</option>)}
+                  </select>
+                  <button className="text-xs rounded-md px-3 py-2 border border-gold-100 text-gold-700 hover:bg-gold-50 whitespace-nowrap">Update</button>
+                </form>
+                <form action={deleteLeadAction}>
+                  <input type="hidden" name="leadId" value={l.id} />
+                  <button className="text-xs rounded-md px-3 py-2 border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50">Delete</button>
+                </form>
+              </div>
+            </div>
+
+            {/* Follow-up note */}
+            <form action={saveLeadNoteAction} className="mt-3 border-t border-slate-100 pt-3 flex items-end gap-2">
+              <input type="hidden" name="leadId" value={l.id} />
+              <label className="flex-1 block">
+                <span className="block text-xs font-medium text-slate-600 mb-1">Follow-up note</span>
+                <input name="notes" defaultValue={l.notes} className={inputCls} placeholder="Add a counselling note…" />
+              </label>
+              <button className="rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm py-2 px-4 h-[38px]">Save</button>
+            </form>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
