@@ -56,10 +56,10 @@ export default async function Home() {
       AND ${statusClause}
     ORDER BY ${order} ${limit}`;
 
-  const upcoming = (db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
-  const past = (db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
+  const upcoming = (await db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
+  const past = (await db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
 
-  const stat = db.prepare(
+  const stat = await db.prepare(
     `SELECT
        (SELECT COUNT(*) FROM live_classes lc WHERE lc.status='ended' AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS total,
        (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status='ended' AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
@@ -67,7 +67,7 @@ export default async function Home() {
   const attendancePct = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : null;
 
   // ── Study material (approved content for the batch, incl. batch-agnostic) ──
-  const contentRows = db.prepare(
+  const contentRows = await db.prepare(
     `SELECT ct.id, ct.title, ct.body, ct.type, ct.created_at, u.name AS author, c.name AS course,
             EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?) AS done
      FROM content ct
@@ -90,7 +90,7 @@ export default async function Home() {
   };
 
   // ── Doubts ──
-  const doubts: DoubtItem[] = (db.prepare(
+  const doubts: DoubtItem[] = (await db.prepare(
     `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? ORDER BY d.created_at DESC`
@@ -100,7 +100,7 @@ export default async function Home() {
   }));
 
   // ── Course catalog (for enroll / buy) ──
-  const catalog: CatalogItem[] = (db.prepare(
+  const catalog: CatalogItem[] = (await db.prepare(
     `SELECT c.id, c.name, c.description, c.price,
             EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id) AS enrolled,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS content_count,
@@ -114,7 +114,7 @@ export default async function Home() {
     }));
 
   // ── Test series (published, available to the student's batches) ──
-  const tests: TestListItem[] = (db.prepare(
+  const tests: TestListItem[] = (await db.prepare(
     `SELECT t.id, t.title, t.description, t.type, t.duration_min,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
@@ -132,7 +132,7 @@ export default async function Home() {
     }));
 
   // ── Profile ──
-  const batches = (db.prepare(
+  const batches = (await db.prepare(
     `SELECT c.name FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.user_id = ? ORDER BY c.name`
   ).all(user.id) as { name: string }[]).map((r) => r.name);
 
@@ -146,7 +146,7 @@ export default async function Home() {
     batchMap.set(name, b);
   }
 
-  const myAttempts = db.prepare(
+  const myAttempts = await db.prepare(
     "SELECT id, test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status = 'submitted'"
   ).all(user.id) as { id: string; test_id: string; score: number; total: number; answers: string }[];
 
@@ -158,7 +158,7 @@ export default async function Home() {
   const subjAgg = new Map<string, { correct: number; total: number }>();
   if (myAttempts.length) {
     const testIds = [...new Set(myAttempts.map((a) => a.test_id))];
-    const qRows = db.prepare(
+    const qRows = await db.prepare(
       `SELECT id, test_id, subject, correct FROM questions WHERE test_id IN (${testIds.map(() => "?").join(",")})`
     ).all(...testIds) as { id: string; test_id: string; subject: string; correct: string }[];
     const qById = new Map(qRows.map((q) => [q.id, q]));
@@ -190,9 +190,9 @@ export default async function Home() {
   };
 
   // ── Engagement (leaderboard, streak, badges) ──
-  const board = computeLeaderboard();
+  const board = await computeLeaderboard();
   const meEntry = board.find((e) => e.id === user.id) ?? null;
-  const streak = computeStreak(user.id);
+  const streak = await computeStreak(user.id);
   const top = board.slice(0, 10);
   if (meEntry && !top.some((e) => e.id === user.id)) top.push(meEntry);
 
@@ -217,7 +217,7 @@ export default async function Home() {
   };
 
   // ── Saved items ("My Notes") ──
-  const savedRows = db.prepare(
+  const savedRows = await db.prepare(
     "SELECT kind, item_key, title, subtitle FROM saved_items WHERE user_id = ? ORDER BY created_at DESC"
   ).all(user.id) as { kind: string; item_key: string; title: string; subtitle: string }[];
   const saved: SavedItem[] = savedRows.map((r) => ({ kind: r.kind, key: r.item_key, title: r.title, subtitle: r.subtitle }));
@@ -225,7 +225,7 @@ export default async function Home() {
   const savedVocabKeys = savedRows.filter((r) => r.kind === "vocab").map((r) => r.item_key);
 
   // ── Editorial resources (teacher/admin-managed) ──
-  const resRows = db.prepare(
+  const resRows = await db.prepare(
     "SELECT type, title, body, data FROM resources WHERE status = 'published' ORDER BY order_idx, created_at"
   ).all() as { type: string; title: string; body: string; data: string }[];
   const pd = (d: string): Record<string, unknown> => { try { return JSON.parse(d); } catch { return {}; } };
@@ -241,7 +241,7 @@ export default async function Home() {
   };
 
   // ── Notifications ──
-  const notifications: NotificationItem[] = (db.prepare(
+  const notifications: NotificationItem[] = (await db.prepare(
     "SELECT id, type, title, body, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
   ).all(user.id) as { id: string; type: string; title: string; body: string; is_read: number; created_at: string }[])
     .map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body, read: n.is_read === 1, createdAt: n.created_at }));

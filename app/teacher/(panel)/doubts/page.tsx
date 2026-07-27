@@ -24,7 +24,7 @@ function fmt(iso: string) {
 export default async function TeacherDoubtsPage() {
   await requireRole(["teacher", "admin"]);
 
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at,
               s.name AS student, c.name AS course

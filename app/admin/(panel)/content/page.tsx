@@ -27,8 +27,8 @@ const statusBadge: Record<string, string> = {
   rejected: "bg-red-50 text-red-600",
 };
 
-export default function ContentPage() {
-  const rows = db
+export default async function ContentPage() {
+  const rows = await db
     .prepare(
       `SELECT ct.id, ct.title, ct.type, ct.body, ct.status, ct.created_at,
               u.name AS author, c.name AS course

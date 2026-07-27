@@ -13,7 +13,7 @@ const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm te
 export default async function TeacherTestsPage() {
   const user = await requireRole(["teacher", "admin"]);
 
-  const tests = db.prepare(
+  const tests = await db.prepare(
     `SELECT t.id, t.title, t.type, t.status, t.duration_min, c.name AS course,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id=t.id) AS qcount,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id=t.id AND a.status='submitted') AS attempts
@@ -21,13 +21,13 @@ export default async function TeacherTestsPage() {
      WHERE t.created_by=? ORDER BY t.created_at DESC`
   ).all(user.id) as Test[];
 
-  const questions = db.prepare(
+  const questions = await db.prepare(
     `SELECT q.id, q.test_id, q.subject, q.text, q.correct FROM questions q
      WHERE q.test_id IN (SELECT id FROM tests WHERE created_by=?) ORDER BY q.order_idx`
   ).all(user.id) as Q[];
   const qByTest = (id: string) => questions.filter((q) => q.test_id === id);
 
-  const courses = db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
+  const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

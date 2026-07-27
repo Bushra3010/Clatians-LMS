@@ -28,7 +28,7 @@ export async function createContentAction(formData: FormData) {
     if (url) body = url;
   }
 
-  db.prepare(
+  await db.prepare(
     `INSERT INTO content (id, title, type, body, status, author_id, course_id)
      VALUES (?, ?, ?, ?, 'pending', ?, ?)`
   ).run(newId(), title, type, body, user.id, courseId);
@@ -46,7 +46,7 @@ export async function deleteContentAction(formData: FormData) {
   const contentId = String(formData.get("contentId") ?? "");
   if (!contentId) return;
 
-  db.prepare("DELETE FROM content WHERE id = ? AND author_id = ?").run(contentId, user.id);
+  await db.prepare("DELETE FROM content WHERE id = ? AND author_id = ?").run(contentId, user.id);
 
   revalidatePath("/teacher/content");
   revalidatePath("/teacher");

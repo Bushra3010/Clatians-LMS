@@ -17,9 +17,9 @@ const lbl = "block text-xs font-medium text-slate-600 mb-1";
 type Row = { id: string; type: string; title: string; body: string; data: string; status: string; order_idx: number };
 function parse(d: string): Record<string, unknown> { try { return JSON.parse(d); } catch { return {}; } }
 
-export default function ResourcesManager({ type, basePath, editId }: { type: string; basePath: string; editId?: string }) {
+export default async function ResourcesManager({ type, basePath, editId }: { type: string; basePath: string; editId?: string }) {
   const active = TABS.some((t) => t.type === type) ? type : "tip";
-  const rows = db.prepare("SELECT id, type, title, body, data, status, order_idx FROM resources WHERE type = ? ORDER BY order_idx, created_at").all(active) as Row[];
+  const rows = await db.prepare("SELECT id, type, title, body, data, status, order_idx FROM resources WHERE type = ? ORDER BY order_idx, created_at").all(active) as Row[];
   const tab = TABS.find((t) => t.type === active)!;
   const { label, one } = tab;
 

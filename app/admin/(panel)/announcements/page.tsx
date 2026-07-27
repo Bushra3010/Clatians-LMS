@@ -12,9 +12,9 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-export default function AdminAnnouncementsPage() {
-  const courses = db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
-  const sent = db.prepare(
+export default async function AdminAnnouncementsPage() {
+  const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
+  const sent = await db.prepare(
     `SELECT title, body, MIN(created_at) AS created_at, COUNT(*) AS recipients
      FROM notifications WHERE type='announcement'
      GROUP BY title, body ORDER BY created_at DESC LIMIT 12`

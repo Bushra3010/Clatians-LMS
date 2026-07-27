@@ -28,7 +28,7 @@ export async function loginAction(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
   if (!user || !verifyPassword(password, user.password)) {
     return { error: "Invalid email or password." };
   }

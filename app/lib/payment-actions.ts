@@ -16,12 +16,12 @@ type Course = { id: string; price: number };
 export async function payForCourseAction(courseId: string, method = "upi") {
   const user = await requireRole(["student"]);
 
-  const course = db
+  const course = await db
     .prepare("SELECT id, price FROM courses WHERE id = ? AND status = 'active'")
     .get(courseId) as Course | undefined;
   if (!course) return { ok: false, error: "This batch is not available." };
 
-  const already = db
+  const already = await db
     .prepare("SELECT 1 FROM enrollments WHERE user_id = ? AND course_id = ?")
     .get(user.id, courseId);
   if (already) return { ok: false, error: "You are already enrolled in this batch." };
@@ -31,20 +31,17 @@ export async function payForCourseAction(courseId: string, method = "upi") {
   // confirm via webhook/signature before this point. Here we treat it as paid.
   const invoiceNo = "CLT-" + Date.now().toString().slice(-8);
 
-  const enrol = db.transaction(() => {
-    if (course.price > 0) {
-      db.prepare(
-        `INSERT INTO payments (id, user_id, course_id, amount, status, method, invoice_no)
-         VALUES (?, ?, ?, ?, 'paid', ?, ?)`
-      ).run(newId(), user.id, courseId, course.price, method, invoiceNo);
-    }
-    db.prepare(
-      "INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (?, ?)"
-    ).run(user.id, courseId);
-  });
-  enrol();
+  if (course.price > 0) {
+    await db.prepare(
+      `INSERT INTO payments (id, user_id, course_id, amount, status, method, invoice_no)
+       VALUES (?, ?, ?, ?, 'paid', ?, ?)`
+    ).run(newId(), user.id, courseId, course.price, method, invoiceNo);
+  }
+  await db.prepare(
+    "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+  ).run(user.id, courseId);
 
-  notify(
+  await notify(
     user.id,
     "payment",
     course.price > 0 ? "Payment successful" : "Enrolled",

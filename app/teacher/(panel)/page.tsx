@@ -21,9 +21,9 @@ const statusBadge: Record<string, string> = {
 export default async function TeacherDashboard() {
   const user = await requireRole(["teacher", "admin"]);
 
-  const countBy = (status?: string) =>
+  const countBy = async (status?: string) =>
     (
-      db
+      await db
         .prepare(
           `SELECT COUNT(*) AS n FROM content WHERE author_id = ?${
             status ? " AND status = ?" : ""
@@ -32,15 +32,15 @@ export default async function TeacherDashboard() {
         .get(...(status ? [user.id, status] : [user.id])) as { n: number }
     ).n;
 
-  const total = countBy();
-  const pending = countBy("pending");
-  const approved = countBy("approved");
-  const rejected = countBy("rejected");
+  const total = await countBy();
+  const pending = await countBy("pending");
+  const approved = await countBy("approved");
+  const rejected = await countBy("rejected");
   const activeCourses = (
-    db.prepare("SELECT COUNT(*) AS n FROM courses WHERE status='active'").get() as { n: number }
+    await db.prepare("SELECT COUNT(*) AS n FROM courses WHERE status='active'").get() as { n: number }
   ).n;
 
-  const recent = db
+  const recent = await db
     .prepare(
       `SELECT ct.id, ct.title, ct.type, ct.status, ct.created_at, c.name AS course
        FROM content ct LEFT JOIN courses c ON c.id = ct.course_id

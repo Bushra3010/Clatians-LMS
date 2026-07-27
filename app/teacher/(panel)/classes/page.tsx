@@ -44,7 +44,7 @@ function fmt(iso: string) {
 export default async function TeacherClassesPage() {
   const user = await requireRole(["teacher", "admin"]);
 
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status,
               lc.join_url, lc.recording_url, lc.notes, c.name AS course,
@@ -56,7 +56,7 @@ export default async function TeacherClassesPage() {
     )
     .all(user.id) as Row[];
 
-  const courses = db
+  const courses = await db
     .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
     .all() as Course[];
 

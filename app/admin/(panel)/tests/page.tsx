@@ -14,8 +14,8 @@ const statusBadge: Record<string, string> = {
   draft: "bg-slate-100 text-slate-500",
 };
 
-export default function AdminTestsPage() {
-  const rows = db.prepare(
+export default async function AdminTestsPage() {
+  const rows = await db.prepare(
     `SELECT t.id, t.title, t.type, t.status, c.name AS course, u.name AS author,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id=t.id) AS qcount,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id=t.id AND a.status='submitted') AS attempts,

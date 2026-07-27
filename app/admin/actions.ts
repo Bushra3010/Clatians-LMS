@@ -23,13 +23,13 @@ export async function createUserAction(formData: FormData) {
 
   if (!name || !email || !password) return;
   if (!["student", "teacher", "admin"].includes(role)) return;
-  if (findUserByEmail(email)) return; // email already exists — ignored silently
+  if (await findUserByEmail(email)) return; // email already exists — ignored silently
 
-  db.prepare(
+  await db.prepare(
     "INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, 'active')"
   ).run(newId(), name, email, hashPassword(password), role);
 
-  logAudit(admin, "Created user", `${name} (${role})`);
+  await logAudit(admin, "Created user", `${name} (${role})`);
   revalidatePath("/admin/users");
   revalidatePath("/admin");
 }
@@ -41,12 +41,12 @@ export async function setUserStatusAction(formData: FormData) {
   if (!["active", "suspended"].includes(status)) return;
   if (userId === admin.id) return; // never suspend yourself
 
-  const target = db.prepare("SELECT name FROM users WHERE id = ?").get(userId) as { name: string } | undefined;
-  db.prepare("UPDATE users SET status = ? WHERE id = ?").run(status, userId);
+  const target = await db.prepare("SELECT name FROM users WHERE id = ?").get(userId) as { name: string } | undefined;
+  await db.prepare("UPDATE users SET status = ? WHERE id = ?").run(status, userId);
   if (status === "suspended") {
-    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId); // force sign-out
+    await db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId); // force sign-out
   }
-  logAudit(admin, status === "suspended" ? "Suspended user" : "Reactivated user", target?.name ?? userId);
+  await logAudit(admin, status === "suspended" ? "Suspended user" : "Reactivated user", target?.name ?? userId);
   revalidatePath("/admin/users");
 }
 
@@ -60,11 +60,11 @@ export async function createCourseAction(formData: FormData) {
   const price = Math.max(0, Math.round(Number(formData.get("price") ?? 0) || 0));
   if (!name) return;
 
-  db.prepare(
+  await db.prepare(
     "INSERT INTO courses (id, name, description, status, price) VALUES (?, ?, ?, 'active', ?)"
   ).run(newId(), name, description, price);
 
-  logAudit(admin, "Created course", `${name}${price ? ` · ₹${price}` : " · free"}`);
+  await logAudit(admin, "Created course", `${name}${price ? ` · ₹${price}` : " · free"}`);
   revalidatePath("/admin/courses");
   revalidatePath("/admin");
   revalidatePath("/");
@@ -76,7 +76,7 @@ export async function setCourseStatusAction(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   if (!["active", "archived"].includes(status)) return;
 
-  db.prepare("UPDATE courses SET status = ? WHERE id = ?").run(status, courseId);
+  await db.prepare("UPDATE courses SET status = ? WHERE id = ?").run(status, courseId);
   revalidatePath("/admin/courses");
 }
 
@@ -86,8 +86,8 @@ export async function enrollStudentAction(formData: FormData) {
   const courseId = String(formData.get("courseId") ?? "");
   if (!userId || !courseId) return;
 
-  db.prepare(
-    "INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (?, ?)"
+  await db.prepare(
+    "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(userId, courseId);
   revalidatePath("/admin/courses");
 }
@@ -101,13 +101,13 @@ export async function setContentStatusAction(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   if (!["pending", "approved", "rejected"].includes(status)) return;
 
-  const item = db.prepare("SELECT title, author_id FROM content WHERE id = ?").get(contentId) as { title: string; author_id: string | null } | undefined;
+  const item = await db.prepare("SELECT title, author_id FROM content WHERE id = ?").get(contentId) as { title: string; author_id: string | null } | undefined;
 
-  db.prepare("UPDATE content SET status = ? WHERE id = ?").run(status, contentId);
-  if (item) logAudit(admin, `Content ${status}`, item.title);
+  await db.prepare("UPDATE content SET status = ? WHERE id = ?").run(status, contentId);
+  if (item) await logAudit(admin, `Content ${status}`, item.title);
 
   if (item?.author_id && (status === "approved" || status === "rejected")) {
-    notify(
+    await notify(
       item.author_id,
       "content",
       status === "approved" ? "Content approved" : "Content needs changes",

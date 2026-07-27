@@ -3,9 +3,7 @@ import { db, newId } from "./db";
 
 export type NotifType = "doubt" | "class" | "payment" | "content" | "announcement" | "info";
 
-const insert = db.prepare(
-  "INSERT INTO notifications (id, user_id, type, title, body) VALUES (?, ?, ?, ?, ?)"
-);
+const INSERT = "INSERT INTO notifications (id, user_id, type, title, body) VALUES (?, ?, ?, ?, ?)";
 
 /**
  * Create an in-app notification for one user.
@@ -14,14 +12,12 @@ const insert = db.prepare(
  * a provider (Twilio, FCM, …). Those need account credentials, so for now we
  * persist the in-app notification only — the single place to add channels later.
  */
-export function notify(userId: string, type: NotifType, title: string, body = "") {
+export async function notify(userId: string, type: NotifType, title: string, body = ""): Promise<void> {
   if (!userId) return;
-  insert.run(newId(), userId, type, title, body);
+  await db.prepare(INSERT).run(newId(), userId, type, title, body);
 }
 
-/** Same, fanned out to many recipients in one transaction. */
-export const notifyMany = db.transaction(
-  (userIds: string[], type: NotifType, title: string, body = "") => {
-    for (const uid of userIds) insert.run(newId(), uid, type, title, body);
-  }
-);
+/** Same, fanned out to many recipients. */
+export async function notifyMany(userIds: string[], type: NotifType, title: string, body = ""): Promise<void> {
+  for (const uid of userIds) await notify(uid, type, title, body);
+}

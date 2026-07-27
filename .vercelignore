@@ -1,0 +1,4 @@
+.env*.local
+/data
+/backups
+/public/uploads

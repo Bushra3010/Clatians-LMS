@@ -25,8 +25,8 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-export default function AdminPaymentsPage() {
-  const rows = db
+export default async function AdminPaymentsPage() {
+  const rows = await db
     .prepare(
       `SELECT p.id, p.amount, p.status, p.method, p.invoice_no, p.created_at,
               u.name AS student, c.name AS course

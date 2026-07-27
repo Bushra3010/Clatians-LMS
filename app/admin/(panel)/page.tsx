@@ -2,8 +2,8 @@ import { db } from "@/app/lib/db";
 
 export const dynamic = "force-dynamic";
 
-function scalar(sql: string): number {
-  return (db.prepare(sql).get() as { n: number }).n;
+async function scalar(sql: string): Promise<number> {
+  return (await db.prepare(sql).get() as { n: number }).n;
 }
 
 type CourseRow = { name: string; students: number; status: string };
@@ -15,15 +15,15 @@ type ContentRow = {
   created_at: string;
 };
 
-export default function DashboardPage() {
-  const students = scalar("SELECT COUNT(*) AS n FROM users WHERE role='student'");
-  const teachers = scalar("SELECT COUNT(*) AS n FROM users WHERE role='teacher'");
-  const activeCourses = scalar("SELECT COUNT(*) AS n FROM courses WHERE status='active'");
-  const pendingContent = scalar("SELECT COUNT(*) AS n FROM content WHERE status='pending'");
-  const suspended = scalar("SELECT COUNT(*) AS n FROM users WHERE status='suspended'");
-  const approvedContent = scalar("SELECT COUNT(*) AS n FROM content WHERE status='approved'");
+export default async function DashboardPage() {
+  const students = await scalar("SELECT COUNT(*) AS n FROM users WHERE role='student'");
+  const teachers = await scalar("SELECT COUNT(*) AS n FROM users WHERE role='teacher'");
+  const activeCourses = await scalar("SELECT COUNT(*) AS n FROM courses WHERE status='active'");
+  const pendingContent = await scalar("SELECT COUNT(*) AS n FROM content WHERE status='pending'");
+  const suspended = await scalar("SELECT COUNT(*) AS n FROM users WHERE status='suspended'");
+  const approvedContent = await scalar("SELECT COUNT(*) AS n FROM content WHERE status='approved'");
 
-  const courseRows = db
+  const courseRows = await db
     .prepare(
       `SELECT c.name, c.status,
               (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
@@ -31,7 +31,7 @@ export default function DashboardPage() {
     )
     .all() as CourseRow[];
 
-  const pendingRows = db
+  const pendingRows = await db
     .prepare(
       `SELECT ct.id, ct.title, ct.type, ct.created_at, u.name AS author
        FROM content ct LEFT JOIN users u ON u.id = ct.author_id

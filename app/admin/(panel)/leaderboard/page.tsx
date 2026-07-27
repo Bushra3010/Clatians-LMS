@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 
 const medal = (rank: number) => (rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`);
 
-export default function AdminLeaderboardPage() {
-  const board = computeLeaderboard();
+export default async function AdminLeaderboardPage() {
+  const board = await computeLeaderboard();
   const active = board.filter((e) => e.points > 0);
 
   return (

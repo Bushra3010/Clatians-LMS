@@ -7,8 +7,8 @@ const LOW = 60; // attendance % below this is flagged
 
 type Row = { user_id: string; student: string; batch: string; total: number; attended: number };
 
-export default function AdminAttendancePage() {
-  const rows = db.prepare(
+export default async function AdminAttendancePage() {
+  const rows = await db.prepare(
     `SELECT u.id AS user_id, u.name AS student, c.id AS course_id, c.name AS batch,
             (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id=c.id AND lc.status='ended') AS total,
             (SELECT COUNT(*) FROM class_attendance a JOIN live_classes lc ON lc.id=a.class_id

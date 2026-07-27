@@ -9,14 +9,14 @@ export async function toggleSavedAction(kind: string, itemKey: string, title = "
   const user = await requireRole(["student"]);
   if (!kind || !itemKey) return;
 
-  const exists = db
+  const exists = await db
     .prepare("SELECT 1 FROM saved_items WHERE user_id = ? AND kind = ? AND item_key = ?")
     .get(user.id, kind, itemKey);
 
   if (exists) {
-    db.prepare("DELETE FROM saved_items WHERE user_id = ? AND kind = ? AND item_key = ?").run(user.id, kind, itemKey);
+    await db.prepare("DELETE FROM saved_items WHERE user_id = ? AND kind = ? AND item_key = ?").run(user.id, kind, itemKey);
   } else {
-    db.prepare(
+    await db.prepare(
       "INSERT INTO saved_items (user_id, kind, item_key, title, subtitle) VALUES (?, ?, ?, ?, ?)"
     ).run(user.id, kind, itemKey, title, subtitle);
   }

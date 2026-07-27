@@ -17,8 +17,8 @@ type Course = {
 };
 type Student = { id: string; name: string };
 
-export default function CoursesPage() {
-  const courses = db
+export default async function CoursesPage() {
+  const courses = await db
     .prepare(
       `SELECT c.id, c.name, c.description, c.status, c.price,
               (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
@@ -26,7 +26,7 @@ export default function CoursesPage() {
     )
     .all() as Course[];
 
-  const students = db
+  const students = await db
     .prepare("SELECT id, name FROM users WHERE role='student' AND status='active' ORDER BY name")
     .all() as Student[];
 

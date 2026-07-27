@@ -7,8 +7,8 @@ type Row = {
   test_avg: number | null; tests_taken: number;
 };
 
-export default function AdminProgressPage() {
-  const rows = db.prepare(
+export default async function AdminProgressPage() {
+  const rows = await db.prepare(
     `SELECT u.id, u.name AS student,
        (SELECT COUNT(*) FROM content ct WHERE ct.status='approved'
           AND (ct.course_id IN (SELECT course_id FROM enrollments WHERE user_id=u.id) OR ct.course_id IS NULL)) AS total,

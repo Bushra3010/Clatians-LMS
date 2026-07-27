@@ -31,7 +31,7 @@ const statusBadge: Record<string, string> = {
 export default async function TeacherContentPage() {
   const user = await requireRole(["teacher", "admin"]);
 
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT ct.id, ct.title, ct.type, ct.body, ct.status, ct.created_at, c.name AS course
        FROM content ct LEFT JOIN courses c ON c.id = ct.course_id
@@ -40,7 +40,7 @@ export default async function TeacherContentPage() {
     )
     .all(user.id) as Row[];
 
-  const courses = db
+  const courses = await db
     .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
     .all() as Course[];
 

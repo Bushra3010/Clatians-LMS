@@ -10,7 +10,7 @@ import { logAudit } from "./audit";
 export async function markNotificationsReadAction() {
   const user = await auth();
   if (!user) return;
-  db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0").run(user.id);
+  await db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0").run(user.id);
   revalidatePath("/");
 }
 
@@ -23,12 +23,12 @@ export async function broadcastAnnouncementAction(formData: FormData) {
   if (!title) return;
 
   const recipients = courseId
-    ? (db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(courseId) as { user_id: string }[]).map((r) => r.user_id)
-    : (db.prepare("SELECT id FROM users WHERE role = 'student' AND status = 'active'").all() as { id: string }[]).map((r) => r.id);
+    ? (await db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(courseId) as { user_id: string }[]).map((r) => r.user_id)
+    : (await db.prepare("SELECT id FROM users WHERE role = 'student' AND status = 'active'").all() as { id: string }[]).map((r) => r.id);
 
-  notifyMany(recipients, "announcement", title, body);
+  await notifyMany(recipients, "announcement", title, body);
 
-  logAudit(admin, "Sent announcement", `${title} → ${recipients.length} student(s)`);
+  await logAudit(admin, "Sent announcement", `${title} → ${recipients.length} student(s)`);
   revalidatePath("/admin/announcements");
   revalidatePath("/");
 }

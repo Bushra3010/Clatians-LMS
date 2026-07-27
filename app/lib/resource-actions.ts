@@ -56,12 +56,12 @@ export async function createResourceAction(formData: FormData) {
   if (!TYPES.includes(type) || !title) return;
 
   const data = buildData(type, title, formData);
-  const n = (db.prepare("SELECT COUNT(*) AS n FROM resources WHERE type = ?").get(type) as { n: number }).n;
-  db.prepare(
+  const n = (await db.prepare("SELECT COUNT(*) AS n FROM resources WHERE type = ?").get(type) as { n: number }).n;
+  await db.prepare(
     "INSERT INTO resources (id, type, title, body, data, status, created_by, order_idx) VALUES (?, ?, ?, ?, ?, 'published', ?, ?)"
   ).run(newId(), type, title, body, JSON.stringify(data), user.id, n);
 
-  logAudit(user, "Added resource", `${type}: ${title}`);
+  await logAudit(user, "Added resource", `${type}: ${title}`);
   revalidatePath("/admin/resources");
   revalidatePath("/teacher/resources");
   revalidatePath("/");
@@ -77,10 +77,10 @@ export async function updateResourceAction(formData: FormData) {
   if (!id || !TYPES.includes(type) || !title) return;
 
   const data = buildData(type, title, formData);
-  db.prepare("UPDATE resources SET title = ?, body = ?, data = ? WHERE id = ?")
+  await db.prepare("UPDATE resources SET title = ?, body = ?, data = ? WHERE id = ?")
     .run(title, body, JSON.stringify(data), id);
 
-  logAudit(user, "Edited resource", `${type}: ${title}`);
+  await logAudit(user, "Edited resource", `${type}: ${title}`);
   revalidatePath("/admin/resources");
   revalidatePath("/teacher/resources");
   revalidatePath("/");
@@ -91,7 +91,7 @@ export async function setResourceStatusAction(formData: FormData) {
   const id = String(formData.get("resourceId") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!["published", "draft"].includes(status)) return;
-  db.prepare("UPDATE resources SET status = ? WHERE id = ?").run(status, id);
+  await db.prepare("UPDATE resources SET status = ? WHERE id = ?").run(status, id);
   revalidatePath("/admin/resources");
   revalidatePath("/teacher/resources");
   revalidatePath("/");
@@ -100,7 +100,7 @@ export async function setResourceStatusAction(formData: FormData) {
 export async function deleteResourceAction(formData: FormData) {
   await requireRole(["teacher", "admin"]);
   const id = String(formData.get("resourceId") ?? "");
-  db.prepare("DELETE FROM resources WHERE id = ?").run(id);
+  await db.prepare("DELETE FROM resources WHERE id = ?").run(id);
   revalidatePath("/admin/resources");
   revalidatePath("/teacher/resources");
   revalidatePath("/");

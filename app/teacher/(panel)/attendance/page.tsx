@@ -16,7 +16,7 @@ function fmt(iso: string) {
 export default async function TeacherAttendancePage() {
   const user = await requireRole(["teacher", "admin"]);
 
-  const classes = db.prepare(
+  const classes = await db.prepare(
     `SELECT lc.id, lc.title, lc.start_at, c.name AS batch,
             (SELECT COUNT(*) FROM class_attendance a WHERE a.class_id=lc.id) AS attended,
             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id=lc.course_id) AS enrolled
@@ -25,7 +25,7 @@ export default async function TeacherAttendancePage() {
      ORDER BY lc.start_at DESC`
   ).all(user.id) as ClassRow[];
 
-  const students = db.prepare(
+  const students = await db.prepare(
     `SELECT u.id AS user_id, u.name AS student, c.name AS batch,
             (SELECT COUNT(*) FROM live_classes lc WHERE lc.teacher_id=? AND lc.course_id=c.id AND lc.status='ended') AS total,
             (SELECT COUNT(*) FROM class_attendance a JOIN live_classes lc ON lc.id=a.class_id

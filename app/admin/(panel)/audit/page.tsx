@@ -17,8 +17,8 @@ function fmt(iso: string) {
   return new Date(iso + "Z").toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-export default function AdminAuditPage() {
-  const rows = db.prepare(
+export default async function AdminAuditPage() {
+  const rows = await db.prepare(
     "SELECT id, actor_name, actor_role, action, detail, created_at FROM audit_log ORDER BY created_at DESC LIMIT 200"
   ).all() as Row[];
 

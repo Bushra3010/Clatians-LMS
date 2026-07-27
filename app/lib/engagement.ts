@@ -16,8 +16,8 @@ export type LeaderEntry = {
  *   test marks ×10  +  classes attended ×5  +  content completed ×2
  * "test marks" = sum of the best score per distinct test taken.
  */
-export function computeLeaderboard(): LeaderEntry[] {
-  const rows = db.prepare(
+export async function computeLeaderboard(): Promise<LeaderEntry[]> {
+  const rows = await db.prepare(
     `SELECT u.id, u.name,
        COALESCE((SELECT SUM(best) FROM (
           SELECT MAX(a.score) AS best FROM test_attempts a
@@ -38,8 +38,8 @@ export function computeLeaderboard(): LeaderEntry[] {
 }
 
 /** Current consecutive-day activity streak (tests, classes, or content). */
-export function computeStreak(userId: string): number {
-  const rows = db.prepare(
+export async function computeStreak(userId: string): Promise<number> {
+  const rows = await db.prepare(
     `SELECT DISTINCT d FROM (
        SELECT date(submitted_at) d FROM test_attempts WHERE user_id = ? AND status='submitted' AND submitted_at IS NOT NULL
        UNION SELECT date(joined_at) FROM class_attendance WHERE user_id = ?

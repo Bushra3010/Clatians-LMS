@@ -22,8 +22,8 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function AdminLeadsPage() {
-  const leads = db.prepare(
+export default async function AdminLeadsPage() {
+  const leads = await db.prepare(
     `SELECT * FROM leads
      ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 WHEN 'demo' THEN 2 WHEN 'enrolled' THEN 3 ELSE 4 END, created_at DESC`
   ).all() as Lead[];

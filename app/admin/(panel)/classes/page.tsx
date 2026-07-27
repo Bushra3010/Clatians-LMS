@@ -40,8 +40,8 @@ function fmt(iso: string) {
   });
 }
 
-export default function AdminClassesPage() {
-  const rows = db
+export default async function AdminClassesPage() {
+  const rows = await db
     .prepare(
       `SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status, lc.join_url,
               c.name AS course, u.name AS teacher,
@@ -53,10 +53,10 @@ export default function AdminClassesPage() {
     )
     .all() as Row[];
 
-  const courses = db
+  const courses = await db
     .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
     .all() as Course[];
-  const teachers = db
+  const teachers = await db
     .prepare("SELECT id, name FROM users WHERE role='teacher' AND status='active' ORDER BY name")
     .all() as Teacher[];
 

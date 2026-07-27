@@ -42,34 +42,32 @@ export async function createClassAction(formData: FormData) {
   const count = repeat === "weekly" ? occurrences : 1;
 
   const base = new Date(startAt); // datetime-local value (no timezone)
-  const insert = db.prepare(
+  const insert = await db.prepare(
     `INSERT INTO live_classes
        (id, title, subject, course_id, teacher_id, start_at, duration_min, join_url, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')`
   );
-  db.transaction(() => {
-    for (let i = 0; i < count; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() + 7 * i);
-      insert.run(newId(), title, subject, courseId, teacherId, d.toISOString(), duration, joinUrl);
-    }
-  })();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + 7 * i);
+    await insert.run(newId(), title, subject, courseId, teacherId, d.toISOString(), duration, joinUrl);
+  }
 
   // Notify the batch's students that class(es) were scheduled.
   if (courseId) {
-    const students = (db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(courseId) as { user_id: string }[]).map((r) => r.user_id);
+    const students = (await db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(courseId) as { user_id: string }[]).map((r) => r.user_id);
     const label = count > 1 ? `${count} sessions of ${title}` : `${title}${subject ? ` (${subject})` : ""}`;
-    notifyMany(students, "class", "New live class scheduled", `${label} added to your timetable.`);
+    await notifyMany(students, "class", "New live class scheduled", `${label} added to your timetable.`);
   }
 
-  logAudit(user, count > 1 ? "Scheduled recurring class" : "Scheduled class", `${title}${count > 1 ? ` ×${count}` : ""}`);
+  await logAudit(user, count > 1 ? "Scheduled recurring class" : "Scheduled class", `${title}${count > 1 ? ` ×${count}` : ""}`);
   revalidatePath("/teacher/classes");
   revalidatePath("/admin/classes");
   revalidatePath("/");
 }
 
-function assertOwnerOrAdmin(classId: string, userId: string, role: string): ClassRow | null {
-  const row = db
+async function assertOwnerOrAdmin(classId: string, userId: string, role: string): Promise<ClassRow | null> {
+  const row = await db
     .prepare("SELECT id, teacher_id, join_url FROM live_classes WHERE id = ?")
     .get(classId) as ClassRow | undefined;
   if (!row) return null;
@@ -83,11 +81,11 @@ export async function setClassStatusAction(formData: FormData) {
   const classId = String(formData.get("classId") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!STATUSES.includes(status)) return;
-  if (!assertOwnerOrAdmin(classId, user.id, user.role)) return;
+  if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
 
-  const cls = db.prepare("SELECT title FROM live_classes WHERE id = ?").get(classId) as { title: string } | undefined;
-  db.prepare("UPDATE live_classes SET status = ? WHERE id = ?").run(status, classId);
-  logAudit(user, `Class ${status}`, cls?.title ?? classId);
+  const cls = await db.prepare("SELECT title FROM live_classes WHERE id = ?").get(classId) as { title: string } | undefined;
+  await db.prepare("UPDATE live_classes SET status = ? WHERE id = ?").run(status, classId);
+  await logAudit(user, `Class ${status}`, cls?.title ?? classId);
 
   revalidatePath("/teacher/classes");
   revalidatePath("/admin/classes");
@@ -100,9 +98,9 @@ export async function saveRecordingAction(formData: FormData) {
   const classId = String(formData.get("classId") ?? "");
   const recordingUrl = String(formData.get("recordingUrl") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
-  if (!assertOwnerOrAdmin(classId, user.id, user.role)) return;
+  if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
 
-  db.prepare(
+  await db.prepare(
     "UPDATE live_classes SET recording_url = ?, notes = ?, status = 'ended' WHERE id = ?"
   ).run(recordingUrl, notes, classId);
 
@@ -115,9 +113,9 @@ export async function saveRecordingAction(formData: FormData) {
 export async function deleteClassAction(formData: FormData) {
   const user = await requireRole(["teacher", "admin"]);
   const classId = String(formData.get("classId") ?? "");
-  if (!assertOwnerOrAdmin(classId, user.id, user.role)) return;
+  if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
 
-  db.prepare("DELETE FROM live_classes WHERE id = ?").run(classId);
+  await db.prepare("DELETE FROM live_classes WHERE id = ?").run(classId);
 
   revalidatePath("/teacher/classes");
   revalidatePath("/admin/classes");
@@ -126,7 +124,7 @@ export async function deleteClassAction(formData: FormData) {
 
 /**
  * Nudge a student whose attendance is low. In-app for now; a parent SMS/email
- * would fan out from the same notify() call once a provider is connected.
+ * would fan out from the same await notify() call once a provider is connected.
  */
 export async function sendAttendanceReminderAction(formData: FormData) {
   await requireRole(["teacher", "admin"]);
@@ -135,7 +133,7 @@ export async function sendAttendanceReminderAction(formData: FormData) {
   const pct = String(formData.get("pct") ?? "");
   if (!userId) return;
 
-  notify(userId, "class", "Attendance reminder",
+  await notify(userId, "class", "Attendance reminder",
     `Your attendance in ${batch} is ${pct}%. Please join upcoming live classes to stay on track.`);
 
   revalidatePath("/admin/attendance");
@@ -148,11 +146,11 @@ export async function sendAttendanceReminderAction(formData: FormData) {
  */
 export async function joinClassAction(classId: string) {
   const user = await requireRole(["student", "teacher", "admin"]);
-  const exists = db.prepare("SELECT id FROM live_classes WHERE id = ?").get(classId);
+  const exists = await db.prepare("SELECT id FROM live_classes WHERE id = ?").get(classId);
   if (!exists) return;
 
-  db.prepare(
-    "INSERT OR IGNORE INTO class_attendance (class_id, user_id) VALUES (?, ?)"
+  await db.prepare(
+    "INSERT INTO class_attendance (class_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(classId, user.id);
 
   revalidatePath("/");

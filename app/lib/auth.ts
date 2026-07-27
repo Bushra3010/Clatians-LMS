@@ -40,7 +40,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 // ────────────────────────────────────────────────────────────
 export async function createSession(userId: string): Promise<void> {
   const token = newId() + newId();
-  db.prepare("INSERT INTO sessions (token, user_id) VALUES (?, ?)").run(token, userId);
+  await db.prepare("INSERT INTO sessions (token, user_id) VALUES (?, ?)").run(token, userId);
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -54,7 +54,7 @@ export async function createSession(userId: string): Promise<void> {
 export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
+  if (token) await db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
   jar.delete(SESSION_COOKIE);
 }
 
@@ -63,7 +63,7 @@ export async function auth(): Promise<User | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const row = db
+  const row = await db
     .prepare(
       `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at
        FROM sessions s JOIN users u ON u.id = s.user_id
@@ -87,8 +87,8 @@ export async function requireAdmin(): Promise<User> {
   return requireRole(["admin"]);
 }
 
-export function findUserByEmail(email: string) {
-  return db
+export async function findUserByEmail(email: string) {
+  return await db
     .prepare("SELECT * FROM users WHERE email = ?")
     .get(email.trim().toLowerCase()) as
     | (User & { password: string })

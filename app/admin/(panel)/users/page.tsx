@@ -18,8 +18,8 @@ const roleBadge: Record<string, string> = {
   student: "bg-sky-50 text-sky-700",
 };
 
-export default function UsersPage() {
-  const users = db
+export default async function UsersPage() {
+  const users = await db
     .prepare("SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC")
     .all() as Row[];
 
