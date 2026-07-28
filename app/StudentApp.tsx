@@ -94,6 +94,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const [watchTarget, setWatchTarget] = useState<WatchTarget | null>(null);
   const [testSession, setTestSession] = useState<Extract<StartResult, { ok: true }> | null>(null);
   const [testResult, setTestResult] = useState<{ title: string; result: Extract<SubmitResult, { ok: true }> } | null>(null);
+  const [coursesTab, setCoursesTab] = useState<"all" | "mine">("all");
 
   useEffect(() => {
     const el = document.getElementById("screen-content");
@@ -189,7 +190,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     setShowProfile(false);
     switch (key) {
       case "progress": openDetail("progress"); break;
-      case "courses": setDetailPage(null); setActiveScreen("courses"); break;
+      case "courses": setDetailPage(null); setCoursesTab("mine"); setActiveScreen("courses"); break;
       case "tests": openDetail("tests"); break;
       case "saved": openDetail("saved"); break;
       case "achievements": openDetail("leaderboard"); break;
@@ -225,7 +226,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         )}
 
         {/* Top Bar — always visible */}
-        <TopBar courseName={profile.batches[0] ?? "CLAT 2026"} onProfileClick={() => setShowProfile(true)} onLogoClick={() => { setDetailPage(null); setActiveScreen("home"); }} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setDetailPage(null); setActiveScreen("courses"); }} />
+        <TopBar courseName={profile.batches[0] ?? "CLAT 2026"} onProfileClick={() => setShowProfile(true)} onLogoClick={() => { setDetailPage(null); setActiveScreen("home"); }} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setDetailPage(null); setCoursesTab("all"); setActiveScreen("courses"); }} />
 
         {/* Scrollable content */}
         <div
@@ -321,7 +322,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             />
           )}
           {!detailPage && activeScreen === "courses" && (
-            <CoursesScreen catalog={catalog} onEnroll={handleEnroll} />
+            <CoursesScreen catalog={catalog} onEnroll={handleEnroll} initialTab={coursesTab} />
           )}
           {!detailPage && activeScreen === "study"   && (
             <StudyScreen

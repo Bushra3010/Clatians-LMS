@@ -25,6 +25,7 @@ const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
 interface CoursesScreenProps {
   catalog: CatalogItem[];
   onEnroll: (courseId: string, method: string) => Promise<{ ok: boolean; invoiceNo?: string; amount?: number; error?: string }>;
+  initialTab?: "all" | "mine";
 }
 
 type View =
@@ -32,8 +33,8 @@ type View =
   | { name: "checkout"; course: CatalogItem }
   | { name: "success"; course: CatalogItem; invoiceNo: string; amount: number };
 
-export default function CoursesScreen({ catalog, onEnroll }: CoursesScreenProps) {
-  const [tab, setTab] = useState<"all" | "mine">("all");
+export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }: CoursesScreenProps) {
+  const [tab, setTab] = useState<"all" | "mine">(initialTab);
   const [view, setView] = useState<View>({ name: "list" });
   const [method, setMethod] = useState("upi");
   const [paying, setPaying] = useState(false);

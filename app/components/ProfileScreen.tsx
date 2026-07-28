@@ -64,10 +64,17 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "white" }}>{profile.name}</h2>
             <p style={{ margin: "2px 0", fontSize: 13, color: "rgba(255,255,255,0.8)" }}>{profile.email}</p>
-            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-              <span style={{ background: "#F5A623", color: "white", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {profile.batches[0] ?? "No batch"}
-              </span>
+            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              {profile.batches.length === 0 && (
+                <span style={{ background: "#F5A623", color: "white", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
+                  No batch
+                </span>
+              )}
+              {profile.batches.map((b) => (
+                <span key={b} style={{ background: "#F5A623", color: "white", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
+                  {b}
+                </span>
+              ))}
               <span style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
                 FREE PLAN
               </span>

@@ -10,9 +10,9 @@ type Row = { user_id: string; student: string; batch: string; total: number; att
 export default async function AdminAttendancePage() {
   const rows = await db.prepare(
     `SELECT u.id AS user_id, u.name AS student, c.id AS course_id, c.name AS batch,
-            (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id=c.id AND lc.status='ended') AS total,
+            (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id=c.id AND lc.status IN ('live','ended')) AS total,
             (SELECT COUNT(*) FROM class_attendance a JOIN live_classes lc ON lc.id=a.class_id
-               WHERE lc.course_id=c.id AND lc.status='ended' AND a.user_id=u.id) AS attended
+               WHERE lc.course_id=c.id AND lc.status IN ('live','ended') AND a.user_id=u.id) AS attended
      FROM enrollments e JOIN users u ON u.id=e.user_id JOIN courses c ON c.id=e.course_id
      WHERE u.role='student' AND c.status='active'
      ORDER BY c.name, u.name`

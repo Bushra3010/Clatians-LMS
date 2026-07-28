@@ -49,7 +49,7 @@ export default async function Home() {
   const classSelect = (statusClause: string, order: string, limit = "") => `
     SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status,
            lc.join_url, lc.recording_url, lc.notes, u.name AS teacher,
-           EXISTS(SELECT 1 FROM class_attendance a WHERE a.class_id = lc.id AND a.user_id = ?) AS attended
+           (EXISTS(SELECT 1 FROM class_attendance a WHERE a.class_id = lc.id AND a.user_id = ?))::int AS attended
     FROM live_classes lc
     LEFT JOIN users u ON u.id = lc.teacher_id
     WHERE lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
@@ -61,15 +61,15 @@ export default async function Home() {
 
   const stat = await db.prepare(
     `SELECT
-       (SELECT COUNT(*) FROM live_classes lc WHERE lc.status='ended' AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS total,
-       (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status='ended' AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
+       (SELECT COUNT(*) FROM live_classes lc WHERE lc.status IN ('live','ended') AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS total,
+       (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status IN ('live','ended') AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
   ).get(user.id, user.id, user.id) as { total: number; attended: number };
   const attendancePct = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : null;
 
   // ── Study material (approved content for the batch, incl. batch-agnostic) ──
   const contentRows = await db.prepare(
     `SELECT ct.id, ct.title, ct.body, ct.type, ct.created_at, u.name AS author, c.name AS course,
-            EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?) AS done
+            (EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?))::int AS done
      FROM content ct
      LEFT JOIN users u ON u.id = ct.author_id
      LEFT JOIN courses c ON c.id = ct.course_id
@@ -102,7 +102,7 @@ export default async function Home() {
   // ── Course catalog (for enroll / buy) ──
   const catalog: CatalogItem[] = (await db.prepare(
     `SELECT c.id, c.name, c.description, c.price,
-            EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id) AS enrolled,
+            (EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id))::int AS enrolled,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS content_count,
             (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id = c.id) AS class_count
      FROM courses c WHERE c.status = 'active'

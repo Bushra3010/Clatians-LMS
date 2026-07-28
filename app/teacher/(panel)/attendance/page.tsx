@@ -16,24 +16,30 @@ function fmt(iso: string) {
 export default async function TeacherAttendancePage() {
   const user = await requireRole(["teacher", "admin"]);
 
+  // Teachers see only their own classes; an admin in the Teacher Console sees
+  // every class (they don't own any, so scoping to teacher_id would be empty).
+  const isAdmin = user.role === "admin";
+  const tcLc = isAdmin ? "" : "lc.teacher_id=? AND ";   // with the `lc` alias
+  const tcBare = isAdmin ? "" : "teacher_id=? AND ";    // bare (inner subquery)
+
   const classes = await db.prepare(
     `SELECT lc.id, lc.title, lc.start_at, c.name AS batch,
             (SELECT COUNT(*) FROM class_attendance a WHERE a.class_id=lc.id) AS attended,
             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id=lc.course_id) AS enrolled
      FROM live_classes lc LEFT JOIN courses c ON c.id=lc.course_id
-     WHERE lc.teacher_id=? AND lc.status='ended'
+     WHERE ${tcLc}lc.status IN ('live','ended')
      ORDER BY lc.start_at DESC`
-  ).all(user.id) as ClassRow[];
+  ).all(...(isAdmin ? [] : [user.id])) as ClassRow[];
 
   const students = await db.prepare(
     `SELECT u.id AS user_id, u.name AS student, c.name AS batch,
-            (SELECT COUNT(*) FROM live_classes lc WHERE lc.teacher_id=? AND lc.course_id=c.id AND lc.status='ended') AS total,
+            (SELECT COUNT(*) FROM live_classes lc WHERE ${tcLc}lc.course_id=c.id AND lc.status IN ('live','ended')) AS total,
             (SELECT COUNT(*) FROM class_attendance a JOIN live_classes lc ON lc.id=a.class_id
-               WHERE lc.teacher_id=? AND lc.course_id=c.id AND lc.status='ended' AND a.user_id=u.id) AS attended
+               WHERE ${tcLc}lc.course_id=c.id AND lc.status IN ('live','ended') AND a.user_id=u.id) AS attended
      FROM enrollments e JOIN users u ON u.id=e.user_id JOIN courses c ON c.id=e.course_id
-     WHERE u.role='student' AND c.id IN (SELECT DISTINCT course_id FROM live_classes WHERE teacher_id=? AND status='ended')
+     WHERE u.role='student' AND c.id IN (SELECT DISTINCT course_id FROM live_classes WHERE ${tcBare}status IN ('live','ended'))
      ORDER BY c.name, u.name`
-  ).all(user.id, user.id, user.id) as StudentRow[];
+  ).all(...(isAdmin ? [] : [user.id, user.id, user.id])) as StudentRow[];
 
   const pct = (r: StudentRow) => (r.total > 0 ? Math.round((r.attended / r.total) * 100) : null);
 
@@ -47,7 +53,7 @@ export default async function TeacherAttendancePage() {
       {/* Per-class */}
       <h2 className="text-sm font-semibold text-slate-900 mb-3">Your classes</h2>
       <div className="space-y-2 mb-8">
-        {classes.length === 0 && <p className="text-sm text-slate-400">No completed classes yet.</p>}
+        {classes.length === 0 && <p className="text-sm text-slate-400">No live or completed classes yet.</p>}
         {classes.map((c) => {
           const p = c.enrolled > 0 ? Math.round((c.attended / c.enrolled) * 100) : 0;
           return (
