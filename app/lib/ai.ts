@@ -277,3 +277,37 @@ Keep it under ~180 words. Use short "## " headings and bullets. Be specific and 
     return { text: "", error: friendlyAiError(err) };
   }
 }
+
+/**
+ * Draft a reply to a student's doubt in a CLAT faculty member's voice. The
+ * teacher reviews and edits before sending — this is a first draft, not a
+ * final answer.
+ */
+export async function draftDoubtAnswer(doubt: { subject: string; body: string }): Promise<ExplainResult> {
+  const prompt = `A CLAT UG student raised this doubt${doubt.subject ? ` (section: ${doubt.subject})` : ""}:
+"${doubt.body}"
+
+Draft a reply a CLAT faculty member could send, in a warm, direct teacher's voice addressed to the student.
+- Answer the actual question. For Legal Reasoning use principle-application; for GK & Current Affairs be factual and flag anything that may have since changed; for English/Logical/Quant teach the method, not just the result.
+- Concise (under ~150 words), well structured — short steps or bullets where they help.
+- Plain text and simple Markdown only — no LaTeX. End with a one-line encouragement.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are an experienced CLAT faculty member drafting a reply to a student's doubt. Be accurate, clear, and encouraging. Never invent facts.",
+        maxOutputTokens: 800,
+        temperature: 0.5,
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    const text = res.text?.trim();
+    if (text) return { text };
+    return { text: "", error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
+  } catch (err) {
+    console.error("draftDoubtAnswer error:", err);
+    return { text: "", error: friendlyAiError(err) };
+  }
+}

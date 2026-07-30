@@ -1,8 +1,9 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
-import { answerDoubtAction } from "@/app/lib/doubt-actions";
+import DoubtAnswerForm from "./DoubtAnswerForm";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // AI drafting can occasionally take longer than 10s
 
 type Row = {
   id: string;
@@ -70,19 +71,7 @@ export default async function TeacherDoubtsPage() {
                   <p className="text-sm text-slate-700">{r.answer}</p>
                 </div>
               ) : (
-                <form action={answerDoubtAction} className="mt-3 border-t border-slate-100 pt-3">
-                  <input type="hidden" name="doubtId" value={r.id} />
-                  <textarea
-                    name="answer"
-                    required
-                    rows={3}
-                    placeholder="Write your answer…"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none resize-y"
-                  />
-                  <button className="mt-2 rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-5">
-                    Send answer
-                  </button>
-                </form>
+                <DoubtAnswerForm doubtId={r.id} />
               )}
             </div>
           );

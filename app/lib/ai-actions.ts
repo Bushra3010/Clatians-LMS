@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, explainAnswer, coachStudy, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, explainAnswer, coachStudy, draftDoubtAnswer, aiConfigured, type ChatMsg, type Role } from "./ai";
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -195,6 +195,27 @@ export async function aiCoachAction(): Promise<ExplainOutcome> {
   if (subjects.length === 0) return { ok: false, error: "Attempt a few questions in a test first — I need some answers to analyse." };
 
   const { text, error } = await coachStudy({ testsTaken: attempts.length, avgPct, bestPct, subjects });
+  if (error) return { ok: false, error };
+  return { ok: true, text };
+}
+
+/**
+ * Draft an AI reply to a student's doubt for a teacher to review and edit.
+ * The doubt is read from the database by id; only teachers/admins may draft.
+ */
+export async function draftDoubtAnswerAction(doubtId: string): Promise<ExplainOutcome> {
+  await requireRole(["teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const id = String(doubtId ?? "");
+  if (!id) return { ok: false, error: "Missing doubt." };
+
+  const doubt = (await db.prepare("SELECT subject, body FROM doubts WHERE id = ?").get(id)) as
+    | { subject: string; body: string }
+    | undefined;
+  if (!doubt) return { ok: false, error: "That doubt no longer exists." };
+
+  const { text, error } = await draftDoubtAnswer({ subject: doubt.subject, body: doubt.body });
   if (error) return { ok: false, error };
   return { ok: true, text };
 }
