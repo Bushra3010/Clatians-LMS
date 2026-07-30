@@ -1,5 +1,7 @@
 "use client";
 
+import { parseServerDate } from "../../lib/dates";
+
 export type NotificationItem = {
   id: string;
   type: string;
@@ -14,7 +16,9 @@ const icon: Record<string, string> = {
 };
 
 function ago(iso: string): string {
-  const diff = Date.now() - new Date(iso + "Z").getTime();
+  const t = parseServerDate(iso).getTime();
+  if (isNaN(t)) return "";
+  const diff = Date.now() - t;
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;

@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import type { DoubtItem } from "../StudentApp";
+import { parseServerDate } from "../lib/dates";
 
 const subjects = ["Legal Reasoning", "English", "GK & Current Affairs", "Quantitative Techniques", "Logical Reasoning", "Exam Strategy"];
 
 function ago(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+  const t = parseServerDate(iso).getTime();
+  if (isNaN(t)) return "";
+  const diff = Date.now() - t;
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m} min ago`;
