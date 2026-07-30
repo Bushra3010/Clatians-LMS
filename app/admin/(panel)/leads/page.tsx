@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { updateLeadStatusAction, saveLeadNoteAction, deleteLeadAction } from "@/app/lib/lead-actions";
+import { convertLeadAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,7 @@ type Lead = {
   id: string; name: string; phone: string; email: string; interest: string;
   demo_date: string; message: string; status: string; notes: string; created_at: string;
 };
+type Course = { id: string; name: string };
 
 const STATUSES = ["new", "contacted", "demo", "enrolled", "lost"] as const;
 const statusStyle: Record<string, string> = {
@@ -28,6 +30,7 @@ export default async function AdminLeadsPage() {
      ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 WHEN 'demo' THEN 2 WHEN 'enrolled' THEN 3 ELSE 4 END, created_at DESC`
   ).all() as Lead[];
 
+  const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
   const counts = STATUSES.map((s) => ({ s, n: leads.filter((l) => l.status === s).length }));
   const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
@@ -91,6 +94,25 @@ export default async function AdminLeadsPage() {
               </label>
               <button className="rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm py-2 px-4 h-[38px]">Save</button>
             </form>
+
+            {/* Convert to student account */}
+            <details className="mt-2 border-t border-slate-100 pt-3">
+              <summary className="text-xs font-medium text-green-700 cursor-pointer">🎓 Convert to student</summary>
+              <form action={convertLeadAction} className="mt-3 grid grid-cols-1 sm:grid-cols-[2fr_1.5fr_2fr_auto] gap-2 items-end">
+                <input type="hidden" name="leadId" value={l.id} />
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Login email</span>
+                  <input name="email" type="email" required defaultValue={l.email} className={inputCls} placeholder="student@email.com" /></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Set password</span>
+                  <input name="password" required minLength={6} className={inputCls} placeholder="min 6 chars" /></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Enroll in batch (optional)</span>
+                  <select name="courseId" className={inputCls} defaultValue="">
+                    <option value="">— No batch —</option>
+                    {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select></label>
+                <button className="rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 h-[38px]">Create</button>
+              </form>
+              <p className="mt-1 text-[11px] text-slate-400">Creates a student login (share the password with them) and marks this lead as enrolled. Skips creation if the email already has an account.</p>
+            </details>
           </div>
         ))}
       </div>

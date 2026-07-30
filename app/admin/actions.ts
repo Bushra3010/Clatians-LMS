@@ -34,6 +34,43 @@ export async function createUserAction(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/**
+ * Convert an admissions lead into a student account. Creates the user (unless
+ * the email already exists), optionally enrolls them in a batch, and marks the
+ * lead 'enrolled'. The admin sets the login password to share with the student.
+ */
+export async function convertLeadAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const leadId = String(formData.get("leadId") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const courseId = String(formData.get("courseId") ?? "") || null;
+  if (!leadId || !email || password.length < 6) return;
+
+  const lead = await db.prepare("SELECT name FROM leads WHERE id = ?").get(leadId) as { name: string } | undefined;
+  if (!lead) return;
+
+  if (!(await findUserByEmail(email))) {
+    await db.prepare(
+      "INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'student', 'active')"
+    ).run(newId(), lead.name, email, hashPassword(password));
+  }
+
+  const student = await findUserByEmail(email);
+  if (student && courseId) {
+    await db.prepare(
+      "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+    ).run(student.id, courseId);
+  }
+
+  await db.prepare("UPDATE leads SET status='enrolled' WHERE id = ?").run(leadId);
+  await logAudit(admin, "Converted lead to student", `${lead.name} (${email})`);
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
 export async function setUserStatusAction(formData: FormData) {
   const admin = await requireAdmin();
   const userId = String(formData.get("userId") ?? "");
