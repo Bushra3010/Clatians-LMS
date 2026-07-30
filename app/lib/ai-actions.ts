@@ -267,6 +267,41 @@ export async function generatePracticeAction(input: {
   return { ok: true, questions };
 }
 
+/**
+ * Record a completed AI practice session so it counts toward the student's
+ * streak and points. Best-effort — never throws to the UI.
+ */
+export async function savePracticeResultAction(input: {
+  topic: string;
+  subject: string;
+  difficulty: string;
+  total: number;
+  correct: number;
+}): Promise<{ ok: boolean }> {
+  const user = await requireRole(["student", "teacher", "admin"]);
+  const total = Math.max(0, Math.min(50, Math.round(Number(input.total) || 0)));
+  const correct = Math.max(0, Math.min(total, Math.round(Number(input.correct) || 0)));
+  if (total === 0) return { ok: false };
+
+  try {
+    await db.prepare(
+      "INSERT INTO practice_sessions (id, user_id, topic, subject, difficulty, total, correct) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(
+      newId(),
+      user.id,
+      String(input.topic ?? "").slice(0, 200),
+      String(input.subject ?? "").slice(0, 80),
+      String(input.difficulty ?? "medium").slice(0, 20),
+      total,
+      correct
+    );
+    return { ok: true };
+  } catch (err) {
+    console.error("savePracticeResult error:", err);
+    return { ok: false };
+  }
+}
+
 export type VocabOutcome = { ok: boolean; words?: VocabWord[]; error?: string };
 
 /** Generate CLAT English vocabulary flashcards on demand. count clamped 4–10. */

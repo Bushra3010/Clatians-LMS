@@ -188,6 +188,12 @@ const SCHEMA = `
     content_id TEXT NOT NULL REFERENCES content(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT ${NOW}, PRIMARY KEY (user_id, content_id)
   );
+  CREATE TABLE IF NOT EXISTS practice_sessions (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    topic TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '', difficulty TEXT NOT NULL DEFAULT 'medium',
+    total INTEGER NOT NULL DEFAULT 0, correct INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
   CREATE TABLE IF NOT EXISTS leads (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
     interest TEXT NOT NULL DEFAULT '', demo_date TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '',

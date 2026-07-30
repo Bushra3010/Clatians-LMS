@@ -14,6 +14,7 @@ export type LeaderEntry = {
 /**
  * Points model (composite of the things students actually do):
  *   test marks ×10  +  classes attended ×5  +  content completed ×2
+ *   +  AI practice correct answers ×1
  * "test marks" = sum of the best score per distinct test taken.
  */
 export async function computeLeaderboard(): Promise<LeaderEntry[]> {
@@ -24,14 +25,15 @@ export async function computeLeaderboard(): Promise<LeaderEntry[]> {
           WHERE a.user_id = u.id AND a.status='submitted' GROUP BY a.test_id
        )), 0) AS test_pts,
        (SELECT COUNT(*) FROM class_attendance ca WHERE ca.user_id = u.id) AS attended,
-       (SELECT COUNT(*) FROM content_progress cp WHERE cp.user_id = u.id) AS content_done
+       (SELECT COUNT(*) FROM content_progress cp WHERE cp.user_id = u.id) AS content_done,
+       COALESCE((SELECT SUM(correct) FROM practice_sessions ps WHERE ps.user_id = u.id), 0) AS practice_pts
      FROM users u WHERE u.role='student' AND u.status='active'`
-  ).all() as { id: string; name: string; test_pts: number; attended: number; content_done: number }[];
+  ).all() as { id: string; name: string; test_pts: number; attended: number; content_done: number; practice_pts: number }[];
 
   return rows
     .map((r) => ({
       id: r.id, name: r.name, testPts: r.test_pts, attended: r.attended, contentDone: r.content_done,
-      points: Math.round(r.test_pts) * 10 + r.attended * 5 + r.content_done * 2,
+      points: Math.round(r.test_pts) * 10 + r.attended * 5 + r.content_done * 2 + Math.round(r.practice_pts) * 1,
     }))
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
     .map((r, i) => ({ ...r, rank: i + 1 }));
@@ -44,8 +46,9 @@ export async function computeStreak(userId: string): Promise<number> {
        SELECT date(submitted_at) d FROM test_attempts WHERE user_id = ? AND status='submitted' AND submitted_at IS NOT NULL
        UNION SELECT date(joined_at) FROM class_attendance WHERE user_id = ?
        UNION SELECT date(created_at) FROM content_progress WHERE user_id = ?
+       UNION SELECT date(created_at) FROM practice_sessions WHERE user_id = ?
      ) WHERE d IS NOT NULL`
-  ).all(userId, userId, userId) as { d: string }[];
+  ).all(userId, userId, userId, userId) as { d: string }[];
 
   const set = new Set(rows.map((r) => r.d));
   const day = new Date();

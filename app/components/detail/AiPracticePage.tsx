@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generatePracticeAction, type PracticeMCQ } from "../../lib/ai-actions";
+import { generatePracticeAction, savePracticeResultAction, type PracticeMCQ } from "../../lib/ai-actions";
 
 const ESPRESSO = "#3D2411";
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
@@ -20,6 +20,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
 
   const [questions, setQuestions] = useState<PracticeMCQ[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [saved, setSaved] = useState(false);
 
   const generate = async () => {
     if (busy || !topic.trim()) return;
@@ -46,9 +47,18 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
     setQuestions([]);
     setAnswers({});
     setErr(null);
+    setSaved(false);
   };
 
   const score = questions.reduce((n, q, i) => n + (answers[i] === q.correct ? 1 : 0), 0);
+
+  const finish = () => {
+    setPhase("result");
+    // Persist the result so it counts toward the student's streak & points.
+    savePracticeResultAction({ topic, subject, difficulty, total: questions.length, correct: score })
+      .then((r) => setSaved(r.ok))
+      .catch(() => setSaved(false));
+  };
   const answeredCount = Object.keys(answers).length;
 
   return (
@@ -111,6 +121,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
               <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Your score</p>
               <p style={{ margin: "6px 0 0", fontSize: 40, fontWeight: 900 }}>{score}<span style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>/{questions.length}</span></p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#F5C97A" }}>{Math.round((score / questions.length) * 100)}% · {topic}</p>
+              {saved && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#BBF7D0" }}>✓ Saved · counts toward your streak & points</p>}
             </div>
           )}
 
@@ -161,7 +172,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
           </div>
 
           {phase === "quiz" ? (
-            <button onClick={() => setPhase("result")} style={{ marginTop: 14, width: "100%", background: gradient, color: "white", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+            <button onClick={finish} style={{ marginTop: 14, width: "100%", background: gradient, color: "white", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
               Check answers{answeredCount < questions.length ? ` (${answeredCount}/${questions.length} answered)` : ""}
             </button>
           ) : (
