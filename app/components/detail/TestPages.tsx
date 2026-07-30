@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { StartResult, SubmitResult, TakeQuestion, ReviewItem } from "../../lib/test-actions";
 import { explainAnswerAction } from "../../lib/ai-actions";
+import AiText from "../AiText";
 
 export type TestListItem = {
   id: string;
@@ -143,29 +144,6 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
   );
 }
 
-// Tiny safe formatter for AI explanations: paragraphs, • bullets, **bold**.
-function renderExplanation(text: string) {
-  return text.split(/\n{2,}/).map((para, i) => {
-    const lines = para.split("\n");
-    const isList = lines.length > 0 && lines.every((l) => /^\s*([-*•]|\d+[.)])\s+/.test(l));
-    if (isList) {
-      return (
-        <ul key={i} style={{ margin: "5px 0", paddingLeft: 18 }}>
-          {lines.map((l, j) => (
-            <li key={j} style={{ margin: "2px 0" }}>{inlineBold(l.replace(/^\s*([-*•]|\d+[.)])\s+/, ""))}</li>
-          ))}
-        </ul>
-      );
-    }
-    return <p key={i} style={{ margin: "5px 0", whiteSpace: "pre-wrap" }}>{inlineBold(para)}</p>;
-  });
-}
-function inlineBold(s: string) {
-  return s.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
-    p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : <span key={i}>{p}</span>
-  );
-}
-
 // One reviewed question, with an on-demand "Explain with AI" panel.
 function ReviewCard({ r, index }: { r: ReviewItem; index: number }) {
   const optText = (k: string) => (r as unknown as Record<string, string>)[k];
@@ -210,7 +188,7 @@ function ReviewCard({ r, index }: { r: ReviewItem; index: number }) {
       {explanation ? (
         <div style={{ marginTop: 10, background: "#FBF7EF", border: "1px solid #EFE2CC", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#3A2A17", lineHeight: 1.55 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "#6B4A28", fontSize: 11.5 }}>✨ AI explanation</div>
-          {renderExplanation(explanation)}
+          <AiText text={explanation} />
         </div>
       ) : (
         <button onClick={explain} disabled={busy} style={{ marginTop: 10, background: busy ? "#EDE3D3" : "#F6ECD9", color: "#6B4A28", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: busy ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>

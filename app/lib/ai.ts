@@ -229,3 +229,51 @@ Plain text and simple Markdown only — no LaTeX. Be encouraging and concise.`;
     return { text: "", error: friendlyAiError(err) };
   }
 }
+
+export type CoachStats = {
+  testsTaken: number;
+  avgPct: number | null;
+  bestPct: number | null;
+  subjects: { subject: string; correct: number; total: number; pct: number }[];
+};
+
+/**
+ * Turn a student's mock-test performance into a short, personalised CLAT study
+ * plan — naming their strong/weak sections and concrete next actions.
+ */
+export async function coachStudy(stats: CoachStats): Promise<ExplainResult> {
+  const lines = stats.subjects
+    .map((s) => `- ${s.subject}: ${s.pct}% (${s.correct}/${s.total} correct)`)
+    .join("\n");
+
+  const prompt = `A CLAT UG aspirant's mock-test performance so far:
+Tests taken: ${stats.testsTaken}
+Average score: ${stats.avgPct ?? "n/a"}%   Best: ${stats.bestPct ?? "n/a"}%
+Subject-wise accuracy (on attempted questions):
+${lines}
+
+As their CLAT mentor, write a short, motivating study plan:
+1. Name their 1–2 strongest and 1–2 weakest sections (by name).
+2. For each weak section, give 2 concrete, CLAT-specific actions — what to practise and the common traps to fix. (Legal Reasoning = principle-application drills; English = RC speed & inference; GK & Current Affairs = monthly compendium + editorials; Logical Reasoning = assumptions & parajumbles; Quantitative = DI from passages.)
+3. A simple weekly focus split.
+Keep it under ~180 words. Use short "## " headings and bullets. Be specific and encouraging — no fluff.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are the CLAT AI Tutor — a sharp, encouraging mentor who gives specific, actionable study plans based on a student's real data.",
+        maxOutputTokens: 900,
+        temperature: 0.6,
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    const text = res.text?.trim();
+    if (text) return { text };
+    return { text: "", error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
+  } catch (err) {
+    console.error("coachStudy error:", err);
+    return { text: "", error: friendlyAiError(err) };
+  }
+}

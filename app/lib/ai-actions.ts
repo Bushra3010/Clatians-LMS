@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, explainAnswer, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, explainAnswer, coachStudy, aiConfigured, type ChatMsg, type Role } from "./ai";
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -146,6 +146,55 @@ export async function explainAnswerAction(input: { questionId: string; chosen: s
     correct: q.correct,
     chosen,
   });
+  if (error) return { ok: false, error };
+  return { ok: true, text };
+}
+
+/**
+ * Generate a personalised CLAT study plan from the current student's own
+ * mock-test data. Subject accuracy is recomputed here from the database, so the
+ * plan always reflects real, authoritative performance.
+ */
+export async function aiCoachAction(): Promise<ExplainOutcome> {
+  const user = await requireRole(["student", "teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const attempts = (await db.prepare(
+    "SELECT test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status = 'submitted'"
+  ).all(user.id)) as { test_id: string; score: number; total: number; answers: string }[];
+  if (attempts.length === 0) return { ok: false, error: "Take at least one mock test first — then I can build your study plan." };
+
+  const pcts = attempts.filter((a) => a.total > 0).map((a) => (a.score / a.total) * 100);
+  const avgPct = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : null;
+  const bestPct = pcts.length ? Math.round(Math.max(...pcts)) : null;
+
+  // Per-subject accuracy across attempted questions.
+  const testIds = [...new Set(attempts.map((a) => a.test_id))];
+  const qRows = (await db.prepare(
+    `SELECT id, subject, correct FROM questions WHERE test_id IN (${testIds.map(() => "?").join(",")})`
+  ).all(...testIds)) as { id: string; subject: string; correct: string }[];
+  const qById = new Map(qRows.map((q) => [q.id, q]));
+
+  const subjAgg = new Map<string, { correct: number; total: number }>();
+  for (const a of attempts) {
+    let answers: Record<string, string> = {};
+    try { answers = JSON.parse(a.answers); } catch { answers = {}; }
+    for (const [qid, chosen] of Object.entries(answers)) {
+      const q = qById.get(qid);
+      if (!q) continue;
+      const subj = q.subject || "General";
+      const agg = subjAgg.get(subj) ?? { correct: 0, total: 0 };
+      agg.total += 1;
+      if (chosen === q.correct) agg.correct += 1;
+      subjAgg.set(subj, agg);
+    }
+  }
+  const subjects = [...subjAgg.entries()]
+    .map(([subject, v]) => ({ subject, correct: v.correct, total: v.total, pct: Math.round((v.correct / v.total) * 100) }))
+    .sort((a, b) => a.pct - b.pct);
+  if (subjects.length === 0) return { ok: false, error: "Attempt a few questions in a test first — I need some answers to analyse." };
+
+  const { text, error } = await coachStudy({ testsTaken: attempts.length, avgPct, bestPct, subjects });
   if (error) return { ok: false, error };
   return { ok: true, text };
 }
