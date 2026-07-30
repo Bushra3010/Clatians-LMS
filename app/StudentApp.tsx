@@ -252,7 +252,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "practice"        && <ContentListPage onBack={closeDetail} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
           {detailPage === "slots"           && <SlotsPage onBack={closeDetail} openSlots={slots.open} myBookings={slots.mine} />}
-          {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} />}
+          {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} studentName={profile.name} studentEmail={profile.email} />}
           {detailPage === "current-affairs" && <ContentListPage onBack={closeDetail} type="current-affairs" items={content["current-affairs"]} onToggleDone={handleToggleDone} />}
           {detailPage === "toppers"         && <TopperStoriesPage onBack={closeDetail} stories={resources.stories} />}
           {detailPage === "whats-new"       && <WhatsNewPage onBack={closeDetail} updates={resources.updates} />}
