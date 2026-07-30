@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, aiConfigured, type ChatMsg, type Role } from "./ai";
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -56,4 +57,41 @@ export async function askTutorAction(threadId: string | null, userText: string):
 /** Start a brand-new conversation (returns nothing; the client just clears state). */
 export async function newTutorThreadAction(): Promise<void> {
   await requireRole(["student", "teacher", "admin"]);
+}
+
+/**
+ * Generate CLAT MCQs with AI and append them to a test (form action).
+ * Teachers may only add to their own tests; admins to any.
+ */
+export async function generateQuestionsAction(formData: FormData): Promise<void> {
+  const user = await requireRole(["teacher", "admin"]);
+  const testId = String(formData.get("testId") ?? "");
+  const topic = String(formData.get("topic") ?? "").trim().slice(0, 300);
+  const subject = String(formData.get("subject") ?? "").trim();
+  const difficulty = String(formData.get("difficulty") ?? "medium");
+  const count = Math.min(10, Math.max(1, Math.round(Number(formData.get("count") ?? 5) || 5)));
+  if (!testId || !topic || !aiConfigured()) return;
+
+  // Ownership: teachers can only extend their own tests.
+  const test = (await db.prepare("SELECT id, created_by FROM tests WHERE id = ?").get(testId)) as
+    | { id: string; created_by: string | null }
+    | undefined;
+  if (!test) return;
+  if (user.role !== "admin" && test.created_by !== user.id) return;
+
+  const questions = await generateQuestions(topic, count, subject, difficulty);
+  if (questions.length === 0) return;
+
+  const startIdx = (await db.prepare("SELECT COUNT(*) n FROM questions WHERE test_id = ?").get(testId) as { n: number }).n;
+  const insert = await db.prepare(
+    `INSERT INTO questions (id, test_id, subject, text, opt_a, opt_b, opt_c, opt_d, correct, order_idx)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    await insert.run(newId(), testId, q.subject, q.text, q.a, q.b, q.c, q.d, q.correct, startIdx + i);
+  }
+
+  revalidatePath("/teacher/tests");
+  revalidatePath("/admin/tests");
 }

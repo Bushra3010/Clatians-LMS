@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // ────────────────────────────────────────────────────────────
 // Gemini client — reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the
@@ -66,4 +66,84 @@ export async function runTutor(history: ChatMsg[], role: Role): Promise<string> 
     return "I can't help with that particular request, but I'm happy to help with anything CLAT-related — legal reasoning, current affairs, English, logical reasoning, or quant.";
   }
   return "…";
+}
+
+export type GeneratedMCQ = {
+  subject: string;
+  text: string;
+  a: string;
+  b: string;
+  c: string;
+  d: string;
+  correct: "a" | "b" | "c" | "d";
+};
+
+/**
+ * Generate CLAT-pattern MCQs on a topic as structured JSON. Returns [] on any
+ * parse/model error so callers degrade gracefully.
+ */
+export async function generateQuestions(
+  topic: string,
+  count: number,
+  subject: string,
+  difficulty: string
+): Promise<GeneratedMCQ[]> {
+  const sub = subject.trim() || "mixed CLAT sections";
+  const prompt = `Create ${count} original CLAT UG multiple-choice questions on: "${topic}".
+Section: ${sub}. Difficulty: ${difficulty}.
+Rules:
+- Match the real CLAT UG exam style. For Legal Reasoning, embed a clear PRINCIPLE and FACTS in the question text, and make the answer follow from applying the principle to the facts.
+- Exactly four options and exactly one correct answer per question.
+- Options must be plausible; avoid "All/None of the above".
+- Keep each question self-contained and unambiguous.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are a senior CLAT question setter. You produce accurate, exam-realistic MCQs with a single defensible correct answer.",
+        maxOutputTokens: 8192,
+        temperature: 0.8,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              subject: { type: Type.STRING },
+              text: { type: Type.STRING },
+              a: { type: Type.STRING },
+              b: { type: Type.STRING },
+              c: { type: Type.STRING },
+              d: { type: Type.STRING },
+              correct: { type: Type.STRING, enum: ["a", "b", "c", "d"] },
+            },
+            required: ["subject", "text", "a", "b", "c", "d", "correct"],
+            propertyOrdering: ["subject", "text", "a", "b", "c", "d", "correct"],
+          },
+        },
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const raw = res.text?.trim();
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as GeneratedMCQ[];
+    return parsed
+      .filter((q) => q && q.text && q.a && q.b && q.c && q.d && ["a", "b", "c", "d"].includes(q.correct))
+      .slice(0, count)
+      .map((q) => ({
+        subject: (q.subject || sub).slice(0, 80),
+        text: q.text.trim(),
+        a: q.a.trim(),
+        b: q.b.trim(),
+        c: q.c.trim(),
+        d: q.d.trim(),
+        correct: q.correct,
+      }));
+  } catch (err) {
+    console.error("generateQuestions error:", err);
+    return [];
+  }
 }

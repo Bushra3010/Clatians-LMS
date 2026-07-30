@@ -1,8 +1,11 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { createTestAction, addQuestionAction, setTestStatusAction, deleteTestAction } from "@/app/lib/test-actions";
+import { generateQuestionsAction } from "@/app/lib/ai-actions";
+import { aiConfigured } from "@/app/lib/ai";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // AI question generation can take up to ~40s
 
 type Test = { id: string; title: string; type: string; status: string; duration_min: number; course: string | null; qcount: number; attempts: number };
 type Q = { id: string; test_id: string; subject: string; text: string; correct: string };
@@ -28,6 +31,7 @@ export default async function TeacherTestsPage() {
   const qByTest = (id: string) => questions.filter((q) => q.test_id === id);
 
   const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
+  const aiOn = aiConfigured();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -123,6 +127,36 @@ export default async function TeacherTestsPage() {
                   <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4">Add question</button>
                 </div>
               </form>
+            </details>
+
+            {/* Generate questions with AI */}
+            <details className="mt-2 border-t border-slate-100 pt-3">
+              <summary className="text-xs font-semibold cursor-pointer" style={{ color: "#6B4A28" }}>✨ Generate questions with AI</summary>
+              {aiOn ? (
+                <form action={generateQuestionsAction} className="mt-3 space-y-2">
+                  <input type="hidden" name="testId" value={t.id} />
+                  <input name="topic" required className={inputCls} placeholder="Topic — e.g. Article 21, Law of Torts, July Current Affairs" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <select name="subject" className={inputCls} defaultValue="Legal Reasoning">
+                      {["Legal Reasoning", "English", "GK & Current Affairs", "Logical Reasoning", "Quantitative"].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <select name="difficulty" className={inputCls} defaultValue="medium">
+                      <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                    </select>
+                    <select name="count" className={inputCls} defaultValue="5">
+                      {[3, 5, 10].map((n) => <option key={n} value={n}>{n} questions</option>)}
+                    </select>
+                  </div>
+                  <button className="rounded-lg text-white text-sm font-medium py-2 px-4" style={{ background: "#3D2411" }}>
+                    ✨ Generate &amp; add
+                  </button>
+                  <p className="text-[11px] text-slate-400">Questions are drafted by AI — review each one before publishing the test.</p>
+                </form>
+              ) : (
+                <p className="mt-2 text-xs text-amber-700">AI generation is off — an admin needs to set <code>GEMINI_API_KEY</code>.</p>
+              )}
             </details>
           </div>
         ))}

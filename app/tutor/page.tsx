@@ -4,6 +4,7 @@ import { aiConfigured } from "@/app/lib/ai";
 import AiTutorChat, { type ChatTurn } from "@/app/components/AiTutorChat";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // AI replies can occasionally take longer than 10s
 
 export default async function TutorPage() {
   const user = await requireRole(["student", "teacher", "admin"]);
