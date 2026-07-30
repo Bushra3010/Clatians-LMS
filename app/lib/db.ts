@@ -200,6 +200,12 @@ const SCHEMA = `
     status TEXT NOT NULL DEFAULT 'open', booked_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     topic TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT ${NOW}
   );
+  CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
+    course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, audience TEXT NOT NULL DEFAULT 'All students',
+    recipients INTEGER NOT NULL DEFAULT 0, sent_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
   CREATE TABLE IF NOT EXISTS leads (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
     interest TEXT NOT NULL DEFAULT '', demo_date TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '',

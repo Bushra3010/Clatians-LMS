@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "./db";
+import { db, newId } from "./db";
 import { requireRole, auth } from "./auth";
 import { notifyMany } from "./notify";
 import { logAudit } from "./audit";
@@ -27,6 +27,16 @@ export async function broadcastAnnouncementAction(formData: FormData) {
     : (await db.prepare("SELECT id FROM users WHERE role = 'student' AND status = 'active'").all() as { id: string }[]).map((r) => r.id);
 
   await notifyMany(recipients, "announcement", title, body);
+
+  // Record the broadcast so admins have a history.
+  let audience = "All students";
+  if (courseId) {
+    const c = await db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId) as { name: string } | undefined;
+    audience = c?.name ? `${c.name} only` : "One batch";
+  }
+  await db.prepare(
+    "INSERT INTO announcements (id, title, body, course_id, audience, recipients, sent_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(newId(), title, body, courseId || null, audience, recipients.length, admin.id);
 
   await logAudit(admin, "Sent announcement", `${title} → ${recipients.length} student(s)`);
   revalidatePath("/admin/announcements");

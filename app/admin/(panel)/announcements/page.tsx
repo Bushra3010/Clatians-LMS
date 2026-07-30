@@ -4,7 +4,7 @@ import { broadcastAnnouncementAction } from "@/app/lib/notification-actions";
 export const dynamic = "force-dynamic";
 
 type Course = { id: string; name: string };
-type Sent = { title: string; body: string; created_at: string; recipients: number };
+type Sent = { title: string; body: string; created_at: string; recipients: number; audience: string };
 
 const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
@@ -15,9 +15,8 @@ function fmt(iso: string) {
 export default async function AdminAnnouncementsPage() {
   const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
   const sent = await db.prepare(
-    `SELECT title, body, MIN(created_at) AS created_at, COUNT(*) AS recipients
-     FROM notifications WHERE type='announcement'
-     GROUP BY title, body ORDER BY created_at DESC LIMIT 12`
+    `SELECT title, body, audience, recipients, created_at
+     FROM announcements ORDER BY created_at DESC LIMIT 20`
   ).all() as Sent[];
 
   return (
@@ -61,7 +60,10 @@ export default async function AdminAnnouncementsPage() {
               <span className="text-xs text-slate-400 shrink-0">{fmt(s.created_at)}</span>
             </div>
             {s.body && <p className="text-sm text-slate-600 mt-1">{s.body}</p>}
-            <p className="text-xs text-slate-400 mt-2">Sent to {s.recipients} student{s.recipients === 1 ? "" : "s"}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="rounded bg-gold-50 text-gold-700 px-2 py-0.5 text-xs font-medium">{s.audience}</span>
+              <span className="text-xs text-slate-400">Sent to {s.recipients} student{s.recipients === 1 ? "" : "s"}</span>
+            </div>
           </div>
         ))}
       </div>
