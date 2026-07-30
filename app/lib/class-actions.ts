@@ -66,6 +66,42 @@ export async function createClassAction(formData: FormData) {
   revalidatePath("/");
 }
 
+/** Edit / reschedule a scheduled class. */
+export async function editClassAction(formData: FormData) {
+  const user = await requireRole(["teacher", "admin"]);
+  const classId = String(formData.get("classId") ?? "");
+  if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
+
+  const cls = await db
+    .prepare("SELECT status, course_id, start_at FROM live_classes WHERE id = ?")
+    .get(classId) as { status: string; course_id: string | null; start_at: string } | undefined;
+  if (!cls || cls.status !== "scheduled") return; // only upcoming classes can be rescheduled
+
+  const title = String(formData.get("title") ?? "").trim();
+  const subject = String(formData.get("subject") ?? "").trim();
+  const courseId = String(formData.get("courseId") ?? "") || null;
+  const startAt = String(formData.get("startAt") ?? "").trim();
+  const duration = Math.max(15, Math.round(Number(formData.get("duration") ?? 60) || 60));
+  const joinUrl = String(formData.get("joinUrl") ?? "").trim();
+  if (!title || !startAt) return;
+
+  const iso = new Date(startAt).toISOString();
+  await db.prepare(
+    "UPDATE live_classes SET title = ?, subject = ?, course_id = ?, start_at = ?, duration_min = ?, join_url = ? WHERE id = ?"
+  ).run(title, subject, courseId, iso, duration, joinUrl, classId);
+
+  // Tell the batch if the class moved.
+  if (cls.course_id && iso !== cls.start_at) {
+    const students = (await db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(cls.course_id) as { user_id: string }[]).map((r) => r.user_id);
+    await notifyMany(students, "class", "Class rescheduled", `${title} has been updated on your timetable.`);
+  }
+
+  await logAudit(user, "Edited class", title);
+  revalidatePath("/teacher/classes");
+  revalidatePath("/admin/classes");
+  revalidatePath("/");
+}
+
 async function assertOwnerOrAdmin(classId: string, userId: string, role: string): Promise<ClassRow | null> {
   const row = await db
     .prepare("SELECT id, teacher_id, join_url FROM live_classes WHERE id = ?")

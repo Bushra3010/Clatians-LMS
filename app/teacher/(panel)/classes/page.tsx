@@ -2,6 +2,7 @@ import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import {
   createClassAction,
+  editClassAction,
   setClassStatusAction,
   saveRecordingAction,
 } from "@/app/lib/class-actions";
@@ -19,9 +20,11 @@ type Row = {
   recording_url: string;
   notes: string;
   course: string | null;
+  course_id: string | null;
   attendees: number;
 };
 type Course = { id: string; name: string };
+type Attendee = { class_id: string; name: string; joined_at: string };
 
 const statusBadge: Record<string, string> = {
   scheduled: "bg-gold-50 text-gold-700",
@@ -47,7 +50,7 @@ export default async function TeacherClassesPage() {
   const rows = await db
     .prepare(
       `SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status,
-              lc.join_url, lc.recording_url, lc.notes, c.name AS course,
+              lc.join_url, lc.recording_url, lc.notes, lc.course_id, c.name AS course,
               (SELECT COUNT(*) FROM class_attendance a WHERE a.class_id = lc.id) AS attendees
        FROM live_classes lc
        LEFT JOIN courses c ON c.id = lc.course_id
@@ -59,6 +62,18 @@ export default async function TeacherClassesPage() {
   const courses = await db
     .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
     .all() as Course[];
+
+  const attendees = await db
+    .prepare(
+      `SELECT ca.class_id, u.name, ca.joined_at
+       FROM class_attendance ca
+       JOIN users u ON u.id = ca.user_id
+       JOIN live_classes lc ON lc.id = ca.class_id
+       WHERE lc.teacher_id = ?
+       ORDER BY ca.joined_at`
+    )
+    .all(user.id) as Attendee[];
+  const rosterFor = (classId: string) => attendees.filter((a) => a.class_id === classId);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -153,6 +168,59 @@ export default async function TeacherClassesPage() {
                 )}
               </div>
             </div>
+
+            {/* Edit / reschedule — only before the class runs */}
+            {r.status === "scheduled" && (
+              <details className="mt-3 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">Edit / reschedule</summary>
+                <form action={editClassAction} className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <input type="hidden" name="classId" value={r.id} />
+                  <Field label="Title" className="lg:col-span-1 sm:col-span-2">
+                    <input name="title" required defaultValue={r.title} className={inputCls} />
+                  </Field>
+                  <Field label="Subject">
+                    <input name="subject" defaultValue={r.subject} className={inputCls} />
+                  </Field>
+                  <Field label="Batch">
+                    <select name="courseId" className={inputCls} defaultValue={r.course_id ?? ""}>
+                      <option value="">— Select batch —</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Starts at">
+                    <input name="startAt" type="datetime-local" required defaultValue={r.start_at.slice(0, 16)} className={inputCls} />
+                  </Field>
+                  <Field label="Duration (min)">
+                    <input name="duration" type="number" min={15} step={15} defaultValue={r.duration_min} className={inputCls} />
+                  </Field>
+                  <Field label="YouTube link" className="sm:col-span-2">
+                    <input name="joinUrl" type="url" defaultValue={r.join_url} className={inputCls} placeholder="https://www.youtube.com/watch?v=…" />
+                  </Field>
+                  <div className="flex items-end">
+                    <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-5 h-[38px]">
+                      Save changes
+                    </button>
+                  </div>
+                </form>
+              </details>
+            )}
+
+            {/* Attendance roster */}
+            {r.attendees > 0 && (
+              <details className="mt-2 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">Who attended ({r.attendees})</summary>
+                <ul className="mt-3 space-y-1.5">
+                  {rosterFor(r.id).map((a, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-slate-700">{a.name}</span>
+                      <span className="text-xs text-slate-400">{fmt(a.joined_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
 
             {/* Recording — for ended classes */}
             {r.status === "ended" && (
