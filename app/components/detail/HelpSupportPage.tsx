@@ -3,10 +3,14 @@
 import { useState } from "react";
 
 const faqs = [
-  { q: "How do I enrol in a course?", a: "Go to the Courses tab, pick a batch and tap Buy / Enroll. Enrolling unlocks that batch's videos, notes, live classes and tests." },
+  { q: "How do I enrol in a course?", a: "Go to the Courses tab, pick a batch and tap the card to see the full syllabus, then Buy / Enroll. Enrolling unlocks that batch's videos, notes, live classes and tests." },
   { q: "Where do I watch live classes?", a: "Open Live Classes from the Home screen. Tap Join on a live session to watch it in-app; recordings appear there after the class." },
-  { q: "How is my test rank calculated?", a: "After you submit a test, your All-India rank and percentile are computed against every student who has attempted that test." },
+  { q: "How can AI help me study?", a: "Tap ✨ AI Tutor any time to chat about a concept or a question. Use ✨ AI Practice on the Home screen to generate an instant quiz on any topic with explanations — your results count towards your streak. On My Progress, the AI Study Coach reviews your mock scores and suggests where to focus." },
+  { q: "How do I book a 1:1 session with a teacher?", a: "On the Home screen tap “Book a 1:1 Slot”, choose an open time and add what you'd like to cover. It appears under My bookings, and the Home banner reminds you of your next session. You can cancel from My bookings." },
+  { q: "How is my test rank calculated?", a: "After you submit a test, your All-India rank and percentile are computed against every student who has attempted that test. On the review screen you can tap ✨ Explain with AI on any question." },
+  { q: "Where can I see my fee receipts?", a: "Profile → Payments & Invoices lists every payment, including cash/office payments. Tap 🧾 Invoice on any entry to print it or save it as a PDF." },
   { q: "How do I ask a doubt?", a: "Open the Doubts tab → Ask Faculty. A teacher will answer and you'll get a notification when they reply." },
+  { q: "How do I change my password?", a: "Profile → Settings → Change password. Enter your current password and a new one (at least 6 characters)." },
   { q: "Where are my saved notes?", a: "Profile → Saved Content. Anything you save from Tips & Tricks or mark as learned in Vocabulary shows up there." },
 ];
 
