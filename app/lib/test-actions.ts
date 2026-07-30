@@ -151,3 +151,45 @@ export async function deleteTestAction(formData: FormData) {
   revalidatePath("/admin/tests");
   revalidatePath("/");
 }
+
+/** Edit a test's details. Teachers may only edit their own tests. */
+export async function editTestAction(formData: FormData) {
+  const user = await requireRole(["teacher", "admin"]);
+  const testId = String(formData.get("testId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const type = String(formData.get("type") ?? "mock");
+  const courseId = String(formData.get("courseId") ?? "") || null;
+  const duration = Math.max(5, Math.round(Number(formData.get("duration") ?? 60) || 60));
+  if (!testId || !title) return;
+
+  const test = await db.prepare("SELECT created_by FROM tests WHERE id=?").get(testId) as { created_by: string | null } | undefined;
+  if (!test) return;
+  if (user.role !== "admin" && test.created_by !== user.id) return;
+
+  await db.prepare(
+    "UPDATE tests SET title=?, description=?, type=?, course_id=?, duration_min=? WHERE id=?"
+  ).run(title, description, ["mock", "sectional", "pyq"].includes(type) ? type : "mock", courseId, duration, testId);
+
+  revalidatePath("/teacher/tests");
+  revalidatePath("/admin/tests");
+  revalidatePath("/");
+}
+
+/** Delete a single question. Teachers may only touch their own tests. */
+export async function deleteQuestionAction(formData: FormData) {
+  const user = await requireRole(["teacher", "admin"]);
+  const questionId = String(formData.get("questionId") ?? "");
+  if (!questionId) return;
+
+  const owner = await db.prepare(
+    "SELECT t.created_by FROM questions q JOIN tests t ON t.id = q.test_id WHERE q.id = ?"
+  ).get(questionId) as { created_by: string | null } | undefined;
+  if (!owner) return;
+  if (user.role !== "admin" && owner.created_by !== user.id) return;
+
+  await db.prepare("DELETE FROM questions WHERE id=?").run(questionId);
+  revalidatePath("/teacher/tests");
+  revalidatePath("/admin/tests");
+  revalidatePath("/");
+}

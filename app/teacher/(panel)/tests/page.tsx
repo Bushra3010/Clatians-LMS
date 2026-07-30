@@ -1,13 +1,13 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
-import { createTestAction, addQuestionAction, setTestStatusAction, deleteTestAction } from "@/app/lib/test-actions";
+import { createTestAction, addQuestionAction, setTestStatusAction, deleteTestAction, editTestAction, deleteQuestionAction } from "@/app/lib/test-actions";
 import { aiConfigured } from "@/app/lib/ai";
 import AiGenerateForm from "@/app/components/AiGenerateForm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI question generation can take up to ~40s
 
-type Test = { id: string; title: string; type: string; status: string; duration_min: number; course: string | null; qcount: number; attempts: number };
+type Test = { id: string; title: string; type: string; status: string; duration_min: number; course: string | null; course_id: string | null; qcount: number; attempts: number };
 type Q = { id: string; test_id: string; subject: string; text: string; correct: string };
 type Course = { id: string; name: string };
 
@@ -17,7 +17,7 @@ export default async function TeacherTestsPage() {
   const user = await requireRole(["teacher", "admin"]);
 
   const tests = await db.prepare(
-    `SELECT t.id, t.title, t.type, t.status, t.duration_min, c.name AS course,
+    `SELECT t.id, t.title, t.type, t.status, t.duration_min, t.course_id, c.name AS course,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id=t.id) AS qcount,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id=t.id AND a.status='submitted') AS attempts
      FROM tests t LEFT JOIN courses c ON c.id=t.course_id
@@ -95,14 +95,43 @@ export default async function TeacherTestsPage() {
 
             {/* Existing questions */}
             {qByTest(t.id).length > 0 && (
-              <ol className="mt-4 border-t border-slate-100 pt-3 space-y-1.5 list-decimal list-inside">
-                {qByTest(t.id).map((q) => (
-                  <li key={q.id} className="text-sm text-slate-700">
-                    {q.text} <span className="text-xs text-green-700 font-medium">(ans: {q.correct.toUpperCase()})</span>
+              <ol className="mt-4 border-t border-slate-100 pt-3 space-y-1.5">
+                {qByTest(t.id).map((q, i) => (
+                  <li key={q.id} className="flex items-start justify-between gap-3 text-sm text-slate-700">
+                    <span className="min-w-0">
+                      <span className="text-slate-400 mr-1">{i + 1}.</span>
+                      {q.text} <span className="text-xs text-green-700 font-medium">(ans: {q.correct.toUpperCase()})</span>
+                    </span>
+                    <form action={deleteQuestionAction} className="shrink-0">
+                      <input type="hidden" name="questionId" value={q.id} />
+                      <button title="Delete question" className="text-xs rounded-md px-2 py-0.5 border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition">✕</button>
+                    </form>
                   </li>
                 ))}
               </ol>
             )}
+
+            {/* Edit test details */}
+            <details className="mt-3 border-t border-slate-100 pt-3">
+              <summary className="text-xs font-medium text-gold-700 cursor-pointer">Edit test details</summary>
+              <form action={editTestAction} className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                <input type="hidden" name="testId" value={t.id} />
+                <label className="block sm:col-span-2 lg:col-span-1"><span className="block text-xs font-medium text-slate-600 mb-1">Title</span>
+                  <input name="title" required defaultValue={t.title} className={inputCls} /></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Type</span>
+                  <select name="type" className={inputCls} defaultValue={t.type}>
+                    <option value="mock">Full Mock</option><option value="sectional">Sectional</option><option value="pyq">Previous Year</option>
+                  </select></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Batch</span>
+                  <select name="courseId" className={inputCls} defaultValue={t.course_id ?? ""}>
+                    <option value="">All batches</option>
+                    {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Duration (min)</span>
+                  <input name="duration" type="number" min={5} step={5} defaultValue={t.duration_min} className={inputCls} /></label>
+                <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">Save</button>
+              </form>
+            </details>
 
             {/* Add question */}
             <details className="mt-3 border-t border-slate-100 pt-3">
