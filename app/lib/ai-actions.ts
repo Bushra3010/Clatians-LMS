@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, generatePractice, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ } from "./ai";
+import { runTutor, generateQuestions, generatePractice, generateVocab, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ, type VocabWord } from "./ai";
 
-export type { PracticeMCQ };
+export type { PracticeMCQ, VocabWord };
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -265,4 +265,19 @@ export async function generatePracticeAction(input: {
   const { questions, error } = await generatePractice(topic, count, subject, difficulty);
   if (error) return { ok: false, error };
   return { ok: true, questions };
+}
+
+export type VocabOutcome = { ok: boolean; words?: VocabWord[]; error?: string };
+
+/** Generate CLAT English vocabulary flashcards on demand. count clamped 4–10. */
+export async function generateVocabAction(input: { theme: string; count: number }): Promise<VocabOutcome> {
+  await requireRole(["student", "teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const theme = String(input.theme ?? "").trim().slice(0, 200);
+  const count = Math.min(10, Math.max(4, Math.round(Number(input.count) || 6)));
+
+  const { words, error } = await generateVocab(theme, count);
+  if (error) return { ok: false, error };
+  return { ok: true, words };
 }

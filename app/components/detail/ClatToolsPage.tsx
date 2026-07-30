@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CATEGORIES, type Category } from "../../lib/clat-data";
 import type { VocabItem, CAItem, NLUItem } from "../../lib/resource-types";
+import { generateVocabAction } from "../../lib/ai-actions";
 
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
 const input: React.CSSProperties = { width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 12, background: "#F9FAFB", padding: "12px 14px", fontSize: 15, outline: "none", color: "#1A1A2E" };
@@ -171,12 +172,74 @@ function Quiz({ caq }: { caq: CAItem[] }) {
 
 // ── Vocabulary flashcards ──────────────────────────────────
 function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; savedWords: string[]; onToggleSave: (word: string, meaning: string) => void }) {
-  const VOCAB = vocab;
+  const [aiWords, setAiWords] = useState<VocabItem[]>([]);
+  const [theme, setTheme] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
+
+  // Published words first, then any freshly AI-generated ones (de-duplicated).
+  const seen = new Set<string>();
+  const VOCAB = [...vocab, ...aiWords].filter((v) => {
+    const k = v.word.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  const generate = async () => {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await generateVocabAction({ theme: theme.trim(), count: 6 });
+      if (res.ok && res.words && res.words.length > 0) {
+        setAiWords((prev) => [...res.words!, ...prev]);
+        setI(0);
+        setFlipped(false);
+      } else {
+        setErr(res.error ?? "Couldn't generate words right now.");
+      }
+    } catch {
+      setErr("Couldn't generate words right now.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const generator = (
+    <div style={{ background: gradient, borderRadius: 18, padding: "14px", color: "#F7EFE2", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 17 }}>✨</span>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>AI Vocabulary Builder</p>
+      </div>
+      <p style={{ margin: "3px 0 10px", fontSize: 11.5, color: "#D9C6A8" }}>Generate fresh CLAT word cards — leave the theme blank for a mix.</p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+          disabled={busy}
+          placeholder="Optional theme — e.g. legal terms, hard adjectives"
+          style={{ flex: 1, border: "none", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#231911", outline: "none" }}
+        />
+        <button onClick={generate} disabled={busy} style={{ flexShrink: 0, background: "#F5A623", color: "#3D2411", border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
+          {busy ? "Generating…" : "✨ Generate"}
+        </button>
+      </div>
+      {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#FCD9A6" }}>⚠️ {err}</p>}
+    </div>
+  );
+
   if (VOCAB.length === 0) {
-    return <p style={{ margin: "8px 0", fontSize: 13, color: "#9CA3AF" }}>No vocabulary words published yet.</p>;
+    return (
+      <div>
+        {generator}
+        <p style={{ margin: "8px 0", fontSize: 13, color: "#9CA3AF" }}>No vocabulary words yet — generate some with AI above to start a deck.</p>
+      </div>
+    );
   }
+
   const card = VOCAB[Math.min(i, VOCAB.length - 1)];
   const isKnown = savedWords.includes(card.word);
   const learnedCount = VOCAB.filter((v) => savedWords.includes(v.word)).length;
@@ -185,6 +248,7 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
 
   return (
     <div>
+      {generator}
       <p style={{ margin: "0 0 12px", fontSize: 13, color: "#6B7280" }}>Word {i + 1} of {VOCAB.length} · <strong style={{ color: "#15803D" }}>{learnedCount} learned</strong></p>
 
       <div onClick={() => setFlipped((f) => !f)} style={{ background: flipped ? "white" : gradient, color: flipped ? "#1A1A2E" : "white", borderRadius: 20, padding: "32px 22px", minHeight: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer", boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>

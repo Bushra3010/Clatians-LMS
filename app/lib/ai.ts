@@ -399,6 +399,58 @@ Rules:
   }
 }
 
+export type VocabWord = { word: string; meaning: string; example: string };
+export type VocabGenResult = { words: VocabWord[]; error?: string };
+
+/** Generate CLAT English vocabulary flashcards (word, meaning, example). */
+export async function generateVocab(theme: string, count: number): Promise<VocabGenResult> {
+  const focus = theme.trim()
+    ? `Focus on: "${theme.trim()}".`
+    : "Mix moderately hard, CLAT-relevant words, including some legal/formal register.";
+  const prompt = `Generate ${count} vocabulary words useful for the CLAT UG English section. ${focus}
+For each word give: the word, a concise meaning (under 12 words), and one natural example sentence.
+Avoid extremely obscure words — prefer words that realistically appear in CLAT reading passages and answer options.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction: "You are a CLAT English coach building vocabulary flashcards. Be accurate and natural.",
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              meaning: { type: Type.STRING },
+              example: { type: Type.STRING },
+            },
+            required: ["word", "meaning", "example"],
+            propertyOrdering: ["word", "meaning", "example"],
+          },
+        },
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const raw = res.text?.trim();
+    if (!raw) return { words: [], error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
+    const parsed = JSON.parse(raw) as VocabWord[];
+    const words = parsed
+      .filter((w) => w && w.word && w.meaning)
+      .slice(0, count)
+      .map((w) => ({ word: w.word.trim().slice(0, 50), meaning: w.meaning.trim(), example: (w.example || "").trim() }));
+    if (words.length === 0) return { words, error: "No words were generated — try again." };
+    return { words };
+  } catch (err) {
+    console.error("generateVocab error:", err);
+    return { words: [], error: friendlyAiError(err) };
+  }
+}
+
 export type DigestResult = { title: string; body: string; error?: string };
 
 /**
