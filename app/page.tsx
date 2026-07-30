@@ -100,6 +100,19 @@ export default async function Home() {
   }));
 
   // ── Course catalog (for enroll / buy) ──
+  // Content titles per course, for the syllabus preview on the detail page.
+  const courseContentRows = await db.prepare(
+    `SELECT course_id, type, title FROM content
+     WHERE status = 'approved' AND course_id IS NOT NULL
+     ORDER BY created_at DESC`
+  ).all() as { course_id: string; type: string; title: string }[];
+  const contentByCourse = new Map<string, { type: string; title: string }[]>();
+  for (const r of courseContentRows) {
+    const list = contentByCourse.get(r.course_id) ?? [];
+    if (list.length < 12) list.push({ type: r.type, title: r.title }); // cap the preview
+    contentByCourse.set(r.course_id, list);
+  }
+
   const catalog: CatalogItem[] = (await db.prepare(
     `SELECT c.id, c.name, c.description, c.price,
             (EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id))::int AS enrolled,
@@ -116,6 +129,7 @@ export default async function Home() {
       id: r.id, name: r.name, description: r.description, price: r.price,
       enrolled: r.enrolled === 1, contentCount: r.content_count, classCount: r.class_count,
       breakdown: { videos: r.videos, notes: r.notes, practice: r.practice, currentAffairs: r.current_affairs },
+      contents: contentByCourse.get(r.id) ?? [],
     }));
 
   // ── Test series (published, available to the student's batches) ──

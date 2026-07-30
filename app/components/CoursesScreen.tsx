@@ -11,6 +11,7 @@ export type CatalogItem = {
   contentCount: number;
   classCount: number;
   breakdown: { videos: number; notes: number; practice: number; currentAffairs: number };
+  contents: { type: string; title: string }[];
 };
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
@@ -22,6 +23,10 @@ const METHODS = [
 ];
 
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
+
+const contentIcon: Record<string, string> = {
+  video: "🎥", notes: "📄", practice: "📝", "current-affairs": "🗞",
+};
 
 interface CoursesScreenProps {
   catalog: CatalogItem[];
@@ -138,6 +143,24 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
               </div>
             )}
           </div>
+
+          {c.contents.length > 0 && (
+            <div style={{ background: "white", borderRadius: 16, padding: "16px", marginTop: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
+              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: "#1A1A2E" }}>Syllabus &amp; content</p>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {c.contents.map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: i < c.contents.length - 1 ? "1px solid #F3EFE6" : "none" }}>
+                    <span style={{ fontSize: 15, width: 20, textAlign: "center", flexShrink: 0 }}>{contentIcon[item.type] ?? "📘"}</span>
+                    <span style={{ flex: 1, fontSize: 12.5, color: "#374151", minWidth: 0 }}>{item.title}</span>
+                    {!c.enrolled && <span style={{ fontSize: 12, color: "#C9B48A", flexShrink: 0 }}>🔒</span>}
+                  </div>
+                ))}
+              </div>
+              {!c.enrolled && (
+                <p style={{ margin: "10px 0 0", fontSize: 11, color: "#9CA3AF" }}>🔒 Enrol to unlock all lessons.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sticky enroll bar */}
