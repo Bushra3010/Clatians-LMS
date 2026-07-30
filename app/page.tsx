@@ -275,6 +275,24 @@ export default async function Home() {
     doubtsAsked: doubts.length,
   };
 
+  // ── 1:1 booking slots ──
+  const nowIso = new Date().toISOString();
+  const openSlots = (await db.prepare(
+    `SELECT s.id, s.start_at, s.duration_min, t.name AS teacher
+     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
+     WHERE s.status = 'open' AND s.start_at > ?
+     ORDER BY s.start_at ASC`
+  ).all(nowIso) as { id: string; start_at: string; duration_min: number; teacher: string }[])
+    .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, teacher: s.teacher }));
+  const myBookings = (await db.prepare(
+    `SELECT s.id, s.start_at, s.duration_min, s.topic, t.name AS teacher
+     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
+     WHERE s.booked_by = ? AND s.status = 'booked' AND s.start_at > ?
+     ORDER BY s.start_at ASC`
+  ).all(user.id, nowIso) as { id: string; start_at: string; duration_min: number; topic: string; teacher: string }[])
+    .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, topic: s.topic, teacher: s.teacher }));
+  const slots = { open: openSlots, mine: myBookings };
+
   return (
     <StudentApp
       upcomingClasses={upcoming}
@@ -293,6 +311,7 @@ export default async function Home() {
       savedTipKeys={savedTipKeys}
       savedVocabKeys={savedVocabKeys}
       resources={resources}
+      slots={slots}
     />
   );
 }

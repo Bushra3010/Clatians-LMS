@@ -450,6 +450,44 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
         </button>
       </div>
 
+      {/* ── 1:1 Slot Booking Banner ── */}
+      <div style={{ padding: "14px 14px 0" }}>
+        <button onClick={() => onToolClick?.("slots")} style={{
+          width: "100%",
+          background: "linear-gradient(135deg,#FFF7ED,#FEF3C7)",
+          borderRadius: 20,
+          padding: "16px",
+          border: "1.5px solid #FDE68A",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          boxShadow: "0 2px 12px rgba(245,166,35,0.12)",
+          cursor: "pointer",
+          textAlign: "left",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: "linear-gradient(135deg,#3D2411,#5C3A00)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, color: "#F5C97A",
+              boxShadow: "0 4px 12px rgba(61,36,17,0.25)",
+            }}>◷</div>
+            <div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#92400E" }}>Book a 1:1 Slot</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#B45309" }}>Personal doubt &amp; mentorship time with faculty</p>
+            </div>
+          </div>
+          <span style={{
+            background: "linear-gradient(135deg,#F5A623,#E8930A)",
+            color: "white", border: "none",
+            borderRadius: 12, padding: "11px 16px",
+            fontSize: 12, fontWeight: 700,
+            whiteSpace: "nowrap",
+          }}>Book →</span>
+        </button>
+      </div>
+
       {/* ── Success Stories ── */}
       <div style={{ padding: "22px 14px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
