@@ -7,6 +7,7 @@ import { logoutAction } from "@/app/lib/session-actions";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "▤" },
+  { href: "/tutor", label: "AI Assistant", icon: "✨" },
   { href: "/admin/users", label: "Users", icon: "◍" },
   { href: "/admin/leads", label: "Admissions", icon: "◈" },
   { href: "/admin/courses", label: "Courses & Batches", icon: "▦" },

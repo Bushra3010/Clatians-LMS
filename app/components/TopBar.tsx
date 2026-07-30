@@ -49,6 +49,15 @@ export default function TopBar({ courseName = "CLAT 2026", onProfileClick, onLog
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a href="/tutor" aria-label="AI Tutor" title="AI Tutor" style={{
+            display: "flex", alignItems: "center", gap: 6, textDecoration: "none",
+            height: 38, padding: "0 12px", borderRadius: 19,
+            background: "linear-gradient(135deg, #3D2411, #6B4A28)", color: "#F7EAD2",
+            fontSize: 12.5, fontWeight: 700, border: "1.5px solid #C8860A",
+            boxShadow: "0 1px 6px rgba(61,36,17,0.18)",
+          }}>
+            <span style={{ fontSize: 14 }}>✨</span>AI Tutor
+          </a>
           {[
             { icon: <PhoneSvg />, count: 0, onClick: undefined as (() => void) | undefined },
             { icon: <BellSvg />, count: unreadCount, onClick: onBellClick },

@@ -100,6 +100,9 @@ function hashPasswordSync(password: string): string {
 // datetime('now') produced, so created_at values keep parsing/formatting the
 // same across the app.
 const NOW = "to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS')";
+// Microsecond-precision variant — used where rows are inserted in rapid
+// succession and must sort deterministically (AI chat messages).
+const NOW_US = "to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS.US')";
 
 // ────────────────────────────────────────────────────────────
 // Schema
@@ -205,6 +208,14 @@ const SCHEMA = `
     data TEXT NOT NULL DEFAULT '{}', status TEXT NOT NULL DEFAULT 'published',
     created_by TEXT REFERENCES users(id) ON DELETE SET NULL, order_idx INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS ai_threads (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT 'New chat', created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS ai_messages (
+    id TEXT PRIMARY KEY, thread_id TEXT NOT NULL REFERENCES ai_threads(id) ON DELETE CASCADE,
+    role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT ${NOW_US}
   );
 `;
 
