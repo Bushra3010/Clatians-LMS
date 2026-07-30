@@ -1,5 +1,7 @@
 "use client";
 
+import { fmtIST } from "../../lib/dates";
+
 export type LiveClassItem = {
   id: string;
   title: string;
@@ -24,14 +26,7 @@ export function subjectStyle(subject: string): { emoji: string; bg: string; colo
 }
 
 export function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 function dayLabel(iso: string): string {

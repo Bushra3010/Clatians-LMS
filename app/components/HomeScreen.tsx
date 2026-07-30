@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, CalendarIcon } from "./icons";
+import { fmtIST } from "../lib/dates";
 import type { Story } from "../lib/resource-types";
 import { subjectStyle, fmtTime, type LiveClassItem } from "./detail/LiveClassesPage";
 
@@ -76,7 +77,7 @@ const knowMore = [
 
 
 const fmtBooking = (iso: string) =>
-  new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 
 export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, liveClasses = [], onJoinClass, onSeeAllClasses, onOpenTests, onOpenStories, stories = [], nextBooking = null }: HomeScreenProps) {
   return (

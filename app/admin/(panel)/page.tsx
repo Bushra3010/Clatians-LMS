@@ -1,4 +1,5 @@
 import { db } from "@/app/lib/db";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,10 @@ type LeadRow = { name: string; interest: string; created_at: string };
 type ClassRow = { title: string; start_at: string; teacher: string | null; course: string | null };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return fmtIST(iso, { day: "numeric", month: "short" });
 }
 function fmtWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function DashboardPage() {

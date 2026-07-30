@@ -5,6 +5,7 @@ import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { notify, notifyMany } from "./notify";
 import { logAudit } from "./audit";
+import { datetimeLocalToUtcISO } from "./dates";
 
 const STATUSES = ["scheduled", "live", "ended", "cancelled"];
 
@@ -41,7 +42,7 @@ export async function createClassAction(formData: FormData) {
   const occurrences = Math.min(12, Math.max(1, Math.round(Number(formData.get("occurrences") ?? 1) || 1)));
   const count = repeat === "weekly" ? occurrences : 1;
 
-  const base = new Date(startAt); // datetime-local value (no timezone)
+  const base = new Date(datetimeLocalToUtcISO(startAt)); // datetime-local is IST wall-clock
   const insert = await db.prepare(
     `INSERT INTO live_classes
        (id, title, subject, course_id, teacher_id, start_at, duration_min, join_url, status)
@@ -85,7 +86,7 @@ export async function editClassAction(formData: FormData) {
   const joinUrl = String(formData.get("joinUrl") ?? "").trim();
   if (!title || !startAt) return;
 
-  const iso = new Date(startAt).toISOString();
+  const iso = datetimeLocalToUtcISO(startAt);
   await db.prepare(
     "UPDATE live_classes SET title = ?, subject = ?, course_id = ?, start_at = ?, duration_min = ?, join_url = ? WHERE id = ?"
   ).run(title, subject, courseId, iso, duration, joinUrl, classId);

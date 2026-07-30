@@ -4,11 +4,10 @@ import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { notify } from "./notify";
+import { fmtIST, datetimeLocalToUtcISO } from "./dates";
 
 function fmtWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
-  });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 /**
@@ -22,7 +21,7 @@ export async function createSlotAction(formData: FormData) {
   const count = Math.min(8, Math.max(1, Math.round(Number(formData.get("count") ?? 1) || 1)));
   if (!startAt) return;
 
-  const base = new Date(startAt);
+  const base = new Date(datetimeLocalToUtcISO(startAt));
   const insert = await db.prepare(
     "INSERT INTO booking_slots (id, teacher_id, start_at, duration_min, status) VALUES (?, ?, ?, ?, 'open')"
   );

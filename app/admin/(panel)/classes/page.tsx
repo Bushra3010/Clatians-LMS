@@ -4,6 +4,7 @@ import {
   setClassStatusAction,
   deleteClassAction,
 } from "@/app/lib/class-actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,7 @@ const statusBadge: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-IN", {
+  return fmtIST(iso, {
     day: "numeric",
     month: "short",
     hour: "numeric",

@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ const statusBadge: Record<string, string> = {
 };
 
 function fmtWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function TeacherDashboard() {

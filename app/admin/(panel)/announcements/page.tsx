@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { broadcastAnnouncementAction } from "@/app/lib/notification-actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ type Sent = { title: string; body: string; created_at: string; recipients: numbe
 const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function AdminAnnouncementsPage() {

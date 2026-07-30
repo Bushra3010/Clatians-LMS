@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { sendAttendanceReminderAction } from "@/app/lib/class-actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ type ClassRow = { id: string; title: string; start_at: string; batch: string | n
 type StudentRow = { user_id: string; student: string; batch: string; total: number; attended: number };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function TeacherAttendancePage() {

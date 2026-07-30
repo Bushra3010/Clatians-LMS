@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import { updateLeadStatusAction, saveLeadNoteAction, deleteLeadAction } from "@/app/lib/lead-actions";
 import { convertLeadAction } from "../../actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ const statusStyle: Record<string, string> = {
 const statusLabel: Record<string, string> = { new: "New", contacted: "Contacted", demo: "Demo booked", enrolled: "Enrolled", lost: "Lost" };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return fmtIST(iso, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default async function AdminLeadsPage() {

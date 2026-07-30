@@ -1,0 +1,628 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+<title>CLATians LMS — Architecture Blueprint</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --paper:#F7F5F0; --surface:#FFFFFF; --surface-2:#F1EDE4;
+    --ink:#2B1D12; --ink-soft:#6B5D4C; --ink-faint:#9A8B77;
+    --line:#E3DCCF; --line-strong:#D6CCB8;
+    --gold:#B98A2E; --gold-soft:#EFE4C7;
+    --hi:#FBECC0;
+    --shadow:0 1px 2px rgba(43,29,18,.05),0 8px 24px rgba(43,29,18,.06);
+    --font-display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,"Cascadia Mono",Consolas,monospace;
+    /* layer hues (muted) */
+    --l-identity:#4C5A66; --l-learners:#B0842C; --l-teaching:#A65A3A;
+    --l-assessment:#33475B; --l-ai:#6B4E6B; --l-clat:#3E6B66;
+    --l-insights:#5F7355; --l-biz:#8A6D3B; --l-admin:#8A3B3B; --l-platform:#565049;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#17120C; --surface:#201811; --surface-2:#251C13;
+      --ink:#F2EBDD; --ink-soft:#C3B4A0; --ink-faint:#8A7B67;
+      --line:#33291D; --line-strong:#3F3324;
+      --gold:#D9A94A; --gold-soft:#3A2E17;
+      --hi:#4a3a12;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+      --l-identity:#8AA3B5; --l-learners:#E0B152; --l-teaching:#D68A63;
+      --l-assessment:#7E9BB8; --l-ai:#B491B4; --l-clat:#6FB0A8;
+      --l-insights:#9DB88F; --l-biz:#D6B063; --l-admin:#D97676; --l-platform:#9A9084;
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#F7F5F0; --surface:#FFFFFF; --surface-2:#F1EDE4;
+    --ink:#2B1D12; --ink-soft:#6B5D4C; --ink-faint:#9A8B77;
+    --line:#E3DCCF; --line-strong:#D6CCB8; --gold:#B98A2E; --gold-soft:#EFE4C7;
+    --hi:#FBECC0; --shadow:0 1px 2px rgba(43,29,18,.05),0 8px 24px rgba(43,29,18,.06);
+    --l-identity:#4C5A66; --l-learners:#B0842C; --l-teaching:#A65A3A;
+    --l-assessment:#33475B; --l-ai:#6B4E6B; --l-clat:#3E6B66;
+    --l-insights:#5F7355; --l-biz:#8A6D3B; --l-admin:#8A3B3B; --l-platform:#565049;
+  }
+  :root[data-theme="dark"]{
+    --paper:#17120C; --surface:#201811; --surface-2:#251C13;
+    --ink:#F2EBDD; --ink-soft:#C3B4A0; --ink-faint:#8A7B67;
+    --line:#33291D; --line-strong:#3F3324; --gold:#D9A94A; --gold-soft:#3A2E17;
+    --hi:#4a3a12; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    --l-identity:#8AA3B5; --l-learners:#E0B152; --l-teaching:#D68A63;
+    --l-assessment:#7E9BB8; --l-ai:#B491B4; --l-clat:#6FB0A8;
+    --l-insights:#9DB88F; --l-biz:#D6B063; --l-admin:#D97676; --l-platform:#9A9084;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-ui);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  a{color:inherit}
+
+  /* Masthead */
+  header.mast{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .mast-inner{max-width:1180px;margin:0 auto;padding:18px 22px 14px;}
+  .mast-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--gold);font-weight:600;}
+  h1{font-family:var(--font-display);font-weight:600;font-size:clamp(22px,3.4vw,32px);
+    margin:0;letter-spacing:-.01em;text-wrap:balance;line-height:1.05;}
+  .sub{color:var(--ink-soft);font-size:13.5px;margin-top:2px;max-width:60ch;}
+  .themebtn{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    background:var(--surface);border:1px solid var(--line-strong);color:var(--ink-soft);
+    padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;}
+  .themebtn:hover{border-color:var(--gold);color:var(--ink)}
+
+  /* stats */
+  .stats{display:flex;gap:26px;margin-top:14px;flex-wrap:wrap;font-variant-numeric:tabular-nums;}
+  .stat b{font-family:var(--font-display);font-size:26px;font-weight:600;display:block;line-height:1;}
+  .stat span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-faint);}
+
+  /* controls */
+  .controls{max-width:1180px;margin:0 auto;padding:16px 22px 4px;display:flex;flex-direction:column;gap:12px;}
+  .searchrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .search{position:relative;flex:1;min-width:240px;}
+  .search input{width:100%;font-family:var(--font-ui);font-size:15px;color:var(--ink);
+    background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;
+    padding:11px 38px 11px 40px;box-shadow:var(--shadow);}
+  .search input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
+  .search .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-faint);
+    font-family:var(--font-mono);font-size:14px;}
+  .search .clr{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;
+    color:var(--ink-faint);cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;display:none;}
+  .search .clr:hover{color:var(--ink)}
+  .btnset{display:flex;gap:8px;}
+  .tbtn{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    background:var(--surface);border:1px solid var(--line-strong);color:var(--ink-soft);
+    padding:9px 12px;border-radius:9px;cursor:pointer;}
+  .tbtn:hover{border-color:var(--gold);color:var(--ink)}
+
+  .chips{display:flex;gap:7px;flex-wrap:wrap;}
+  .chip{font-size:12px;font-weight:500;padding:6px 12px 6px 10px;border-radius:999px;cursor:pointer;
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);
+    display:inline-flex;align-items:center;gap:7px;user-select:none;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;background:var(--dot,var(--gold));flex:none;}
+  .chip[aria-pressed="true"]{color:var(--ink);border-color:var(--dot,var(--gold));
+    background:color-mix(in srgb,var(--dot,var(--gold)) 12%,var(--surface));}
+  .chip .n{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);}
+
+  /* main */
+  main{max-width:1180px;margin:0 auto;padding:14px 22px 80px;}
+  .layer{margin-top:30px;scroll-margin-top:120px;}
+  .layer-head{display:flex;align-items:center;gap:11px;padding-bottom:12px;margin-bottom:16px;
+    border-bottom:1px solid var(--line);}
+  .layer-bar{width:4px;height:22px;border-radius:2px;background:var(--dot);flex:none;}
+  .layer-head h2{font-family:var(--font-display);font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em;}
+  .layer-head .meta{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin-left:auto;font-variant-numeric:tabular-nums;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start;}
+
+  .mod{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;
+    box-shadow:var(--shadow);}
+  .mod-head{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+    background:none;border:none;color:inherit;font-family:inherit;padding:14px 15px;}
+  .mod-head:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;border-radius:13px;}
+  .mod-num{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--surface);
+    background:var(--dot);border-radius:6px;padding:4px 6px;line-height:1;flex:none;
+    min-width:26px;text-align:center;letter-spacing:.02em;}
+  .mod-title{font-weight:600;font-size:15.5px;letter-spacing:-.01em;flex:1;min-width:0;}
+  .mod-count{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);
+    font-variant-numeric:tabular-nums;flex:none;}
+  .chev{flex:none;color:var(--ink-faint);transition:transform .22s ease;font-family:var(--font-mono);font-size:13px;}
+  .mod.open .chev{transform:rotate(90deg);color:var(--dot);}
+
+  .mod-body{display:none;padding:2px 15px 15px 15px;}
+  .mod.open .mod-body{display:block;}
+  .sub{padding:11px 0 3px;border-top:1px dashed var(--line);}
+  .sub:first-child{border-top:none;padding-top:6px;}
+  .sub-name{font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--dot);margin-bottom:8px;}
+  .items{list-style:none;margin:0;padding:0 0 0 2px;}
+  .items li{position:relative;padding:2.5px 0 2.5px 20px;font-size:13.4px;color:var(--ink-soft);line-height:1.45;}
+  .items li::before{content:"├─";position:absolute;left:0;top:2.5px;font-family:var(--font-mono);
+    font-size:12px;color:var(--line-strong);}
+  .items li:last-child::before{content:"└─";}
+  mark{background:var(--hi);color:var(--ink);border-radius:3px;padding:0 1px;}
+  .mod-body .empty{color:var(--ink-faint);font-size:13px;padding:8px 0;}
+
+  .noresults{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+  .noresults b{font-family:var(--font-display);font-size:20px;display:block;margin-bottom:6px;color:var(--ink);}
+
+  footer{max-width:1180px;margin:0 auto;padding:26px 22px 60px;border-top:1px solid var(--line);
+    color:var(--ink-faint);font-size:12.5px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  footer .mono{font-family:var(--font-mono);letter-spacing:.06em;}
+
+  .hidden{display:none !important;}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+  @media (max-width:560px){
+    .mast-inner{padding:14px 16px 12px;} .controls,main{padding-left:16px;padding-right:16px;}
+    .grid{grid-template-columns:1fr;} .stats{gap:18px;}
+  }
+</style>
+
+<header class="mast">
+  <div class="mast-inner">
+    <div class="mast-top">
+      <div class="brand">
+        <span class="eyebrow">CLATians · System Architecture</span>
+        <h1>AI-Powered LMS Blueprint</h1>
+        <p class="sub">Every module, sub-system and feature of the platform — grouped by the layer it lives in. Search, filter, and expand to explore the full scope.</p>
+      </div>
+      <button class="themebtn" id="theme" type="button">◐ Theme</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="searchrow">
+    <label class="search">
+      <span class="ic" aria-hidden="true">⌕</span>
+      <input id="q" type="search" placeholder="Search features — e.g. attendance, AI tutor, scholarship, proctoring…" autocomplete="off" aria-label="Search features">
+      <button class="clr" id="clr" type="button" aria-label="Clear search">×</button>
+    </label>
+    <div class="btnset">
+      <button class="tbtn" id="expandAll" type="button">Expand all</button>
+      <button class="tbtn" id="collapseAll" type="button">Collapse</button>
+    </div>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<main id="main"></main>
+
+<footer>
+  <span>CLATians LMS — full feature architecture. A reference map for planning &amp; scope.</span>
+  <span class="mono" id="foot"></span>
+</footer>
+
+<script>
+const LAYERS = [
+  ["Identity & Access","--l-identity"],
+  ["Learners","--l-learners"],
+  ["Teaching","--l-teaching"],
+  ["Assessment","--l-assessment"],
+  ["AI","--l-ai"],
+  ["CLAT Tools","--l-clat"],
+  ["Insights","--l-insights"],
+  ["Business & Ops","--l-biz"],
+  ["Administration","--l-admin"],
+  ["Platform","--l-platform"],
+];
+
+// num = source volume/section index. subs: [subName, [features...]]
+const DATA = [
+{layer:"Identity & Access",num:"01",title:"User Management",subs:[
+ ["User Ecosystem",["Super Admin","Organization Admin","Branch Admin","Academic Director","Teacher","Teaching Assistant","Content Creator","Student","Counselor","Accountant","Franchise Owner","Support Executive","Guest User","API / System User"]],
+ ["User Registration",["Student Registration","Mobile Number","Email","Password","OTP Verification","Referral Code","Scholarship Code","Source Tracking","Accept Policies","Teacher Registration","Employee Registration","Franchise Registration","Bulk User Import (Excel / CSV / API)"]],
+ ["Authentication",["Mobile OTP Login","Email Login","Username Login","Password Login","Biometric Login","Face Login","Fingerprint Login","Single Sign-On (SSO)"]],
+ ["Account Verification",["Mobile Verification","Email Verification","Aadhaar Verification","PAN Verification","Document Verification","Manual Approval","AI Fraud Detection"]],
+ ["Profile Management",["Personal Information","Academic Information","Address","Parent Details","Emergency Contact","Profile Photo","Documents","Identity Proof","Educational Certificates","Language Preferences","Accessibility Preferences","Privacy Settings"]],
+ ["Role Management",["Super Admin","Organization Admin","Branch Admin","Faculty","Staff","Student","Guest","Custom Roles"]],
+ ["Permissions (RBAC)",["Dashboard","Student","Teacher","Course","Batch","Finance","Examination","AI","Report","Download","Upload","Delete","Export","API","Custom Permission Matrix"]],
+ ["Session Management",["Active Sessions","Login History","Logout All Devices","Trusted Devices","Session Timeout","Concurrent Login Limit","Device Management","IP Monitoring"]],
+ ["Security",["Two-Factor Authentication","Password Policy","CAPTCHA","Brute Force Protection","Suspicious Login Detection","Geo Location Check","Device Fingerprinting","Encryption","Security Logs","Security Alerts"]],
+ ["User Life Cycle",["Registration","Verification","Approval","Activation","Enrollment","Upgrade","Suspension","Deactivation","Reactivation","Account Closure"]],
+ ["Organization",["Institute","Branches","Departments","Academic Units","Teams","Franchise Network","Multi-Tenant Management"]],
+ ["User Communication",["Welcome Message","Verification OTP","Login Alert","Password Reset","Enrollment Notification","Batch Assignment","Security Alert","WhatsApp","SMS","Email","Push Notification"]],
+ ["User Analytics",["Total Users","Active Users","Daily Logins","Monthly Active Users","Device Analytics","Login Heatmap","User Growth","Retention Rate","Churn Analysis","Engagement Score"]],
+ ["AI User Management",["AI User Verification","AI Fraud Detection","AI Duplicate Account Detection","AI Login Risk Analysis","AI Role Recommendation","AI User Segmentation","AI Personalized Onboarding","AI Welcome Assistant","AI Smart Profile Completion","AI Security Advisor","AI Behaviour Monitoring","AI Identity Confidence Score"]],
+ ["Audit & Compliance",["Activity Logs","Login Logs","Audit Trail","User History","Data Export Logs","Consent Logs","Privacy Controls","Data Retention Policy","Account Recovery Records","Compliance Reports"]],
+]},
+{layer:"Learners",num:"02",title:"Student Management",subs:[
+ ["Student Life Cycle",["Lead Generation","Inquiry","Counseling","Registration","Verification","Admission","Fee Payment","Enrollment","Batch Allocation","Course Activation","Learning Journey","Assessment","Certification","Alumni","Lifetime Learning"]],
+ ["Student Profile",["Student ID","Full Name","Profile Photo","Date of Birth","Gender","Blood Group","Nationality","Aadhaar (optional)","Contact Details","Address","Parent / Guardian","School / College","Academic Background","Entrance Exam Target","Preferred Language","Learning Style","Accessibility Settings","Documents"]],
+ ["Admission Management",["Application Form","Admission Approval","Scholarship","Fee Plan","Discount","Enrollment Number","Admission Letter","Welcome Kit","Digital ID Card"]],
+ ["Course Enrollment",["Free Courses","Paid Courses","Trial Courses","Combo Courses","Auto Enrollment","Manual Enrollment","Upgrade","Renewal","Transfer","Cancellation"]],
+ ["Batch Management",["Batch Allocation","Batch Transfer","Batch Upgrade","Batch Schedule","Faculty Mapping","Classroom Mapping","Live Class Access","Recorded Content Access","Batch Performance"]],
+ ["Student Dashboard",["My Courses","Today's Classes","Upcoming Classes","Assignments","Homework","Mock Tests","Performance Snapshot","Attendance","Calendar","Notifications","AI Recommendations","Learning Streak"]],
+ ["Learning Progress",["Course Progress","Subject Progress","Chapter Progress","Lesson Completion","Video Completion","Reading Progress","Practice Completion","Revision Status","Learning Heatmap","AI Progress Score"]],
+ ["Attendance",["Live Attendance","Offline Attendance","Auto Attendance","QR Attendance","Face Recognition","Attendance Calendar","Leave Request","Parent Notification","Attendance Reports"]],
+ ["Assignments & Homework",["Homework","Assignments","Practice Sheets","Submission","AI Evaluation","Teacher Review","Feedback","Resubmission","Grades"]],
+ ["Study Material",["PDFs","eBooks","Notes","Mind Maps","Flashcards","Question Banks","Previous Year Papers","Downloads","Offline Access","Version History"]],
+ ["Performance",["Mock Scores","Subject Scores","Chapter Scores","Accuracy","Speed","Rank","Percentile","Weak Topics","Strong Topics","Improvement Trend","AI Performance Report"]],
+ ["Achievements",["Badges","Certificates","Leaderboard","Rewards","Coins","XP Points","Learning Streaks","Milestones","Hall of Fame"]],
+ ["Finance",["Fee Summary","Payment History","Pending Fees","EMI","Scholarship","Coupons","Wallet","GST Invoice","Refund Status"]],
+ ["Communication",["Teacher Chat","AI Tutor Chat","Parent Communication","Announcements","Email","SMS","WhatsApp","Push Notifications","Discussion Forum"]],
+ ["AI Student Assistant",["AI Tutor","AI Study Planner","AI Daily Planner","AI Revision Planner","AI Current Affairs","AI Legal Mentor","AI Doubt Solver","AI Homework Assistant","AI Mock Test Analysis","AI Weakness Detection","AI Time Management Coach","AI Motivation Coach","AI Career Guidance","AI College Predictor","AI Rank Predictor","AI Interview Coach"]],
+ ["Gamification",["Daily Streak","Weekly Challenges","Monthly Missions","XP Points","Coins","Levels","Badges","Leaderboards","Rewards Store","Achievement Gallery"]],
+ ["Parent Connect",["Attendance Alerts","Performance Reports","Fee Notifications","Homework Updates","Parent Dashboard","AI Parent Advisor","Teacher Meeting Scheduler","Parent Feedback"]],
+ ["Student Analytics",["Login Analytics","Study Time","Video Watch Time","Test Analytics","Attendance Analytics","Engagement Score","Productivity Score","Learning Pattern","Risk Detection","AI Success Prediction"]],
+ ["Student Support",["Help Center","Ticket System","Live Chat","AI Chatbot","FAQ","Technical Support","Academic Support","Complaint Management","Feedback System"]],
+ ["Alumni Management",["Alumni Profile","Success Stories","Mentorship Program","Referral Program","Alumni Network","Placement Tracking","Higher Education Tracking","Lifetime Learning Access","Community Events"]],
+]},
+{layer:"Learners",num:"18",title:"Student Portal",subs:[
+ ["Dashboard",["Personalized Dashboard","Daily Learning Plan","Learning Progress","Notifications","Calendar","Upcoming Classes","Pending Assignments","Recent Activities","Quick Actions","Learning Overview"]],
+ ["My Courses",["Enrolled Courses","Course Progress","Learning Roadmap","Lesson Navigation","Course Resources","Download Center","Bookmarks","Continue Learning","Certificates","Course Analytics"]],
+ ["Live Learning",["Live Classes","Join Classroom","Attendance","Live Chat","Whiteboard Access","Polls & Quizzes","Session Recording","Hand Raise","Doubt Submission","Live Class History"]],
+ ["Assignments & Tests",["Assignments","Practice Tests","Mock Tests","Daily Quizzes","Previous Papers","Test Schedule","Result History","Solution Review","Performance Analysis","Improvement Plan"]],
+ ["AI Learning Assistant",["AI Tutor","Doubt Resolution","AI Explanations","AI Revision Planner","AI Study Recommendations","AI Performance Insights","AI Flashcards","AI Practice Generator","AI Chat","Personalized Learning"]],
+ ["Performance Center",["Overall Performance","Subject-wise Analysis","Rank Analysis","Accuracy Reports","Speed Analysis","Weak Topics","Strong Areas","Progress Timeline","Goal Tracking","Performance Dashboard"]],
+ ["Study Resources",["eBooks","PDF Library","Video Library","Audio Lessons","Current Affairs","Legal Reasoning Lab","Practice Resources","Downloads","Resource Search","Favorites"]],
+ ["Profile & Self-Service",["Student Profile","Academic Details","Attendance Record","Fee Status","Certificates","Identity Card","Preferences","Device Management","Security Settings","Account Settings"]],
+ ["Gamification",["Points","Badges","Achievements","Daily Streaks","Leaderboards","Challenges","Rewards","Learning Missions","Milestones","Motivation Analytics"]],
+ ["Command Center",["Learning Dashboard","Performance Dashboard","AI Dashboard","Test Dashboard","Course Dashboard","Achievement Dashboard","Progress Dashboard","Student Control Center"]],
+]},
+{layer:"Teaching",num:"03",title:"Course Management",subs:[
+ ["Course Hierarchy",["Organization","Academic Division","Program","Course Category","Course","Subject","Module","Chapter","Topic","Lesson","Activity","Assessment","Certification"]],
+ ["Course Categories",["Free Courses","Paid Courses","Scholarship Courses","Trial Courses","Combo Courses","Premium Courses","Crash Courses","Foundation Courses","Target Batches","Revision Courses","Test Series","Interview Programs","Mentorship Programs","Certification Programs"]],
+ ["Course Creation",["Course Code","Course Name","Short Name","Description","Objectives","Outcomes","Prerequisites","Duration","Language","Difficulty Level","Status","Thumbnail","Promo Video","Banner","SEO Metadata","Tags"]],
+ ["Curriculum",["Subject Mapping","Module Builder","Chapter Builder","Topic Builder","Lesson Builder","Learning Outcomes","Competencies","Bloom's Taxonomy Mapping","Skill Mapping","Curriculum Versioning"]],
+ ["Content",["Video Lectures","Live Classes","PDFs","eBooks","Notes","Flashcards","Mind Maps","Assignments","Homework","Practice Questions","Case Studies","Legal Documents","Audio Lessons","Interactive Content","External Resources"]],
+ ["Learning Paths",["Beginner","Intermediate","Advanced","Exam-Oriented","Fast Track","Slow Track","Personalized AI Path","Revision Path","Weak Topic Path","Goal-Based Path"]],
+ ["Course Access",["Public","Private","Invite Only","Paid Access","Free Access","Scholarship Access","Batch-Based Access","Subscription Access","Lifetime Access","Time-Limited Access","Device-Based Access"]],
+ ["Course Pricing",["One-Time Purchase","Monthly Subscription","Quarterly Subscription","Annual Subscription","Lifetime Purchase","Installments (EMI)","Coupon Discounts","Referral Discounts","Scholarships","Corporate Pricing","Franchise Pricing"]],
+ ["Batch Linking",["Course → Batch Mapping","Faculty Assignment","Timetable Assignment","Live Class Assignment","Recorded Library","Practice Assignment","Test Series Mapping","Study Material Mapping"]],
+ ["Course Progress",["Completion Percentage","Lesson Tracking","Chapter Tracking","Module Tracking","Subject Tracking","Time Spent","Resume Learning","Learning Streak","Completion Certificate","AI Progress Analysis"]],
+ ["Certification",["Eligibility Rules","Attendance Criteria","Assessment Criteria","AI Evaluation","Digital Certificate","QR Verification","Certificate Sharing","Blockchain Verification (Future)","Certificate Analytics"]],
+ ["Course Analytics",["Enrollment Analytics","Revenue Analytics","Completion Rate","Dropout Rate","Engagement Analytics","Watch Time","Assignment Completion","Test Performance","Student Satisfaction","AI Course Insights"]],
+ ["AI Course Management",["AI Course Builder","AI Curriculum Designer","AI Lesson Planner","AI Chapter Generator","AI Notes Generator","AI Flashcard Generator","AI Mind Map Generator","AI Quiz Generator","AI Assignment Generator","AI Question Generator","AI Case Study Generator","AI Legal Passage Generator","AI Content Translation","AI Voice Narration","AI Subtitle Generator","AI Content Review","AI Quality Checker","AI Content Recommendation","AI Curriculum Optimizer","AI Learning Outcome Predictor"]],
+ ["Collaboration & Versioning",["Teacher Collaboration","Content Reviewer","Subject Expert","Editor","Version Approval","Workflow Management","Review Comments","Publishing Workflow","Change History","Draft / Review / Approved / Published","Rollback","Version Comparison","Release Notes"]],
+ ["Automation & Marketplace",["Auto Enrollment","Auto Batch Allocation","Auto Unlock Lessons","Auto Certificates","Auto Notifications","Auto Reminders","Auto Renewals","AI Smart Scheduling","Featured / Trending / New Courses","Student Reviews & Ratings","Wishlist","Compare Courses","Gift Courses"]],
+ ["Course Security",["DRM Protection","Watermarking","Screen Recording Detection","Download Restrictions","Device Limits","Tokenized Streaming","Content Encryption","Access Logs","Copyright Monitoring"]],
+]},
+{layer:"Teaching",num:"05",title:"Learning Content System",subs:[
+ ["Content Ecosystem",["Digital Library","Learning Repository","Content Hub","Knowledge Base","Resource Center","Media Library","Assessment Repository","AI Content Hub","Archive Library"]],
+ ["Content Types",["Video Lectures","Live Recordings","Audio Lessons","PDFs","eBooks","Digital Notes","PPT Presentations","Infographics","Mind Maps","Flashcards","Interactive Lessons","Simulations","Case Studies","Legal Documents","Bare Acts","Judgments","Articles","Research Papers","Assignments","Worksheets","Practice Sets","Question Banks","Previous Year Papers","Mock Tests","Checklists","Templates","Downloadable Resources"]],
+ ["Video Content System",["Video Upload","Adaptive Streaming","Multi-Bitrate Streaming","CDN Distribution","Playback Speed","Picture-in-Picture","Bookmarks","Resume Playback","Chapter Markers","Interactive Timeline","Video Notes","Screenshots","Subtitle Support","Multi-Language Audio","Watch History","Completion Tracking","AI Video Summary","AI Transcript","AI Timestamp Search","AI Key Moments"]],
+ ["Digital Reading",["PDF Reader","eBook Reader","EPUB Support","Annotation","Highlight","Bookmark","Dictionary","Translation","Dark Mode","Reading Progress","AI Summary","AI Explain","AI Read Aloud"]],
+ ["Interactive Learning",["Interactive Lessons","Scenario-Based Learning","Legal Case Simulation","Decision Trees","Interactive MCQs","Drag & Drop","Matching Exercises","Fill in the Blanks","Polls","Reflection Activities","Gamified Learning"]],
+ ["Content Search",["Global Search","Full Text Search","AI Semantic Search","Voice Search","OCR Search","Filters","Saved Searches","Recent Searches","Related Content","Smart Recommendations"]],
+ ["Content Delivery",["Web","Android","iOS","Tablet","Smart TV","Offline Download","Progressive Sync","CDN","Edge Caching","Low-Bandwidth Mode"]],
+ ["Access Control",["Public Content","Premium Content","Batch Access","Subscription Access","Trial Access","Device Limits","Expiry Rules","Region Restrictions","Time-Based Unlock","Learning Path Unlock"]],
+ ["Content Security",["DRM Protection","AES Encryption","Secure Streaming","Watermarking","Screenshot Detection","Screen Recording Detection","Tokenized URLs","Device Binding","Download Encryption","Copyright Monitoring"]],
+ ["AI Content Services",["AI Content Generator","AI Lesson Generator","AI Notes Generator","AI Flashcards","AI Mind Maps","AI Quiz Generator","AI Assignment Generator","AI Summary Generator","AI Translation","AI Voice Narration","AI Subtitle Generator","AI Content Reviewer","AI Difficulty Analyzer","AI Duplicate Detection","AI Copyright Checker","AI Accessibility Optimizer","AI Personalization Engine","AI Content Recommendation"]],
+ ["Analytics & Storage",["Views","Downloads","Watch Time","Completion Rate","Reading Time","Engagement Score","Search Trends","Most / Least Used Content","Content Quality Score","Cloud Object Storage","File Versioning","Backup","Replication","CDN Cache","Cold / Archive Storage"]],
+]},
+{layer:"Teaching",num:"06",title:"Live Class Management",subs:[
+ ["Live Class Ecosystem",["Virtual Classroom","Hybrid Classroom","Offline Classroom Integration","Webinar","Masterclass","Doubt Session","Workshop","Guest Lecture","Mock Interview Session","Mentorship Session","Orientation Session"]],
+ ["Class Scheduling",["Academic Calendar","Timetable Builder","Faculty Scheduling","Batch Scheduling","Recurring Classes","Holiday Management","Reschedule","Cancellation","Time Zone Support","Calendar Sync","Reminder Automation"]],
+ ["Classroom Setup",["Class Information","Faculty Assignment","Batch Mapping","Course Mapping","Subject Mapping","Chapter Mapping","Topic Mapping","Agenda","Learning Objectives","Required Resources"]],
+ ["Live Video Infrastructure",["WebRTC Engine","HD Video","Adaptive Bitrate","Audio Optimization","Screen Sharing","Multi-Camera Support","Network Optimization","Low Latency Streaming","CDN Distribution","Recording Engine"]],
+ ["Classroom Tools",["Digital Whiteboard","Smart Whiteboard","Pen & Annotation","Laser Pointer","Presentation Mode","PDF Annotation","Code Editor","Document Sharing","File Upload","Multi-Screen Layout","Collaborative Workspace"]],
+ ["Student Interaction",["Raise Hand","Live Chat","Emoji Reactions","Q&A Panel","Voice Questions","Video Questions","Polls","Live Quiz","Breakout Rooms","Peer Discussion","Collaborative Notes"]],
+ ["Attendance System",["Automatic Attendance","QR Attendance","Face Recognition","Join Time","Exit Time","Active Participation","Attendance Alerts","Parent Notification","Attendance Analytics","Attendance Certificate"]],
+ ["Live Assessment",["Live MCQs","Subjective Questions","Poll-Based Assessment","Instant Feedback","Leaderboard","AI Evaluation","Teacher Evaluation","Participation Score","Exit Quiz","Learning Outcome Mapping"]],
+ ["Recording & Playback",["Automatic Recording","Manual Recording","Cloud Storage","AI Transcript","AI Summary","AI Chapter Detection","AI Bookmark Generation","Subtitle Generation","Recording Library","Replay Analytics"]],
+ ["AI Classroom Assistant",["AI Co-Teacher","AI Attendance Assistant","AI Live Captioning","AI Translation","AI Speech-to-Text","AI Text-to-Speech","AI Doubt Resolution","AI Auto Notes","AI Whiteboard Summary","AI Quiz Generator","AI Poll Generator","AI Engagement Monitor","AI Behaviour Analysis","AI Class Summary","AI Follow-up Planner"]],
+ ["Faculty Control Panel",["Teacher Dashboard","Participant Management","Mute / Unmute","Camera Controls","Waiting Room","Remove Participant","Promote Participant","Content Sharing","Session Timer","Live Analytics"]],
+ ["Classroom Analytics",["Attendance Rate","Participation Rate","Speaking Time","Chat Activity","Poll Participation","Quiz Performance","Watch Time","Engagement Score","Faculty Effectiveness","Learning Outcome Achievement","AI Class Health Score"]],
+ ["Security & Integrations",["Secure Meeting Links","Waiting Room","Authentication Required","Encrypted Audio/Video","Role-Based Controls","Watermarked Streams","Internal Video Engine","Zoom","Google Meet","Microsoft Teams","Calendar Systems"]],
+]},
+{layer:"Teaching",num:"07",title:"Recorded Learning",subs:[
+ ["Recorded Ecosystem",["On-Demand Learning","Video Library","Recorded Live Classes","Premium Video Courses","Revision Library","Crash Course Library","Doubt Solution Library","Guest Lecture Archive","Workshop Archive","Learning Repository"]],
+ ["Video Library",["Subject-wise","Course-wise","Faculty-wise","Chapter-wise","Topic-wise","Exam-wise","Playlist Management","Featured Videos","Trending Videos","Recently Added"]],
+ ["Video Playback",["Adaptive Streaming","HD / Full HD / 4K","Playback Speed (0.5x–3x)","Resume Watching","Skip Silence","Auto Next Lesson","Picture-in-Picture","Background Audio","Full Screen Mode","Mini Player","Multi-Language Audio","Subtitle Selection","Bookmark Timeline"]],
+ ["Video Intelligence",["AI Transcript","AI Chapter Detection","AI Topic Segmentation","AI Smart Summary","AI Key Points","AI Keyword Extraction","AI Timeline Search","AI Question Generation","AI Flashcards","AI Mind Maps","AI Practice Questions","AI Important Timestamps","AI Revision Notes"]],
+ ["Student Learning Tools",["Personal Notes","Timestamp Notes","Highlights","Screenshots","Bookmarks","Favorite Videos","Watch Later","Personal Playlists","Discussion Panel","Doubt Submission"]],
+ ["Offline Learning",["Offline Downloads","Download Quality","Smart Sync","Download Queue","Auto Delete","Storage Manager","Offline Notes","Offline Progress Tracking","Sync on Reconnect","Offline DRM Protection"]],
+ ["Personalized Learning",["Continue Watching","Resume Learning","AI Recommendations","Personalized Playlist","Weak Topic Videos","Revision Suggestions","Learning Goals","Daily Watch Plan","Weekly Learning Plan","Smart Learning Path"]],
+ ["Engagement & Security",["Comments","Likes","Ratings","Polls","In-Video Quiz","Reflection Questions","Interactive Checkpoints","Achievement Badges","DRM Protection","Watermarking","Device Binding","Encrypted Downloads"]],
+ ["Watch Analytics",["Watch Time","Completion Rate","Drop-off Analysis","Replay Count","Engagement Heatmap","Pause Frequency","Search Behaviour","Topic Popularity","Faculty Performance","AI Learning Insights"]],
+ ["AI Learning Assistant",["Ask About This Video","AI Tutor","AI Doubt Solver","AI Explain Topic","AI Simplify Concept","AI Translate Lesson","AI Voice Tutor","AI Homework Generator","AI Quiz Generator","AI Revision Coach","AI Exam Predictor","AI Study Planner"]],
+]},
+{layer:"Teaching",num:"17",title:"Teacher Portal",subs:[
+ ["Dashboard",["Personal Dashboard","Teaching Schedule","Daily Tasks","Notifications","Calendar","Pending Activities","Performance Summary","Quick Actions","Resource Center","Productivity Overview"]],
+ ["Course Management",["Assigned Courses","Batch Management","Subject Allocation","Lesson Planning","Syllabus Progress","Study Plans","Learning Objectives","Curriculum Mapping","Academic Calendar","Course Analytics"]],
+ ["Live Class Management",["Class Scheduling","Virtual Classroom","Attendance","Screen Sharing","Whiteboard","Recording Controls","Breakout Rooms","Polls & Quizzes","Live Chat","Session Reports"]],
+ ["Content Management",["Lecture Notes","PDF Upload","Video Upload","Assignments","Presentations","Reading Materials","Question Papers","Practice Sets","Resource Library","Content Versioning"]],
+ ["Assessment Management",["Test Creation","Assignment Creation","Question Selection","Auto Evaluation","Manual Evaluation","Marks Entry","Feedback","Rubrics","Result Publishing","Assessment Analytics"]],
+ ["Student Management",["Student Profiles","Attendance Tracking","Performance Monitoring","Behaviour Notes","Individual Progress","Academic Interventions","Student Communication","Parent Communication","Mentorship","Student Reports"]],
+ ["Doubt & Interaction",["Doubt Queue","Question Resolution","Discussion Forums","Live Q&A","Office Hours","AI-Assisted Responses","Announcements","Polls","Feedback Collection","Interaction Analytics"]],
+ ["Faculty Productivity",["Task Management","Workload Analysis","Time Tracking","Activity Log","Performance Goals","Teaching Hours","Content Contributions","Collaboration","Professional Development","Productivity Dashboard"]],
+ ["Analytics & Reports",["Teaching Analytics","Student Performance","Attendance Reports","Test Reports","Batch Comparison","Course Completion","Faculty KPIs","Learning Insights","Export Reports","Executive View"]],
+ ["Command Center",["Teaching Dashboard","Live Class Dashboard","Assessment Dashboard","Student Dashboard","Productivity Dashboard","Communication Dashboard","Performance Dashboard","Academic Dashboard","Faculty Control Center"]],
+]},
+{layer:"Assessment",num:"08",title:"Test & Examination",subs:[
+ ["Exam Ecosystem",["Practice Tests","Chapter Tests","Topic Tests","Sectional Tests","Subject Tests","Unit Tests","Weekly Tests","Monthly Tests","Full-Length Mock Tests","Grand Tests","Scholarship Exams","Diagnostic Tests","Adaptive Tests","Previous Year Paper Tests","Daily Quiz","Challenge Exams"]],
+ ["Exam Creation",["Exam Information","Exam Code","Exam Category","Course / Subject / Chapter Mapping","Difficulty Level","Marks Distribution","Duration","Instructions","Negative Marking Rules","Passing Criteria","Publishing Workflow"]],
+ ["Question Delivery Engine",["Random Question Order","Random Options","Section Navigation","Fixed Order","Adaptive Question Flow","Question Locking","Bookmark Questions","Save & Next","Mark for Review","Resume Test","Auto Submit"]],
+ ["Exam Interface",["Timer","Section Timer","Calculator","Rough Sheet","Digital Notepad","Question Palette","Progress Indicator","Full Screen Mode","Accessibility Support","Keyboard Shortcuts"]],
+ ["Question Types",["Single / Multiple Correct MCQ","True / False","Assertion & Reason","Match the Following","Fill in the Blank","Short / Long Answer","Essay","Case Study","Comprehension","Legal Passage","Numerical Answer","Audio / Video Question","File Upload"]],
+ ["AI Adaptive Testing",["Dynamic Difficulty","Skill Assessment","Competency Mapping","Weak Area Detection","Personalized Question Flow","AI Confidence Score","Learning Readiness","Performance Prediction","Revision Recommendation","Mastery Tracking"]],
+ ["Remote Proctoring",["Face Detection","Face Recognition","Identity Verification","Browser Lockdown","Multiple Monitor Detection","Tab Switching Detection","Copy/Paste Detection","Mobile Device Detection","AI Behaviour Analysis","Audio Monitoring","Webcam Monitoring","Suspicious Activity Alerts","Proctor Dashboard"]],
+ ["Evaluation Engine",["Automatic Evaluation","Manual Evaluation","AI Subjective Evaluation","Rubric-Based Assessment","Partial Marking","Moderation","Re-Evaluation","Audit Trail","Marks Approval","Grade Finalization"]],
+ ["Result Processing",["Marks Calculation","Percentage","Grade","Rank","Percentile","Normalization","Merit List","Pass/Fail Status","Digital Scorecard","Result Publication"]],
+ ["Performance Analytics",["Overall Performance","Subject / Topic / Chapter Analysis","Accuracy","Speed","Time Per Question","Attempt Analysis","Guess Analysis","Negative Mark Analysis","Difficulty Analysis","Comparison with Top Rankers","AI Improvement Plan"]],
+ ["AI Exam Assistant",["AI Mock Analysis","AI Mistake Detection","AI Revision Planner","AI Weak Topic Analysis","AI Question Recommendation","AI Study Plan","AI Score Predictor","AI Rank Predictor","AI College Predictor","AI Feedback Generator","AI Learning Coach","AI Success Probability"]],
+ ["Certification & Security",["Digital Certificates","QR Verification","Merit / Participation Certificates","Achievement Badges","Skill Certificates","Secure Question Delivery","Question Encryption","Watermarking","Device Restriction","Secure Session Tokens","Tamper Detection"]],
+]},
+{layer:"Assessment",num:"09",title:"Question Bank",subs:[
+ ["Question Repository",["Central Repository","Subject-wise","Course-wise","Chapter-wise","Topic-wise","Exam-wise","Institution Repository","Shared Repository","AI Repository","Archive Repository"]],
+ ["Question Authoring",["Question Editor","Rich Text Editor","Mathematical Formula Editor","Image / Audio / Video Support","Table Builder","Diagram Builder","Legal Passage Editor","Case Study Builder","Passage Builder","Multi-Language Support","Bulk Import"]],
+ ["Question Types",["Single / Multiple Correct MCQ","True / False","Assertion & Reason","Match the Following","Fill in the Blanks","Numerical Answer","Short / Long Answer","Essay","Comprehension","Legal Reasoning Passage","Case Study","Audio / Video Question","Interactive Question"]],
+ ["Taxonomy & Tagging",["Program","Course","Subject","Module","Chapter","Topic","Concept","Learning Outcome","Competency","Bloom's Level","Difficulty Level","Cognitive Skill","Exam Pattern","Language","Keywords","Metadata"]],
+ ["Answer Management",["Correct Answer","Multiple Answers","Detailed Solution","Step-by-Step Solution","Legal Explanation","Reference Material","Source Citation","Marks Allocation","Partial Marking","Alternative Solutions"]],
+ ["Review Workflow",["Draft","Peer Review","Subject Expert Review","Legal Review","Language Review","Technical Review","Approval","Publishing","Revision","Archive"]],
+ ["AI Question Generation",["AI MCQ Generator","AI Subjective Generator","AI Legal Passage Generator","AI Case Study Generator","AI Comprehension Generator","AI Current Affairs Questions","AI PYQ-style Generator","AI Distractor Generator","AI Solution Generator","AI Explanation Generator","AI Translation","AI Difficulty Calibration","AI Duplicate Detection","AI Bias Detection","AI Quality Review"]],
+ ["Question Quality",["Difficulty Calibration","Discrimination Index","Facility Value","Reliability Score","Validity Review","Language Quality","Concept Accuracy","Legal Accuracy","Bias Detection","Quality Score"]],
+ ["Exposure Control",["Exposure Tracking","Usage Limits","Rotation Rules","Random Selection","Secure Pools","Blacklisted Questions","Retired Questions","Confidential Questions","Question Locking","Leakage Monitoring"]],
+ ["Analytics & CA Integration",["Usage Count","Attempt Rate","Correct / Incorrect Response Rate","Skip Rate","Average Time","Difficulty Trend","Topic Coverage","News-Based Questions","Supreme Court Updates","Constitutional Affairs","CLAT Trend Mapping","Auto Refresh Pipeline"]],
+]},
+{layer:"AI",num:"10",title:"AI Ecosystem",subs:[
+ ["Enterprise AI Platform",["AI Core Engine","AI Agent Platform","LLM Orchestration Layer","Model Gateway","Prompt Engine","AI Workflow Engine","AI API Gateway","Knowledge Layer","Memory Layer","AI Governance Layer"]],
+ ["Student AI Agents",["AI Personal Tutor","AI Mentor","AI Study Planner","AI Daily Planner","AI Revision Coach","AI Doubt Solver","AI Homework Assistant","AI Writing Assistant","AI Reading Assistant","AI Legal Assistant","AI Current Affairs Coach","AI Vocabulary Coach","AI GK Mentor","AI Logical Reasoning Coach","AI Quant Coach","AI Motivation Coach","AI Interview Coach","AI Career Advisor","AI Rank Predictor","AI College Predictor"]],
+ ["Faculty AI Agents",["AI Lesson Planner","AI Curriculum Designer","AI Question Generator","AI Test Builder","AI Assignment Generator","AI Case Study Generator","AI Legal Passage Generator","AI Notes Generator","AI Flashcard Generator","AI Mind Map Generator","AI Evaluation Assistant","AI Attendance Assistant","AI Live Class Assistant","AI Content Reviewer","AI Translation Assistant","AI Faculty Analytics"]],
+ ["Content AI",["AI Content Author","AI Video Summarizer","AI Transcript Generator","AI Subtitle Generator","AI Voice Narration","AI Text Simplifier","AI Content Tagging","AI Metadata Generator","AI Difficulty Analyzer","AI Duplicate Detection","AI Copyright Checker","AI Content Optimizer"]],
+ ["Assessment AI",["AI Question Generator","AI Distractor Generator","AI Answer Evaluator","AI Rubric Evaluator","AI Subjective Assessment","AI Adaptive Testing","AI Skill Assessment","AI Weakness Detection","AI Mastery Prediction","AI Learning Recommendations"]],
+ ["Analytics AI",["AI Learning Analytics","AI Student Insights","AI Batch Analytics","AI Faculty Insights","AI Dropout Prediction","AI Success Prediction","AI Risk Detection","AI Trend Analysis","AI Executive Insights","AI Recommendation Engine"]],
+ ["Conversational AI",["AI Chat Assistant","AI Voice Assistant","AI Multilingual Assistant","AI Speech-to-Text","AI Text-to-Speech","AI Real-Time Translation","AI Conversation Memory","AI Context Awareness","AI Intent Detection","AI Personalized Responses"]],
+ ["Knowledge & Memory Layer",["Curriculum Knowledge Base","Legal Knowledge Base","Current Affairs Knowledge Base","Institutional Knowledge Base","Vector Database","Semantic Search","Retrieval Engine (RAG)","Student Learning Memory","Learning History","Weak Topic Memory","Long-Term Memory","Session Memory"]],
+ ["Model Orchestration & Agents",["Multi-LLM Routing","Model Selection Engine","Prompt Templates & Versioning","Prompt Testing","Model Benchmarking","Fallback Strategy","Cost / Latency Optimization","Response Validation","Tutor / Mentor / Planner Agents","Research / Assessment / Analytics Agents","Content / Notification / Workflow Agents","Orchestrator Agent"]],
+ ["AI Security & Governance",["AI Authentication","Role-Based AI Access","Prompt Security","Content Moderation","Hallucination Detection","AI Output Validation","Data Privacy Controls","Consent Management","Audit Logs","Responsible AI Policies","Explainability","Compliance Monitoring"]],
+ ["AI Operations (AIOps)",["Model Monitoring","Usage Analytics","Token Consumption","Cost Dashboard","Latency Monitoring","Error Monitoring","Prompt Analytics","Model Performance","AI Health Dashboard","Executive AI Dashboard"]],
+]},
+{layer:"AI",num:"24",title:"Future AI Features",subs:[
+ ["Next-Gen AI",["Autonomous AI Teacher","Digital Twin Student","Emotion Detection","AI Proctor","AI Interview Simulator","AI Debate Coach","AI Memory Coach","AI Virtual Campus","AI Learning Avatar","90+ Additional AI Innovations"]],
+]},
+{layer:"CLAT Tools",num:"12",title:"Current Affairs Engine",subs:[
+ ["News Ingestion",["National News Sources","International News Sources","Government Portals","Judiciary Sources","Parliament Updates","Ministry Notifications","Regulatory Bodies","Press Releases","Research Publications","Editorial Monitoring"]],
+ ["Content Collection",["RSS Aggregation","API Integration","Web Crawlers","Scheduled Fetching","Real-Time Monitoring","Duplicate Detection","Source Validation","Content Cleaning","Metadata Extraction","Archive Management"]],
+ ["AI News Processing",["AI Topic Extraction","AI Entity Recognition","AI Event Detection","AI Legal Classification","AI Constitutional Mapping","AI Importance Scoring","AI Timeline Detection","AI Duplicate Merging","AI Trend Detection","AI Fact Consistency Checks"]],
+ ["CLAT Priority Filter",["Constitutional Developments","Supreme Court Judgments","High Court Decisions","Parliament & Legislation","International Relations","Global Organisations","Science & Technology","Environment & Climate","Economy & Public Policy","Awards & Reports","Government Schemes","Legal Institutions","Human Rights","Important Appointments","CLAT Relevance Scoring"]],
+ ["Knowledge Enrichment",["Historical Context","Constitutional Articles","Landmark Judgments","Legal Terminology","Background Notes","Timeline Builder","Related Topics","Static GK Mapping","Cross References","Research References"]],
+ ["Content Generation",["Daily Notes","Weekly Digest","Monthly Magazine","Yearly Compilation","One-Page Revision Notes","Infographics","Mind Maps","Flashcards","Audio Summaries","Video Briefs"]],
+ ["AI Question Generation",["MCQ Generation","Passage-Based Questions","Legal Reasoning Questions","Assertion & Reason","Case Study Questions","Comprehension Sets","Previous-Year Style Questions","Difficulty Calibration","Answer Explanations","Revision Tests"]],
+ ["Student Learning",["Personalized News Feed","Daily Current Affairs","Weekly / Monthly Revision","Bookmark Articles","Personal Notes","AI Revision Planner","Learning Streak","Current Affairs Calendar","Smart Recommendations"]],
+ ["AI Analytics & Repository",["Topic Popularity","CLAT Trend Analysis","Student Coverage","Weak Topic Detection","Predictive Topic Ranking","Exam Readiness Score","News Archive","Legal Archive","Constitutional Repository","Semantic Search","Vector Database"]],
+]},
+{layer:"CLAT Tools",num:"13",title:"Legal Reasoning Lab",subs:[
+ ["Legal Reasoning Ecosystem",["Legal Aptitude Learning","Legal Reasoning Practice","Constitutional Reasoning","Judicial Reasoning","Case Analysis","Statutory Interpretation","Principle-Fact Application","Legal Ethics","Mock Court Simulation","CLAT Preparation Hub"]],
+ ["Legal Passage Engine",["AI Passage Generator","Case-Based Passages","Constitutional Passages","Statutory Passages","Current Affairs Passages","International Law Passages","Human Rights Passages","Multi-Level Difficulty","Passage Versioning","Editorial Review"]],
+ ["Legal Knowledge Base",["Constitution of India","Fundamental Rights","Directive Principles","Fundamental Duties","Landmark Judgments","Important Statutes","Legal Maxims","International Law","Legal Terminology","Constitutional Amendments"]],
+ ["Case Law Analyzer",["Facts Extraction","Issues Identification","Arguments Mapping","Judicial Reasoning","Ratio Decidendi","Obiter Dicta","Final Judgment","Constitutional Principles","Precedent Mapping","AI Case Summary"]],
+ ["Principle-Fact Lab",["Principle Identification","Fact Identification","Rule Application","Exception Analysis","Logical Inference","Legal Conclusion","Comparative Scenarios","Hypothetical Situations","Adaptive Difficulty","AI Feedback"]],
+ ["Argument Analyzer",["Premise Detection","Conclusion Detection","Logical Validity","Assumption Analysis","Counter Arguments","Fallacy Detection","Evidence Evaluation","Strength Scoring","AI Suggestions","Reasoning Quality Index"]],
+ ["AI Legal Tutor",["AI Legal Mentor","AI Constitutional Guide","AI Case Explainer","AI Article Explainer","AI Bare Act Assistant","AI Legal Vocabulary Coach","AI Doubt Solver","AI Passage Explainer","AI Revision Coach","AI Interview Coach"]],
+ ["Practice & Assessment",["Daily / Topic / Chapter Practice","Mixed / Timed / Adaptive Practice","Weak Topic Practice","PYQ Practice","Challenge Mode","Marathon Sessions","Reading Speed","Comprehension Accuracy","Legal Interpretation","Mastery Score","Readiness Index"]],
+ ["Analytics & Gamification",["Topic Mastery","Article-wise Performance","Judgment-wise Performance","Mistake Patterns","AI Improvement Plan","CLAT Readiness","Legal Missions","Mock Court Competitions","Constitutional Quests","Leaderboards","Certificates"]],
+]},
+{layer:"CLAT Tools",num:"11",title:"Doubt Resolution",subs:[
+ ["Doubt Ecosystem",["AI Instant Doubts","Faculty Doubts","Live Doubt Classes","Community Discussion","Peer Learning","Legal Reasoning Help","Current Affairs Doubts","Homework Support","Assignment Help","Premium Mentorship"]],
+ ["Doubt Submission",["Text Doubt","Image Upload","PDF Upload","Voice Doubt","Video Doubt","Screen Recording","Whiteboard Snapshot","Live Camera Capture","URL Sharing","Multi-File Attachments"]],
+ ["Doubt Classification",["Course / Subject / Module Mapping","Chapter / Topic / Concept Mapping","Difficulty Detection","Priority Detection","Language Detection","AI Auto-Tagging"]],
+ ["AI Doubt Engine",["AI Instant Answers","Step-by-Step Explanation","Simplified / Advanced Explanation","Multiple Solution Paths","Visual Explanation","AI Legal Assistant","AI Case Law Support","AI Current Affairs Context","AI Follow-up Questions","AI Confidence Score","AI Source Attribution"]],
+ ["Faculty Escalation",["AI Escalation Rules","Faculty Assignment","Subject Expert Routing","Senior Faculty Review","Escalation Levels","Priority Queue","SLA Monitoring","Response Tracking","Resolution Approval","Faculty Feedback"]],
+ ["Live Doubt Support",["Live Doubt Rooms","One-to-One Sessions","Group Doubt Sessions","Screen Sharing","Interactive Whiteboard","Voice / Video Support","Session Recording","Session Notes","Follow-up Tasks"]],
+ ["Community Forum",["Discussion Boards","Threaded Conversations","Peer / Faculty Answers","AI Suggested Answers","Voting System","Accepted Answers","Topic Channels","Moderation Tools","Reputation System"]],
+ ["Knowledge & Personalization",["Solved Doubt Library","FAQ","Concept / Legal Case Repository","Video Explanations","Semantic Search","Weak Topic Detection","Recommended Lessons","Related Videos & Questions","AI Practice Sets","Personalized Learning Path"]],
+ ["AI Analytics",["Doubt Trends","Concept Difficulty Analysis","Resolution Time","Student Satisfaction","Faculty Productivity","AI Resolution Accuracy","Escalation Rate","Recurring Doubts","Knowledge Gaps","Predictive Insights"]],
+]},
+{layer:"Insights",num:"14",title:"Performance Analytics",subs:[
+ ["Student 360° Profile",["Academic Profile","Learning Journey","Attendance History","Course Progress","Test Performance","Practice Performance","Current Affairs Progress","Legal Reasoning Progress","AI Learning Profile","Behavioral Analytics","Skill Profile","Career Readiness"]],
+ ["Learning Analytics",["Daily Learning Time","Weekly Activity","Monthly Progress","Session Analytics","Video Watch Analytics","Reading Analytics","Practice Analytics","Assignment Analytics","Revision Analytics","Learning Velocity"]],
+ ["Assessment Analytics",["Test Scores","Percentile","Rank","Accuracy","Negative Marking Analysis","Time Management","Section-wise Performance","Topic-wise Performance","Question Difficulty Analysis","Improvement Trend","Benchmark Comparison"]],
+ ["Subject & Skill Analytics",["English","Current Affairs","Legal Reasoning","Logical Reasoning","Quantitative Techniques","Subject Mastery","Reading Speed","Analytical Ability","Critical Thinking","Decision Making","Exam Temperament","Confidence Index"]],
+ ["AI Predictive Analytics",["CLAT Rank Prediction","Score Prediction","College Prediction","Success Probability","Dropout Risk","Weak Topic Prediction","Burnout Detection","Learning Risk Alerts","Exam Readiness","AI Recommendations"]],
+ ["Faculty & Batch Analytics",["Teaching Performance","Student Feedback","Content Effectiveness","Doubt Resolution Rate","Teaching Impact Score","Batch Performance","Attendance Trends","Average Scores","Rank Distribution","Performance Heatmaps","Intervention List"]],
+ ["Institutional Analytics",["Enrollment Trends","Student Success Rate","Course Effectiveness","Revenue vs Performance","Retention Analytics","Completion Analytics","AI Adoption Metrics","Operational KPIs","Quality Indicators","Executive KPIs"]],
+ ["Intervention Engine",["Early Warning System","Weak Student Detection","Personalized Study Plans","Mentor Assignment","Parent Notifications","Faculty Alerts","AI Revision Plans","Recommended Videos","Practice Suggestions","Follow-up Tracking"]],
+ ["Visualization & Warehouse",["KPI Cards","Line / Bar / Radar Charts","Heatmaps","Scatter Plots","Leaderboards","Trend Graphs","Drill-down Reports","Learning Data Lake","Assessment Data","AI Analytics Store","Event Streams","Data Governance"]],
+]},
+{layer:"Insights",num:"22",title:"Reports & Business Intelligence",subs:[
+ ["BI Foundation",["BI Strategy","Data Warehouse","Data Lake","Master Data Management","Metadata Repository","Data Governance","Data Quality","KPI Framework","BI Architecture","Executive Dashboard"]],
+ ["Academic Reports",["Student Performance","Course Completion","Subject Analysis","Attendance Reports","Assignment Reports","Test Reports","Faculty Performance","Batch Comparison","Learning Outcomes","Academic Analytics"]],
+ ["Admission & CRM Reports",["Lead Reports","Conversion Funnel","Admission Statistics","Scholarship Reports","Campaign Analytics","Counsellor Performance","Source Analysis","Enrollment Trends","Retention Reports","CRM Dashboard"]],
+ ["Financial Reports",["Revenue Reports","Fee Collection","Outstanding Dues","Refund Reports","Scholarship Finance","Cash Flow","Budget Analysis","Profitability","Financial Forecasts","Finance Dashboard"]],
+ ["User & Learning Analytics",["Student / Teacher / Parent / Admin Analytics","Login Analytics","Engagement Metrics","Device Analytics","Session Analytics","User Segmentation","Learning Progress","Study Behaviour","AI Usage","Weak / Strong Topic Analysis","Time-on-Task"]],
+ ["Operational Reports",["System Usage","Content Utilization","Live Class Reports","Support Reports","Communication Reports","Mobile App Analytics","Automation Reports","SLA Monitoring","Operational KPIs","Operations Dashboard"]],
+ ["AI Intelligence",["Predictive Analytics","Risk Prediction","Student Success Prediction","Churn Prediction","Recommendation Engine","Forecast Models","AI Insights","Trend Detection","Anomaly Detection","AI Dashboard"]],
+ ["Report Management & Visualization",["Report Designer","Dashboard Builder","Scheduled Reports","Report Templates","Custom Reports","Export Center","Report Sharing","Charts / Graphs / Heat Maps","KPI Cards","Interactive Filters","Visualization Library"]],
+ ["Command Center",["Executive / Academic / Finance Dashboards","CRM / Learning / AI Dashboards","Operations / KPI Dashboards","Enterprise Dashboard","Unified BI Center"]],
+]},
+{layer:"Business & Ops",num:"16",title:"Finance & Payment",subs:[
+ ["Financial Ecosystem",["Financial Master","Academic Session Finance","Business Units","Cost Centers","Branch Finance","Multi-Currency Support","Financial Calendar","Fiscal Years","Chart of Accounts","Financial Policies"]],
+ ["Billing Management",["Course Billing","Batch Billing","Subscription Billing","One-Time Billing","Installment Plans","Recurring Billing","Add-on Services","Bundle Pricing","Proforma Invoices","Invoice Generation"]],
+ ["Payment Management",["UPI Payments","Credit / Debit Cards","Net Banking","Wallet Payments","EMI Options","Cash / Cheque Payments","Bank Transfers","QR Code Payments"]],
+ ["Subscription Management",["Monthly / Quarterly / Annual Plans","Lifetime Plans","Free Trials","Auto Renewal","Subscription Pause","Plan Upgrade / Downgrade","Subscription Cancellation"]],
+ ["Scholarships & Discounts",["Merit Scholarships","Entrance Scholarships","Need-Based Aid","Promotional Discounts","Coupon Codes","Referral Benefits","Early Bird Offers","Bulk Enrollments","Corporate Programs","Financial Approvals"]],
+ ["Refunds & Adjustments",["Refund Requests","Approval Workflow","Partial / Full Refunds","Wallet Credits","Credit Notes","Payment Adjustments","Reconciliation","Audit Trail","Settlement Reports"]],
+ ["Accounting & Ledger",["General Ledger","Accounts Receivable","Accounts Payable","Journal Entries","Trial Balance","Profit & Loss","Balance Sheet","Cash Flow","Cost Allocation","Financial Statements"]],
+ ["Taxation & Compliance",["GST Configuration","GST Invoices","Tax Calculation","TDS Support","Compliance Reports","E-Invoicing Ready","Audit Support","Financial Controls","Record Retention","Regulatory Compliance"]],
+ ["Revenue & Commissions",["Revenue Recognition","Deferred Revenue","Branch / Course / Product Revenue","AI Revenue Insights","Revenue Forecasting","Profitability Analysis","Counselor Commissions","Franchise Commissions","Affiliate Programs","Referral Payouts","Settlement Engine"]],
+ ["Budgeting & Automation",["Annual / Department / Branch Budget","Expense Planning","Revenue Forecast","Scenario / Variance Analysis","AI Forecasting","Auto Billing","Auto Invoicing","Auto Payment Reminders","Auto Reconciliation","Auto Tax Reports","Auto Financial Closing"]],
+]},
+{layer:"Business & Ops",num:"17",title:"CRM & Marketing",subs:[
+ ["CRM Foundation",["CRM Vision","Lead Lifecycle","Customer Journey","Contact Management","Organization Management","Relationship Timeline","CRM Policies","CRM Roles","CRM Permissions","CRM Dashboard"]],
+ ["Lead Management",["Lead Capture","Website Leads","Landing Pages","WhatsApp Leads","Phone Leads","Walk-in Leads","Referral Leads","Social Media Leads","Manual Lead Entry","Lead Assignment"]],
+ ["Admission Pipeline",["Inquiry","Counselling","Demo Class","Scholarship Test","Offer","Registration","Fee Collection","Enrollment","Batch Allocation","Admission Analytics"]],
+ ["Sales Management",["Sales Pipeline","Opportunity Management","Sales Targets","Sales Activities","Sales Forecast","Counsellor Performance","Conversion Tracking","Follow-up Scheduler","Sales Reports","Revenue Dashboard"]],
+ ["Marketing Automation",["Campaign Management","Email Marketing","SMS Campaigns","WhatsApp Campaigns","Push Notifications","Social Media Campaigns","Landing Pages","Marketing Calendar","Automation Rules","Campaign Analytics"]],
+ ["Digital Marketing",["SEO","Blog Management","Google Ads","Meta Ads","YouTube Marketing","Organic Marketing","Influencer Campaigns","Affiliate Marketing","UTM Tracking","Digital Analytics"]],
+ ["Counsellor Management",["Counsellor Profiles","Lead Allocation","Daily Follow-ups","Call Logs","Meeting Scheduler","Conversion Metrics","Productivity Reports","Incentive Tracking","Attendance","Performance Dashboard"]],
+ ["Customer Engagement",["Email Communication","WhatsApp Chat","SMS Communication","Telecalling","Video Counselling","Parent Interaction","Student Interaction","Feedback Collection","Satisfaction Surveys","Engagement Analytics"]],
+ ["Scholarships, Offers & Analytics",["Scholarship Tests","Coupon Codes","Discount Rules","Promotional Offers","Referral Rewards","Seasonal Campaigns","Lead Funnel","Conversion Funnel","Source Analysis","Marketing ROI","Customer Acquisition Cost","Lifetime Value"]],
+]},
+{layer:"Business & Ops",num:"15",title:"Communication Hub",subs:[
+ ["Communication Foundation",["Communication Vision","Communication Policies","Communication Channels","User Communication Preferences","Notification Rules","Communication Roles","Message Prioritization","Delivery Policies","Audit & Compliance","Communication Dashboard"]],
+ ["Notification Center",["System Notifications","Academic Notifications","Exam Notifications","Assignment Alerts","Fee Reminders","Attendance Alerts","Live Class Alerts","Emergency Notifications","Scheduled Notifications","Notification History"]],
+ ["Email Communication",["Transactional Emails","Marketing Emails","Admission Emails","Academic Emails","Fee Emails","Bulk Email Campaigns","Email Templates","Email Scheduling","Delivery Tracking","Bounce Management"]],
+ ["SMS Communication",["OTP Messages","Fee Alerts","Attendance Alerts","Exam Updates","Admission Updates","Promotional SMS","SMS Templates","Bulk SMS","Delivery Reports","SMS Analytics"]],
+ ["WhatsApp Communication",["WhatsApp Business API","Broadcast Messages","Automated Replies","Chat Templates","Admission Conversations","Student Support","Parent Updates","Media Sharing","Chat History","WhatsApp Analytics"]],
+ ["In-App Communication",["Push Notifications","In-App Messages","Announcement Board","Dashboard Alerts","Activity Feed","Reminder Center","User Inbox","Action Notifications","Notification Preferences","Read Tracking"]],
+ ["Collaboration",["Student Discussion","Teacher Discussion","Batch Groups","Subject Forums","Announcement Channels","Direct / Group Messaging","File Sharing","Polls & Surveys","Community Moderation"]],
+ ["Support & Events",["Help Desk","Ticket System","Live Chat","AI Chatbot","Callback Requests","FAQ Management","Complaint Resolution","Webinar Invitations","Live Class Invites","Result Notifications","Certificate Alerts","RSVP Tracking"]],
+ ["Analytics",["Delivery Analytics","Open Rate","Click Rate","Response Rate","WhatsApp / Email / SMS Metrics","User Engagement","Channel Performance","Executive Dashboard"]],
+]},
+{layer:"Business & Ops",num:"13",title:"Offline Coaching ERP",subs:[
+ ["Offline Operations",["Admission","Inquiry","Timetable","Attendance","Fees","Receipts","ID Cards"]],
+]},
+{layer:"Administration",num:"19",title:"Admin Control Center",subs:[
+ ["Executive Dashboard",["Institution Overview","KPI Dashboard","Active Users","Revenue Summary","Academic Performance","System Health","Notifications","Pending Approvals","Alerts Center","Executive Insights"]],
+ ["User Administration",["Student Management","Teacher Management","Parent Management","Staff Management","Role Management","Permission Management","Identity Verification","Account Lifecycle","Bulk Operations","User Analytics"]],
+ ["Academic Administration",["Course Administration","Batch Management","Faculty Allocation","Timetable Management","Academic Calendar","Assessment Control","Attendance Monitoring","Curriculum Administration","Certification Control","Academic Analytics"]],
+ ["Admission Administration",["Admission Dashboard","Lead Monitoring","Enrollment Approval","Scholarship Approval","Document Verification","Batch Allocation","Waiting Lists","Admission Reports","Conversion Analytics","Admission Workflow"]],
+ ["Finance Administration",["Fee Monitoring","Payment Verification","Refund Management","Scholarship Finance","Revenue Reports","Financial Audit","Tax Reports","Invoice Management","Collection Analytics","Finance Dashboard"]],
+ ["Content Administration",["Course Library","Video Management","PDF Management","Question Bank","Assignments","Digital Assets","Version Control","Approval Workflow","Content Analytics","Archive"]],
+ ["Communication Administration",["Notifications","Email / SMS / WhatsApp Management","Push Notifications","Template Library","Campaign Monitoring","Help Desk","Support Queue","Communication Analytics"]],
+ ["AI & Automation",["AI Services","Automation Rules","Workflow Engine","AI Monitoring","AI Recommendations","Prompt Management","AI Logs","AI Usage Analytics","AI Health","AI Governance"]],
+ ["System & Security",["Organization Settings","Campus / Branch Management","Branding","Language Settings","Feature Flags","License Management","Maintenance Mode","Access Control","MFA Management","Audit Logs","Security Policies","Backup & Disaster Recovery"]],
+ ["Command Center",["Executive / Academic / Financial Dashboards","Operations / Communication / AI Dashboards","Security / Analytics / System Dashboards","Unified Control Center"]],
+]},
+{layer:"Platform",num:"20",title:"Mobile Applications",subs:[
+ ["Apps & Modes",["Android","iOS","Tablet","Offline Mode","Downloads","Widgets"]],
+]},
+{layer:"Platform",num:"21",title:"Security & Compliance",subs:[
+ ["Security & Compliance",["Encryption","Two-Factor Authentication","RBAC","Audit Logs","Activity Logs","Backup","Disaster Recovery","Privacy Controls","Compliance"]],
+]},
+{layer:"Platform",num:"23",title:"System Settings",subs:[
+ ["Configuration",["Branding","Themes","Languages","Localization","Time Zone","Storage","APIs","Webhooks","Integrations","Feature Flags"]],
+]},
+{layer:"Platform",num:"25",title:"Enterprise Architecture",subs:[
+ ["Application Layer",["Frontend","Backend","API Gateway","Microservices","Authentication","AI Stack"]],
+ ["Data Layer",["Database","Object Storage","Caching","Search Engine","Analytics","Video Streaming"]],
+ ["Infrastructure Layer",["Payment Gateway","CDN","Queue System","Monitoring","DevOps","CI/CD","Cloud Infrastructure","High Availability","Disaster Recovery","Global Scalability"]],
+]},
+];
+
+/* ---------- render ---------- */
+const layerVar = Object.fromEntries(LAYERS);
+const featCount = m => m.subs.reduce((a,[,items])=>a+items.length,0);
+const totalFeatures = DATA.reduce((a,m)=>a+featCount(m),0);
+const totalSubs = DATA.reduce((a,m)=>a+m.subs.length,0);
+
+// stats
+document.getElementById('stats').innerHTML = [
+  [DATA.length,"Modules"],[totalSubs,"Sub-systems"],[totalFeatures,"Features"],[LAYERS.length,"Layers"]
+].map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('');
+document.getElementById('foot').textContent = `${DATA.length} modules · ${totalFeatures} features mapped`;
+
+const main = document.getElementById('main');
+const chipsEl = document.getElementById('chips');
+const activeLayers = new Set(LAYERS.map(l=>l[0]));
+
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// build layer sections
+LAYERS.forEach(([layer,cssvar])=>{
+  const mods = DATA.filter(m=>m.layer===layer);
+  const feats = mods.reduce((a,m)=>a+featCount(m),0);
+  const sec = document.createElement('section');
+  sec.className='layer'; sec.dataset.layer=layer;
+  sec.style.setProperty('--dot',`var(${cssvar})`);
+  sec.innerHTML = `<div class="layer-head"><span class="layer-bar"></span>
+     <h2>${layer}</h2><span class="meta">${mods.length} modules · ${feats} features</span></div>
+     <div class="grid"></div>`;
+  const grid = sec.querySelector('.grid');
+  mods.forEach(m=>{
+    const card=document.createElement('article');
+    card.className='mod'; card.style.setProperty('--dot',`var(${cssvar})`);
+    card.dataset.layer=layer;
+    const body = m.subs.map(([sname,items])=>
+      `<div class="sub"><div class="sub-name">${esc(sname)}</div>
+        <ul class="items">${items.map(i=>`<li data-f>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+    card.innerHTML=`
+      <button class="mod-head" type="button" aria-expanded="false">
+        <span class="mod-num">${m.num}</span>
+        <span class="mod-title">${esc(m.title)}</span>
+        <span class="mod-count">${m.subs.length}·${featCount(m)}</span>
+        <span class="chev" aria-hidden="true">▸</span>
+      </button>
+      <div class="mod-body">${body}</div>`;
+    const btn=card.querySelector('.mod-head');
+    btn.addEventListener('click',()=>{
+      const open=card.classList.toggle('open');
+      btn.setAttribute('aria-expanded',open);
+    });
+    grid.appendChild(card);
+  });
+  main.appendChild(sec);
+});
+
+// chips
+LAYERS.forEach(([layer,cssvar])=>{
+  const mods = DATA.filter(m=>m.layer===layer);
+  const c=document.createElement('button');
+  c.className='chip'; c.type='button'; c.setAttribute('aria-pressed','true');
+  c.style.setProperty('--dot',`var(${cssvar})`);
+  c.innerHTML=`<span class="dot"></span>${layer}<span class="n">${mods.length}</span>`;
+  c.addEventListener('click',()=>{
+    if(activeLayers.has(layer)){activeLayers.delete(layer);c.setAttribute('aria-pressed','false');}
+    else{activeLayers.add(layer);c.setAttribute('aria-pressed','true');}
+    applyFilters();
+  });
+  chipsEl.appendChild(c);
+});
+
+// search + filter
+const q=document.getElementById('q'), clr=document.getElementById('clr');
+function clearHighlights(root){
+  root.querySelectorAll('mark').forEach(mk=>{const t=document.createTextNode(mk.textContent);mk.replaceWith(t);});
+}
+function applyFilters(){
+  const term=q.value.trim().toLowerCase();
+  clr.style.display=q.value?'block':'none';
+  let anyVisible=false;
+  document.querySelectorAll('.layer').forEach(sec=>{
+    const layerOn=activeLayers.has(sec.dataset.layer);
+    let secVisible=false;
+    sec.querySelectorAll('.mod').forEach(card=>{
+      clearHighlights(card);
+      if(!layerOn){card.classList.add('hidden');return;}
+      let match=true, hitLeaf=false;
+      if(term){
+        const title=card.querySelector('.mod-title').textContent.toLowerCase();
+        const titleHit=title.includes(term);
+        card.querySelectorAll('[data-f]').forEach(li=>{
+          const txt=li.textContent;
+          if(txt.toLowerCase().includes(term)){
+            hitLeaf=true;
+            const i=txt.toLowerCase().indexOf(term);
+            li.innerHTML=esc(txt.slice(0,i))+'<mark>'+esc(txt.slice(i,i+term.length))+'</mark>'+esc(txt.slice(i+term.length));
+          }
+        });
+        // also match subsection names
+        let subHit=false;
+        card.querySelectorAll('.sub-name').forEach(sn=>{if(sn.textContent.toLowerCase().includes(term))subHit=true;});
+        match = titleHit||hitLeaf||subHit;
+      }
+      if(match){
+        card.classList.remove('hidden');
+        secVisible=true; anyVisible=true;
+        if(term && (hitLeaf)){card.classList.add('open');card.querySelector('.mod-head').setAttribute('aria-expanded','true');}
+      }else{card.classList.add('hidden');}
+    });
+    sec.classList.toggle('hidden',!secVisible);
+  });
+  let nr=document.getElementById('nr');
+  if(!anyVisible){
+    if(!nr){nr=document.createElement('div');nr.id='nr';nr.className='noresults';main.appendChild(nr);}
+    nr.innerHTML=`<b>No matches</b>Nothing found for “${esc(q.value)}”. Try a broader term.`;
+  }else if(nr){nr.remove();}
+}
+q.addEventListener('input',applyFilters);
+clr.addEventListener('click',()=>{q.value='';applyFilters();q.focus();});
+
+document.getElementById('expandAll').addEventListener('click',()=>{
+  document.querySelectorAll('.mod:not(.hidden)').forEach(c=>{c.classList.add('open');c.querySelector('.mod-head').setAttribute('aria-expanded','true');});
+});
+document.getElementById('collapseAll').addEventListener('click',()=>{
+  document.querySelectorAll('.mod').forEach(c=>{c.classList.remove('open');c.querySelector('.mod-head').setAttribute('aria-expanded','false');});
+});
+
+// theme toggle
+const root=document.documentElement, tb=document.getElementById('theme');
+tb.addEventListener('click',()=>{
+  const cur=root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  root.setAttribute('data-theme',cur==='dark'?'light':'dark');
+});
+</script>
+</body></html>

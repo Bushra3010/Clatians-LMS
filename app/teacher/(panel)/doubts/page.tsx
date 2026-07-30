@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import DoubtAnswerForm from "./DoubtAnswerForm";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI drafting can occasionally take longer than 10s
@@ -17,9 +18,7 @@ type Row = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
-  });
+  return fmtIST(iso, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function TeacherDoubtsPage() {

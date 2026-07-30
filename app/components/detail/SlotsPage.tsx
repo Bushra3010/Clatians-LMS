@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { bookSlotAction, cancelBookingAction } from "../../lib/slot-actions";
+import { fmtIST } from "../../lib/dates";
 
 export type SlotOpen = { id: string; startAt: string; durationMin: number; teacher: string };
 export type SlotBooking = { id: string; startAt: string; durationMin: number; teacher: string; topic: string };
@@ -10,9 +11,7 @@ export type SlotBooking = { id: string; startAt: string; durationMin: number; te
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
-  });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default function SlotsPage({ onBack, openSlots, myBookings }: { onBack: () => void; openSlots: SlotOpen[]; myBookings: SlotBooking[] }) {

@@ -1,4 +1,5 @@
 import { db } from "@/app/lib/db";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ const roleStyle: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso + "Z").toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function AdminAuditPage() {

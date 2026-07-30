@@ -6,6 +6,7 @@ import {
   setClassStatusAction,
   saveRecordingAction,
 } from "@/app/lib/class-actions";
+import { fmtIST, toDatetimeLocalIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -34,14 +35,7 @@ const statusBadge: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function TeacherClassesPage() {
@@ -190,7 +184,7 @@ export default async function TeacherClassesPage() {
                     </select>
                   </Field>
                   <Field label="Starts at">
-                    <input name="startAt" type="datetime-local" required defaultValue={r.start_at.slice(0, 16)} className={inputCls} />
+                    <input name="startAt" type="datetime-local" required defaultValue={toDatetimeLocalIST(r.start_at)} className={inputCls} />
                   </Field>
                   <Field label="Duration (min)">
                     <input name="duration" type="number" min={15} step={15} defaultValue={r.duration_min} className={inputCls} />

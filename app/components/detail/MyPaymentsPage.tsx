@@ -1,6 +1,6 @@
 "use client";
 
-import { parseServerDate } from "../../lib/dates";
+import { fmtIST } from "../../lib/dates";
 
 export type PaymentItem = {
   invoiceNo: string;
@@ -25,7 +25,7 @@ const statusStyle: Record<string, { bg: string; col: string }> = {
 };
 
 function fmt(iso: string) {
-  return parseServerDate(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));

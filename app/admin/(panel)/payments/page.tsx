@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { recordPaymentAction } from "../../actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ const statusBadge: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  return fmtIST(iso, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export default async function AdminPaymentsPage() {

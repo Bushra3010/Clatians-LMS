@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { createSlotAction, cancelSlotAction } from "@/app/lib/slot-actions";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +21,7 @@ const statusBadge: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
-  });
+  return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 const inputCls =
