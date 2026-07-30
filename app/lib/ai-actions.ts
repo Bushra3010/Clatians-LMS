@@ -44,9 +44,12 @@ export async function askTutorAction(threadId: string | null, userText: string):
     "SELECT role, content FROM (SELECT role, content, created_at FROM ai_messages WHERE thread_id = ? ORDER BY created_at DESC LIMIT 24) t ORDER BY created_at ASC"
   ).all(tid)) as ChatMsg[];
 
+  // Personalise for students using their own performance data.
+  const profile = user.role === "student" ? await studentTutorProfile(user.id) : null;
+
   let reply: string;
   try {
-    reply = await runTutor(history, user.role as Role);
+    reply = await runTutor(history, user.role as Role, profile);
   } catch (err) {
     console.error("AI tutor error:", err);
     reply = "Sorry — I hit a problem generating a response. Please try again in a moment.";
@@ -59,6 +62,60 @@ export async function askTutorAction(threadId: string | null, userText: string):
 /** Start a brand-new conversation (returns nothing; the client just clears state). */
 export async function newTutorThreadAction(): Promise<void> {
   await requireRole(["student", "teacher", "admin"]);
+}
+
+/**
+ * A short performance summary the tutor uses to tailor help toward a student's
+ * weak sections. Returns null when there's no data yet. Internal helper.
+ */
+async function studentTutorProfile(userId: string): Promise<string | null> {
+  const attempts = (await db.prepare(
+    "SELECT test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status='submitted'"
+  ).all(userId)) as { test_id: string; score: number; total: number; answers: string }[];
+  const practice = (await db.prepare(
+    "SELECT COALESCE(SUM(total),0) AS q, COALESCE(SUM(correct),0) AS c FROM practice_sessions WHERE user_id = ?"
+  ).get(userId)) as { q: number; c: number };
+  const practiceQ = Number(practice.q);
+  if (attempts.length === 0 && practiceQ === 0) return null;
+
+  const pcts = attempts.filter((a) => a.total > 0).map((a) => (a.score / a.total) * 100);
+  const avg = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : null;
+
+  let weak: string[] = [];
+  const testIds = [...new Set(attempts.map((a) => a.test_id))];
+  if (testIds.length) {
+    const qRows = (await db.prepare(
+      `SELECT id, subject, correct FROM questions WHERE test_id IN (${testIds.map(() => "?").join(",")})`
+    ).all(...testIds)) as { id: string; subject: string; correct: string }[];
+    const qById = new Map(qRows.map((q) => [q.id, q]));
+    const agg = new Map<string, { c: number; t: number }>();
+    for (const a of attempts) {
+      let ans: Record<string, string> = {};
+      try { ans = JSON.parse(a.answers); } catch { ans = {}; }
+      for (const [qid, ch] of Object.entries(ans)) {
+        const q = qById.get(qid);
+        if (!q) continue;
+        const s = q.subject || "General";
+        const g = agg.get(s) ?? { c: 0, t: 0 };
+        g.t += 1;
+        if (ch === q.correct) g.c += 1;
+        agg.set(s, g);
+      }
+    }
+    weak = [...agg.entries()]
+      .map(([s, v]) => ({ s, pct: Math.round((v.c / v.t) * 100) }))
+      .sort((a, b) => a.pct - b.pct)
+      .slice(0, 2)
+      .map((x) => `${x.s} (${x.pct}%)`);
+  }
+
+  const parts: string[] = [];
+  if (avg !== null) parts.push(`average mock score ~${avg}%`);
+  if (weak.length) parts.push(`weakest sections: ${weak.join(", ")}`);
+  if (practiceQ > 0) parts.push(`${practiceQ} AI-practice questions attempted`);
+  if (parts.length === 0) return null;
+
+  return `Learner context (for your reference — don't recite it verbatim): this student's recent performance — ${parts.join("; ")}. When relevant, gently steer help toward their weaker sections, but always answer what they actually asked.`;
 }
 
 export type GenerateInput = { testId: string; topic: string; subject: string; difficulty: string; count: number };

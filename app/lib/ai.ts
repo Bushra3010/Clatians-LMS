@@ -40,13 +40,16 @@ Ground rules:
 
 /**
  * Run one tutor turn. `history` is the full conversation (oldest first),
- * ending with the latest user message. Returns the assistant's reply text.
+ * ending with the latest user message. `profile`, when given, is a short
+ * learner-performance summary the tutor uses to tailor its help. Returns the
+ * assistant's reply text.
  */
-export async function runTutor(history: ChatMsg[], role: Role): Promise<string> {
+export async function runTutor(history: ChatMsg[], role: Role, profile?: string | null): Promise<string> {
+  const system = profile ? `${tutorSystem(role)}\n\n${profile}` : tutorSystem(role);
   const res = await client.models.generateContent({
     model: MODEL,
     config: {
-      systemInstruction: tutorSystem(role),
+      systemInstruction: system,
       maxOutputTokens: 4096,
       temperature: 0.6,
     },
