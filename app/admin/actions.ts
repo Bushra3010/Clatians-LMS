@@ -70,6 +70,27 @@ export async function createCourseAction(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function editCourseAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const courseId = String(formData.get("courseId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const price = Math.max(0, Math.round(Number(formData.get("price") ?? 0) || 0));
+  if (!courseId || !name) return;
+
+  const existing = await db.prepare("SELECT id FROM courses WHERE id = ?").get(courseId);
+  if (!existing) return;
+
+  await db.prepare(
+    "UPDATE courses SET name = ?, description = ?, price = ? WHERE id = ?"
+  ).run(name, description, price, courseId);
+
+  await logAudit(admin, "Edited course", `${name}${price ? ` · ₹${price}` : " · free"}`);
+  revalidatePath("/admin/courses");
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
 export async function setCourseStatusAction(formData: FormData) {
   await requireAdmin();
   const courseId = String(formData.get("courseId") ?? "");
@@ -78,6 +99,7 @@ export async function setCourseStatusAction(formData: FormData) {
 
   await db.prepare("UPDATE courses SET status = ? WHERE id = ?").run(status, courseId);
   revalidatePath("/admin/courses");
+  revalidatePath("/");
 }
 
 export async function enrollStudentAction(formData: FormData) {

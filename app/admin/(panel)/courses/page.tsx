@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import {
   createCourseAction,
+  editCourseAction,
   setCourseStatusAction,
   enrollStudentAction,
 } from "../../actions";
@@ -114,6 +115,29 @@ export default async function CoursesPage() {
                 </button>
               </form>
             </div>
+
+            {/* Edit */}
+            <details className="mt-4 border-t border-slate-100 pt-3">
+              <summary className="text-xs font-medium text-gold-700 cursor-pointer">Edit details</summary>
+              <form action={editCourseAction} className="mt-3 grid grid-cols-1 sm:grid-cols-[2fr_3fr_1fr_auto] gap-3 items-end">
+                <input type="hidden" name="courseId" value={c.id} />
+                <label className="block">
+                  <span className="block text-xs font-medium text-slate-600 mb-1">Name</span>
+                  <input name="name" required defaultValue={c.name} className={inputCls} />
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-medium text-slate-600 mb-1">Description</span>
+                  <input name="description" defaultValue={c.description} className={inputCls} placeholder="Short description" />
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-medium text-slate-600 mb-1">Price (₹, 0 = free)</span>
+                  <input name="price" type="number" min={0} step={100} defaultValue={c.price} className={inputCls} />
+                </label>
+                <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">
+                  Save
+                </button>
+              </form>
+            </details>
           </div>
         ))}
       </div>
