@@ -78,16 +78,34 @@ export type GeneratedMCQ = {
   correct: "a" | "b" | "c" | "d";
 };
 
+export type GenerateResult = { questions: GeneratedMCQ[]; error?: string };
+
+/** Turn a raw Gemini/SDK error into a short, teacher-friendly message. */
+function friendlyAiError(err: unknown): string {
+  const status = (err as { status?: number })?.status;
+  const msg = String((err as { message?: string })?.message ?? err ?? "");
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(msg)) {
+    return "Daily AI limit reached — the free Gemini tier allows 20 generations per day. Enable billing on the Google AI project, or try again tomorrow.";
+  }
+  if (status === 401 || status === 403 || /API key|permission|unauthenticated/i.test(msg)) {
+    return "The AI key was rejected. An admin needs to check GEMINI_API_KEY.";
+  }
+  if (status === 503 || /overloaded|unavailable/i.test(msg)) {
+    return "The AI service is busy right now — please try again in a moment.";
+  }
+  return "Couldn't generate questions right now — please try again in a moment.";
+}
+
 /**
- * Generate CLAT-pattern MCQs on a topic as structured JSON. Returns [] on any
- * parse/model error so callers degrade gracefully.
+ * Generate CLAT-pattern MCQs on a topic as structured JSON. Returns
+ * { questions, error? } — `error` is a friendly message when generation failed.
  */
 export async function generateQuestions(
   topic: string,
   count: number,
   subject: string,
   difficulty: string
-): Promise<GeneratedMCQ[]> {
+): Promise<GenerateResult> {
   const sub = subject.trim() || "mixed CLAT sections";
   const prompt = `Create ${count} original CLAT UG multiple-choice questions on: "${topic}".
 Section: ${sub}. Difficulty: ${difficulty}.
@@ -128,9 +146,9 @@ Rules:
     });
 
     const raw = res.text?.trim();
-    if (!raw) return [];
+    if (!raw) return { questions: [], error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
     const parsed = JSON.parse(raw) as GeneratedMCQ[];
-    return parsed
+    const questions = parsed
       .filter((q) => q && q.text && q.a && q.b && q.c && q.d && ["a", "b", "c", "d"].includes(q.correct))
       .slice(0, count)
       .map((q) => ({
@@ -142,8 +160,10 @@ Rules:
         d: q.d.trim(),
         correct: q.correct,
       }));
+    if (questions.length === 0) return { questions, error: "The AI returned no usable questions — try rephrasing the topic." };
+    return { questions };
   } catch (err) {
     console.error("generateQuestions error:", err);
-    return [];
+    return { questions: [], error: friendlyAiError(err) };
   }
 }

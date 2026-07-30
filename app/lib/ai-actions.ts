@@ -59,28 +59,34 @@ export async function newTutorThreadAction(): Promise<void> {
   await requireRole(["student", "teacher", "admin"]);
 }
 
+export type GenerateInput = { testId: string; topic: string; subject: string; difficulty: string; count: number };
+export type GenerateOutcome = { ok: boolean; added: number; error?: string };
+
 /**
- * Generate CLAT MCQs with AI and append them to a test (form action).
- * Teachers may only add to their own tests; admins to any.
+ * Generate CLAT MCQs with AI and append them to a test. Returns an outcome the
+ * UI can display (added count or a friendly error). Teachers may only add to
+ * their own tests; admins to any.
  */
-export async function generateQuestionsAction(formData: FormData): Promise<void> {
+export async function generateQuestionsAction(input: GenerateInput): Promise<GenerateOutcome> {
   const user = await requireRole(["teacher", "admin"]);
-  const testId = String(formData.get("testId") ?? "");
-  const topic = String(formData.get("topic") ?? "").trim().slice(0, 300);
-  const subject = String(formData.get("subject") ?? "").trim();
-  const difficulty = String(formData.get("difficulty") ?? "medium");
-  const count = Math.min(10, Math.max(1, Math.round(Number(formData.get("count") ?? 5) || 5)));
-  if (!testId || !topic || !aiConfigured()) return;
+  const testId = String(input.testId ?? "");
+  const topic = String(input.topic ?? "").trim().slice(0, 300);
+  const subject = String(input.subject ?? "").trim();
+  const difficulty = String(input.difficulty ?? "medium");
+  const count = Math.min(10, Math.max(1, Math.round(Number(input.count) || 5)));
+  if (!aiConfigured()) return { ok: false, added: 0, error: "AI generation is off — an admin needs to set GEMINI_API_KEY." };
+  if (!testId || !topic) return { ok: false, added: 0, error: "Please enter a topic first." };
 
   // Ownership: teachers can only extend their own tests.
   const test = (await db.prepare("SELECT id, created_by FROM tests WHERE id = ?").get(testId)) as
     | { id: string; created_by: string | null }
     | undefined;
-  if (!test) return;
-  if (user.role !== "admin" && test.created_by !== user.id) return;
+  if (!test) return { ok: false, added: 0, error: "That test no longer exists." };
+  if (user.role !== "admin" && test.created_by !== user.id) return { ok: false, added: 0, error: "You can only add to your own tests." };
 
-  const questions = await generateQuestions(topic, count, subject, difficulty);
-  if (questions.length === 0) return;
+  const { questions, error } = await generateQuestions(topic, count, subject, difficulty);
+  if (error) return { ok: false, added: 0, error };
+  if (questions.length === 0) return { ok: false, added: 0, error: "No questions were generated — try again." };
 
   const startIdx = (await db.prepare("SELECT COUNT(*) n FROM questions WHERE test_id = ?").get(testId) as { n: number }).n;
   const insert = await db.prepare(
@@ -94,4 +100,5 @@ export async function generateQuestionsAction(formData: FormData): Promise<void>
 
   revalidatePath("/teacher/tests");
   revalidatePath("/admin/tests");
+  return { ok: true, added: questions.length };
 }
