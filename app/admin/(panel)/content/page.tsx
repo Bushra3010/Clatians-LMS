@@ -55,38 +55,56 @@ export default async function ContentPage() {
           <p className="text-sm text-slate-400">No content submitted yet.</p>
         )}
 
-        {rows.map((r) => (
-          <div
-            key={r.id}
-            className="rounded-xl bg-white border border-slate-200 p-5 flex items-start justify-between gap-4"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-slate-500">{typeLabel[r.type] ?? r.type}</span>
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusBadge[r.status]}`}>
-                  {r.status}
-                </span>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-900 mt-1">{r.title}</h3>
-              <p className="text-sm text-slate-500 mt-0.5 line-clamp-2">{r.body}</p>
-              <p className="text-xs text-slate-400 mt-2">
-                by {r.author ?? "Unknown"} · {r.course ?? "No course"}
-              </p>
-            </div>
+        {rows.map((r) => {
+          const isUrl = /^https?:\/\//i.test(r.body.trim());
+          const hasBody = r.body.trim().length > 0;
+          return (
+            <div key={r.id} className="rounded-xl bg-white border border-slate-200 p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-slate-500">{typeLabel[r.type] ?? r.type}</span>
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusBadge[r.status]}`}>
+                      {r.status}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 mt-1">{r.title}</h3>
+                  {!isUrl && <p className="text-sm text-slate-500 mt-0.5 line-clamp-2">{r.body || "No description"}</p>}
+                  <p className="text-xs text-slate-400 mt-2">
+                    by {r.author ?? "Unknown"} · {r.course ?? "No course"}
+                  </p>
+                </div>
 
-            <div className="shrink-0 flex flex-col gap-2">
-              {r.status !== "approved" && (
-                <StatusButton id={r.id} status="approved" label="Approve" cls="border-green-200 text-green-700 hover:bg-green-50" />
-              )}
-              {r.status !== "rejected" && (
-                <StatusButton id={r.id} status="rejected" label="Reject" cls="border-red-200 text-red-600 hover:bg-red-50" />
-              )}
-              {r.status !== "pending" && (
-                <StatusButton id={r.id} status="pending" label="Reset" cls="border-slate-200 text-slate-500 hover:bg-slate-50" />
+                <div className="shrink-0 flex flex-col gap-2">
+                  {r.status !== "approved" && (
+                    <StatusButton id={r.id} status="approved" label="Approve" cls="border-green-200 text-green-700 hover:bg-green-50" />
+                  )}
+                  {r.status !== "rejected" && (
+                    <StatusButton id={r.id} status="rejected" label="Reject" cls="border-red-200 text-red-600 hover:bg-red-50" />
+                  )}
+                  {r.status !== "pending" && (
+                    <StatusButton id={r.id} status="pending" label="Reset" cls="border-slate-200 text-slate-500 hover:bg-slate-50" />
+                  )}
+                </div>
+              </div>
+
+              {/* Full preview — review before approving */}
+              {isUrl ? (
+                <a href={r.body.trim()} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-gold-700 hover:underline break-all">
+                  🔗 Open submitted link
+                </a>
+              ) : hasBody && (
+                <details className="mt-3 border-t border-slate-100 pt-3">
+                  <summary className="text-xs font-medium text-gold-700 cursor-pointer">Preview full content</summary>
+                  <div className="mt-2 max-h-80 overflow-y-auto rounded-lg bg-slate-50 border border-slate-100 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+                    {r.body}
+                  </div>
+                </details>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
