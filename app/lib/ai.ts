@@ -167,3 +167,65 @@ Rules:
     return { questions: [], error: friendlyAiError(err) };
   }
 }
+
+export type ExplainResult = { text: string; error?: string };
+
+/**
+ * Explain a single reviewed MCQ to a student: why the correct answer is right,
+ * why their chosen option was a trap (if wrong), and a quick takeaway.
+ */
+export async function explainAnswer(q: {
+  subject: string;
+  text: string;
+  a: string;
+  b: string;
+  c: string;
+  d: string;
+  correct: string;
+  chosen: string | null;
+}): Promise<ExplainResult> {
+  const chosenLine = q.chosen
+    ? `The student chose option ${q.chosen.toUpperCase()}${q.chosen === q.correct ? " (correct)" : " (incorrect)"}.`
+    : "The student did not attempt this question.";
+
+  const prompt = `A CLAT UG aspirant is reviewing this multiple-choice question.
+Section: ${q.subject || "CLAT"}
+Question: ${q.text}
+Options:
+A) ${q.a}
+B) ${q.b}
+C) ${q.c}
+D) ${q.d}
+Correct answer: ${q.correct.toUpperCase()}
+${chosenLine}
+
+Explain in 4–7 short sentences:
+1. Why the correct answer is right. For Legal Reasoning, apply the stated PRINCIPLE to the FACTS step by step — use only the principle given, not outside law.
+2. If the student picked a wrong option, why that option is a trap and where the reasoning slips. (Skip if they were correct or didn't attempt.)
+3. One quick takeaway for tackling questions like this.
+Plain text and simple Markdown only — no LaTeX. Be encouraging and concise.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are the CLAT AI Tutor — an expert, encouraging mentor. Explain answers clearly, using the principle-application method for Legal Reasoning. Never invent facts.",
+        maxOutputTokens: 1024,
+        temperature: 0.5,
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const text = res.text?.trim();
+    if (text) return { text };
+    const reason = res.candidates?.[0]?.finishReason;
+    if (reason === "SAFETY" || res.promptFeedback?.blockReason) {
+      return { text: "", error: "I couldn't generate an explanation for this one — try the AI Tutor for a hand." };
+    }
+    return { text: "", error: friendlyAiError("empty") };
+  } catch (err) {
+    console.error("explainAnswer error:", err);
+    return { text: "", error: friendlyAiError(err) };
+  }
+}

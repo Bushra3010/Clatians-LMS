@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, explainAnswer, aiConfigured, type ChatMsg, type Role } from "./ai";
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -101,4 +101,51 @@ export async function generateQuestionsAction(input: GenerateInput): Promise<Gen
   revalidatePath("/teacher/tests");
   revalidatePath("/admin/tests");
   return { ok: true, added: questions.length };
+}
+
+export type ExplainOutcome = { ok: boolean; text?: string; error?: string };
+
+/**
+ * Explain a reviewed MCQ to a student with AI. The question is re-read from the
+ * database by id (authoritative), so the client can't spoof the correct answer;
+ * `chosen` is the student's selected option (a/b/c/d) or null.
+ */
+export async function explainAnswerAction(input: { questionId: string; chosen: string | null }): Promise<ExplainOutcome> {
+  const user = await requireRole(["student", "teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const questionId = String(input.questionId ?? "");
+  if (!questionId) return { ok: false, error: "Missing question." };
+  const chosen = ["a", "b", "c", "d"].includes(String(input.chosen)) ? String(input.chosen) : null;
+
+  const q = (await db.prepare(
+    "SELECT subject, text, opt_a, opt_b, opt_c, opt_d, correct FROM questions WHERE id = ?"
+  ).get(questionId)) as
+    | { subject: string; text: string; opt_a: string; opt_b: string; opt_c: string; opt_d: string; correct: string }
+    | undefined;
+  if (!q) return { ok: false, error: "That question no longer exists." };
+
+  // Students may only get explanations for tests they've actually submitted —
+  // the explanation reveals the correct answer. Teachers/admins are exempt.
+  if (user.role === "student") {
+    const attempted = await db.prepare(
+      `SELECT 1 FROM test_attempts a
+       JOIN questions q ON q.test_id = a.test_id
+       WHERE q.id = ? AND a.user_id = ? AND a.status = 'submitted' LIMIT 1`
+    ).get(questionId, user.id);
+    if (!attempted) return { ok: false, error: "Explanations are available after you submit the test." };
+  }
+
+  const { text, error } = await explainAnswer({
+    subject: q.subject,
+    text: q.text,
+    a: q.opt_a,
+    b: q.opt_b,
+    c: q.opt_c,
+    d: q.opt_d,
+    correct: q.correct,
+    chosen,
+  });
+  if (error) return { ok: false, error };
+  return { ok: true, text };
 }

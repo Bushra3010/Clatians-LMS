@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { StartResult, SubmitResult, TakeQuestion, ReviewItem } from "../../lib/test-actions";
+import { explainAnswerAction } from "../../lib/ai-actions";
 
 export type TestListItem = {
   id: string;
@@ -142,10 +143,88 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
   );
 }
 
+// Tiny safe formatter for AI explanations: paragraphs, • bullets, **bold**.
+function renderExplanation(text: string) {
+  return text.split(/\n{2,}/).map((para, i) => {
+    const lines = para.split("\n");
+    const isList = lines.length > 0 && lines.every((l) => /^\s*([-*•]|\d+[.)])\s+/.test(l));
+    if (isList) {
+      return (
+        <ul key={i} style={{ margin: "5px 0", paddingLeft: 18 }}>
+          {lines.map((l, j) => (
+            <li key={j} style={{ margin: "2px 0" }}>{inlineBold(l.replace(/^\s*([-*•]|\d+[.)])\s+/, ""))}</li>
+          ))}
+        </ul>
+      );
+    }
+    return <p key={i} style={{ margin: "5px 0", whiteSpace: "pre-wrap" }}>{inlineBold(para)}</p>;
+  });
+}
+function inlineBold(s: string) {
+  return s.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : <span key={i}>{p}</span>
+  );
+}
+
+// One reviewed question, with an on-demand "Explain with AI" panel.
+function ReviewCard({ r, index }: { r: ReviewItem; index: number }) {
+  const optText = (k: string) => (r as unknown as Record<string, string>)[k];
+  const [busy, setBusy] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const explain = async () => {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await explainAnswerAction({ questionId: r.id, chosen: r.chosen });
+      if (res.ok && res.text) setExplanation(res.text);
+      else setErr(res.error ?? "Couldn't generate an explanation right now.");
+    } catch {
+      setErr("Couldn't generate an explanation right now.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ background: "white", borderRadius: 14, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#1A1A2E" }}>Q{index + 1}. {r.text}</p>
+      {(["a", "b", "c", "d"] as const).map((opt) => {
+        const isCorrect = r.correct === opt;
+        const isChosen = r.chosen === opt;
+        const bg = isCorrect ? "#DCFCE7" : isChosen ? "#FEF2F2" : "transparent";
+        const col = isCorrect ? "#15803D" : isChosen ? "#DC2626" : "#6B7280";
+        return (
+          <div key={opt} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: bg, fontSize: 12.5, color: col, fontWeight: isCorrect || isChosen ? 700 : 400 }}>
+            <span style={{ fontWeight: 800 }}>{opt.toUpperCase()}.</span>
+            <span style={{ flex: 1 }}>{optText(opt)}</span>
+            {isCorrect && <span style={{ fontSize: 11 }}>✓ correct</span>}
+            {isChosen && !isCorrect && <span style={{ fontSize: 11 }}>your answer</span>}
+          </div>
+        );
+      })}
+      {!r.chosen && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9CA3AF" }}>Not attempted</p>}
+
+      {explanation ? (
+        <div style={{ marginTop: 10, background: "#FBF7EF", border: "1px solid #EFE2CC", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#3A2A17", lineHeight: 1.55 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "#6B4A28", fontSize: 11.5 }}>✨ AI explanation</div>
+          {renderExplanation(explanation)}
+        </div>
+      ) : (
+        <button onClick={explain} disabled={busy} style={{ marginTop: 10, background: busy ? "#EDE3D3" : "#F6ECD9", color: "#6B4A28", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: busy ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {busy ? "Thinking…" : "✨ Explain with AI"}
+        </button>
+      )}
+      {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#B45309" }}>⚠️ {err}</p>}
+    </div>
+  );
+}
+
 // ── Result + review ────────────────────────────────────────
 export function TestResultPage({ title, result, onBack }: { title: string; result: Extract<SubmitResult, { ok: true }>; onBack: () => void }) {
   const pct = result.total > 0 ? Math.round((result.score / result.total) * 100) : 0;
-  const optText = (r: ReviewItem, k: string) => (r as unknown as Record<string, string>)[k];
 
   return (
     <div style={{ background: "#F7F3EA", minHeight: "100%", paddingBottom: 24 }}>
@@ -185,29 +264,9 @@ export function TestResultPage({ title, result, onBack }: { title: string; resul
 
         <h3 style={{ margin: "12px 0", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>Review answers</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {result.review.map((r, i) => {
-            const correctChosen = r.chosen === r.correct;
-            return (
-              <div key={r.id} style={{ background: "white", borderRadius: 14, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#1A1A2E" }}>Q{i + 1}. {r.text}</p>
-                {(["a", "b", "c", "d"] as const).map((opt) => {
-                  const isCorrect = r.correct === opt;
-                  const isChosen = r.chosen === opt;
-                  const bg = isCorrect ? "#DCFCE7" : isChosen ? "#FEF2F2" : "transparent";
-                  const col = isCorrect ? "#15803D" : isChosen ? "#DC2626" : "#6B7280";
-                  return (
-                    <div key={opt} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: bg, fontSize: 12.5, color: col, fontWeight: isCorrect || isChosen ? 700 : 400 }}>
-                      <span style={{ fontWeight: 800 }}>{opt.toUpperCase()}.</span>
-                      <span style={{ flex: 1 }}>{optText(r, opt)}</span>
-                      {isCorrect && <span style={{ fontSize: 11 }}>✓ correct</span>}
-                      {isChosen && !isCorrect && <span style={{ fontSize: 11 }}>your answer</span>}
-                    </div>
-                  );
-                })}
-                {!r.chosen && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9CA3AF" }}>Not attempted</p>}
-              </div>
-            );
-          })}
+          {result.review.map((r, i) => (
+            <ReviewCard key={r.id} r={r} index={i} />
+          ))}
         </div>
       </div>
     </div>
