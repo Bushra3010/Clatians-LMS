@@ -293,6 +293,14 @@ export default async function Home() {
     .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, topic: s.topic, teacher: s.teacher }));
   const slots = { open: openSlots, mine: myBookings };
 
+  // ── Payment history (student's own invoices) ──
+  const myPayments = (await db.prepare(
+    `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
+     FROM payments p LEFT JOIN courses c ON c.id = p.course_id
+     WHERE p.user_id = ? ORDER BY p.created_at DESC`
+  ).all(user.id) as { invoice_no: string; amount: number; method: string; status: string; created_at: string; course: string | null }[])
+    .map((p) => ({ invoiceNo: p.invoice_no, amount: p.amount, method: p.method, status: p.status, createdAt: p.created_at, course: p.course }));
+
   return (
     <StudentApp
       upcomingClasses={upcoming}
@@ -312,6 +320,7 @@ export default async function Home() {
       savedVocabKeys={savedVocabKeys}
       resources={resources}
       slots={slots}
+      payments={myPayments}
     />
   );
 }

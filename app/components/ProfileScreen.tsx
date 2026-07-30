@@ -2,7 +2,7 @@
 
 import type { StudentProfile } from "../StudentApp";
 
-export type ProfileMenuKey = "progress" | "courses" | "tests" | "saved" | "achievements" | "notifications" | "help" | "settings";
+export type ProfileMenuKey = "progress" | "courses" | "tests" | "saved" | "payments" | "achievements" | "notifications" | "help" | "settings";
 
 interface ProfileScreenProps {
   profile: StudentProfile;
@@ -21,6 +21,7 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
   const menuItems: { key: ProfileMenuKey; icon: string; label: string; desc: string; color: string }[] = [
     { key: "progress", icon: "📊", label: "My Progress", desc: "Completion, weak areas & scores", color: "#3D2411" },
     { key: "courses", icon: "📚", label: "My Courses", desc: `${profile.batches.length} enrolled batch${profile.batches.length === 1 ? "" : "es"}`, color: "#059669" },
+    { key: "payments", icon: "🧾", label: "Payments & Invoices", desc: "Your fee receipts & history", color: "#3D2411" },
     { key: "tests", icon: "📝", label: "My Tests", desc: "Mock tests & results", color: "#E63946" },
     { key: "saved", icon: "🔖", label: "Saved Content", desc: "Your saved notes & words", color: "#8B5CF6" },
     { key: "achievements", icon: "🏆", label: "Achievements", desc: "Badges & leaderboard", color: "#F5A623" },
