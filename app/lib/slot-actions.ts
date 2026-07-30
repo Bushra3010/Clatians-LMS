@@ -32,6 +32,7 @@ export async function createSlotAction(formData: FormData) {
   }
 
   revalidatePath("/teacher/slots");
+  revalidatePath("/admin/slots");
   revalidatePath("/");
 }
 
@@ -53,6 +54,7 @@ export async function cancelSlotAction(formData: FormData) {
   }
 
   revalidatePath("/teacher/slots");
+  revalidatePath("/admin/slots");
   revalidatePath("/");
 }
 
@@ -77,6 +79,7 @@ export async function bookSlotAction(slotId: string, topic: string): Promise<{ o
   }
 
   revalidatePath("/teacher/slots");
+  revalidatePath("/admin/slots");
   revalidatePath("/");
   return { ok: true };
 }
@@ -96,6 +99,7 @@ export async function cancelBookingAction(slotId: string): Promise<{ ok: boolean
   await notify(slot.teacher_id, "doubt", "A 1:1 booking was cancelled", `${user.name} cancelled their slot on ${fmtWhen(slot.start_at)}.`);
 
   revalidatePath("/teacher/slots");
+  revalidatePath("/admin/slots");
   revalidatePath("/");
   return { ok: true };
 }

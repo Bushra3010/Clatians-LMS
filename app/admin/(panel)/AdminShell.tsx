@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/leads", label: "Admissions", icon: "◈" },
   { href: "/admin/courses", label: "Courses & Batches", icon: "▦" },
   { href: "/admin/classes", label: "Live Classes", icon: "◉" },
+  { href: "/admin/slots", label: "1:1 Slots", icon: "◷" },
   { href: "/admin/attendance", label: "Attendance", icon: "☑" },
   { href: "/admin/progress", label: "Progress", icon: "◑" },
   { href: "/admin/leaderboard", label: "Leaderboard", icon: "★" },
