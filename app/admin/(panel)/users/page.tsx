@@ -1,5 +1,5 @@
 import { db } from "@/app/lib/db";
-import { createUserAction, setUserStatusAction } from "../../actions";
+import { createUserAction, setUserStatusAction, editUserAction, resetUserPasswordAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +106,26 @@ export default async function UsersPage() {
                       {u.status === "active" ? "Suspend" : "Reactivate"}
                     </button>
                   </form>
+                  <details className="mt-1 text-left">
+                    <summary className="text-xs font-medium text-gold-700 cursor-pointer text-right">Manage</summary>
+                    <div className="mt-2 flex flex-col sm:flex-row flex-wrap gap-3 justify-end">
+                      <form action={editUserAction} className="flex items-end gap-2">
+                        <input type="hidden" name="userId" value={u.id} />
+                        <input name="name" required defaultValue={u.name} className={inputCls + " !w-40"} aria-label="Name" />
+                        <select name="role" defaultValue={u.role} className={inputCls + " !w-28"} aria-label="Role">
+                          <option value="student">Student</option>
+                          <option value="teacher">Teacher</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <button className="text-xs rounded-md px-3 py-1.5 border border-gold-100 text-gold-700 hover:bg-gold-50">Save</button>
+                      </form>
+                      <form action={resetUserPasswordAction} className="flex items-end gap-2">
+                        <input type="hidden" name="userId" value={u.id} />
+                        <input name="password" required minLength={6} placeholder="New password" className={inputCls + " !w-40"} aria-label="New password" />
+                        <button className="text-xs rounded-md px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50">Reset password</button>
+                      </form>
+                    </div>
+                  </details>
                 </td>
               </tr>
             ))}

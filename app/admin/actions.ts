@@ -71,6 +71,39 @@ export async function convertLeadAction(formData: FormData) {
   revalidatePath("/");
 }
 
+/** Edit a user's name and role. An admin can't demote their own account. */
+export async function editUserAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "") as Role;
+  if (!userId || !name || !["student", "teacher", "admin"].includes(role)) return;
+  if (userId === admin.id && role !== "admin") return; // don't lock yourself out
+
+  await db.prepare("UPDATE users SET name = ?, role = ? WHERE id = ?").run(name, role, userId);
+  await logAudit(admin, "Edited user", `${name} → ${role}`);
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+}
+
+/** Reset a user's password. Signs them out everywhere (unless it's yourself). */
+export async function resetUserPasswordAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const password = String(formData.get("password") ?? "");
+  if (!userId || password.length < 6) return;
+
+  const target = await db.prepare("SELECT name FROM users WHERE id = ?").get(userId) as { name: string } | undefined;
+  if (!target) return;
+
+  await db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashPassword(password), userId);
+  if (userId !== admin.id) {
+    await db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId); // force re-login with the new password
+  }
+  await logAudit(admin, "Reset password", target.name);
+  revalidatePath("/admin/users");
+}
+
 export async function setUserStatusAction(formData: FormData) {
   const admin = await requireAdmin();
   const userId = String(formData.get("userId") ?? "");
