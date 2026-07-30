@@ -19,7 +19,7 @@ export async function askTutorAction(threadId: string | null, userText: string):
   if (!aiConfigured()) {
     return {
       threadId: threadId ?? "",
-      reply: "⚠️ The AI Tutor isn't switched on yet. An admin needs to add an ANTHROPIC_API_KEY in the app's environment settings.",
+      reply: "⚠️ The AI Tutor isn't switched on yet. An admin needs to add a GEMINI_API_KEY in the app's environment settings.",
     };
   }
 

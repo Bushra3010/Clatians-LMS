@@ -114,7 +114,7 @@ export default function AiTutorChat({
 
       {!configured && (
         <div style={{ background: "#FEF3C7", color: "#92400E", padding: "10px 16px", fontSize: 13, borderBottom: "1px solid #FDE68A" }}>
-          ⚠️ The AI Tutor isn't switched on. An admin needs to set <code>ANTHROPIC_API_KEY</code> in the app environment.
+          ⚠️ The AI Tutor isn't switched on. An admin needs to set <code>GEMINI_API_KEY</code> in the app environment.
         </div>
       )}
 

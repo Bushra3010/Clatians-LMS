@@ -1,21 +1,22 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
 // ────────────────────────────────────────────────────────────
-// Claude client — reads ANTHROPIC_API_KEY from the environment.
-// Set it in .env.local (dev) and in Vercel project env vars (prod).
+// Gemini client — reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the
+// environment. Set it in .env.local (dev) and in Vercel project env vars (prod).
 // ────────────────────────────────────────────────────────────
 declare global {
   // eslint-disable-next-line no-var
-  var __anthropic: Anthropic | undefined;
+  var __genai: GoogleGenAI | undefined;
 }
-const MODEL = "claude-opus-5";
-const client: Anthropic = global.__anthropic ?? new Anthropic();
-global.__anthropic = client;
+const MODEL = "gemini-flash-latest";
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const client: GoogleGenAI = global.__genai ?? new GoogleGenAI({ apiKey });
+global.__genai = client;
 
 /** True only when an API key is configured, so the UI can degrade gracefully. */
 export function aiConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
 }
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -40,24 +41,29 @@ Ground rules:
 /**
  * Run one tutor turn. `history` is the full conversation (oldest first),
  * ending with the latest user message. Returns the assistant's reply text.
- * Uses adaptive thinking at low effort for a responsive, still-strong tutor.
  */
 export async function runTutor(history: ChatMsg[], role: Role): Promise<string> {
-  const res = await client.messages.create({
+  const res = await client.models.generateContent({
     model: MODEL,
-    max_tokens: 8192,
-    output_config: { effort: "low" },
-    system: tutorSystem(role),
-    messages: history.map((m) => ({ role: m.role, content: m.content })),
+    config: {
+      systemInstruction: tutorSystem(role),
+      maxOutputTokens: 4096,
+      temperature: 0.6,
+    },
+    // Gemini uses "model" for the assistant role.
+    contents: history.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
   });
 
-  if (res.stop_reason === "refusal") {
+  const text = res.text?.trim();
+  if (text) return text;
+
+  // Empty text usually means a safety block or an empty candidate.
+  const reason = res.candidates?.[0]?.finishReason;
+  if (reason === "SAFETY" || res.promptFeedback?.blockReason) {
     return "I can't help with that particular request, but I'm happy to help with anything CLAT-related — legal reasoning, current affairs, English, logical reasoning, or quant.";
   }
-  const text = res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
-  return text || "…";
+  return "…";
 }
