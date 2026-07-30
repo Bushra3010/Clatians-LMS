@@ -2,9 +2,35 @@
 
 import { useState } from "react";
 import type { StudentProfile } from "../../StudentApp";
+import { changePasswordAction } from "../../lib/session-actions";
 
 export default function SettingsPage({ onBack, profile, onLogout }: { onBack: () => void; profile: StudentProfile; onLogout: () => void }) {
   const [prefs, setPrefs] = useState({ push: true, email: true, sms: false });
+  const [pw, setPw] = useState({ current: "", next: "" });
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwBusy || !pw.current || pw.next.length < 6) return;
+    setPwBusy(true);
+    setPwMsg(null);
+    try {
+      const res = await changePasswordAction(pw.current, pw.next);
+      if (res.ok) {
+        setPwMsg({ kind: "ok", text: "Password updated." });
+        setPw({ current: "", next: "" });
+      } else {
+        setPwMsg({ kind: "err", text: res.error ?? "Couldn't update password." });
+      }
+    } catch {
+      setPwMsg({ kind: "err", text: "Couldn't update password." });
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
+  const pwInput: React.CSSProperties = { width: "100%", border: "1.5px solid #E1D3BC", borderRadius: 10, padding: "10px 12px", fontSize: 14, color: "#231911", outline: "none", boxSizing: "border-box" };
 
   const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
     <button onClick={onClick} style={{ width: 44, height: 26, borderRadius: 20, border: "none", cursor: "pointer", background: on ? "#3D2411" : "#D1D5DB", position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
@@ -42,6 +68,18 @@ export default function SettingsPage({ onBack, profile, onLogout }: { onBack: ()
             </div>
           </div>
         </div>
+
+        {/* Change password */}
+        <h3 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>Security</h3>
+        <form onSubmit={changePassword} style={{ background: "white", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", padding: "16px", marginBottom: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "#1A1A2E" }}>Change password</p>
+          <input type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw((p) => ({ ...p, current: e.target.value }))} placeholder="Current password" style={pwInput} />
+          <input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))} placeholder="New password (min 6 characters)" style={pwInput} />
+          {pwMsg && <p style={{ margin: 0, fontSize: 12, color: pwMsg.kind === "ok" ? "#15803D" : "#B45309" }}>{pwMsg.kind === "ok" ? "✅ " : "⚠️ "}{pwMsg.text}</p>}
+          <button type="submit" disabled={pwBusy || !pw.current || pw.next.length < 6} style={{ alignSelf: "flex-start", background: "#3D2411", color: "white", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, cursor: pwBusy || !pw.current || pw.next.length < 6 ? "default" : "pointer", opacity: pwBusy || !pw.current || pw.next.length < 6 ? 0.6 : 1 }}>
+            {pwBusy ? "Updating…" : "Update password"}
+          </button>
+        </form>
 
         {/* Notifications */}
         <h3 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>Notifications</h3>
