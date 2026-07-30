@@ -10,6 +10,7 @@ interface HomeScreenProps {
   onKnowMoreClick?: (item: string) => void;
   liveClasses?: LiveClassItem[];
   onJoinClass?: (id: string) => void;
+  nextBooking?: { teacher: string; startAt: string } | null;
   onSeeAllClasses?: () => void;
   onOpenTests?: () => void;
   onOpenStories?: () => void;
@@ -74,7 +75,10 @@ const knowMore = [
 ];
 
 
-export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, liveClasses = [], onJoinClass, onSeeAllClasses, onOpenTests, onOpenStories, stories = [] }: HomeScreenProps) {
+const fmtBooking = (iso: string) =>
+  new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
+
+export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, liveClasses = [], onJoinClass, onSeeAllClasses, onOpenTests, onOpenStories, stories = [], nextBooking = null }: HomeScreenProps) {
   return (
     <div style={{ background: "#F7F3EA", paddingBottom: 20 }}>
 
@@ -474,8 +478,17 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
               boxShadow: "0 4px 12px rgba(61,36,17,0.25)",
             }}>◷</div>
             <div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#92400E" }}>Book a 1:1 Slot</p>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#B45309" }}>Personal doubt &amp; mentorship time with faculty</p>
+              {nextBooking ? (
+                <>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#92400E" }}>Your next 1:1 · {nextBooking.teacher}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#B45309" }}>{fmtBooking(nextBooking.startAt)}</p>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#92400E" }}>Book a 1:1 Slot</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#B45309" }}>Personal doubt &amp; mentorship time with faculty</p>
+                </>
+              )}
             </div>
           </div>
           <span style={{
@@ -484,7 +497,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
             borderRadius: 12, padding: "11px 16px",
             fontSize: 12, fontWeight: 700,
             whiteSpace: "nowrap",
-          }}>Book →</span>
+          }}>{nextBooking ? "View →" : "Book →"}</span>
         </button>
       </div>
 

@@ -325,6 +325,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onToolClick={handleToolClick}
               onKnowMoreClick={handleKnowMoreClick}
               liveClasses={upcomingClasses}
+              nextBooking={slots.mine[0] ? { teacher: slots.mine[0].teacher, startAt: slots.mine[0].startAt } : null}
               onJoinClass={handleJoinClass}
               onSeeAllClasses={() => openDetail("live-classes")}
               onOpenTests={() => openDetail("tests")}
