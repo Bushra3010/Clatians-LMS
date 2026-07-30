@@ -409,6 +409,47 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
         </div>
       </div>
 
+      {/* ── AI Practice Banner ── */}
+      <div style={{ padding: "14px 14px 0" }}>
+        <button onClick={() => onToolClick?.("ai-practice")} style={{
+          width: "100%",
+          background: "linear-gradient(135deg,#3D2411,#5C3A00)",
+          borderRadius: 20,
+          padding: "16px",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          boxShadow: "0 6px 20px rgba(61,36,17,0.28)",
+          cursor: "pointer",
+          textAlign: "left",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: "linear-gradient(135deg,#F5A623,#E8930A)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22,
+              boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
+            }}>✨</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#F7EFE2" }}>AI Practice</p>
+                <span style={{ background: "rgba(245,166,35,0.2)", color: "#F5C97A", fontSize: 9.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(245,166,35,0.35)" }}>NEW</span>
+              </div>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#D9C6A8" }}>Instant quiz on any topic · with explanations</p>
+            </div>
+          </div>
+          <span style={{
+            background: "rgba(255,255,255,0.12)",
+            color: "#F7EFE2", border: "1px solid rgba(255,255,255,0.18)",
+            borderRadius: 12, padding: "11px 16px",
+            fontSize: 12, fontWeight: 700,
+            whiteSpace: "nowrap",
+          }}>Start →</span>
+        </button>
+      </div>
+
       {/* ── Success Stories ── */}
       <div style={{ padding: "22px 14px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>

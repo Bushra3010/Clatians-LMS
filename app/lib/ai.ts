@@ -312,6 +312,93 @@ Draft a reply a CLAT faculty member could send, in a warm, direct teacher's voic
   }
 }
 
+export type PracticeMCQ = {
+  subject: string;
+  text: string;
+  a: string;
+  b: string;
+  c: string;
+  d: string;
+  correct: "a" | "b" | "c" | "d";
+  explanation: string;
+};
+export type PracticeResult = { questions: PracticeMCQ[]; error?: string };
+
+/**
+ * Generate CLAT MCQs for a student's on-demand self-practice — each with a
+ * short explanation so the app can show instant feedback. Returns { questions,
+ * error? }.
+ */
+export async function generatePractice(
+  topic: string,
+  count: number,
+  subject: string,
+  difficulty: string
+): Promise<PracticeResult> {
+  const sub = subject.trim() || "mixed CLAT sections";
+  const prompt = `Create ${count} original CLAT UG multiple-choice questions on: "${topic}".
+Section: ${sub}. Difficulty: ${difficulty}.
+Rules:
+- Match real CLAT UG exam style. For Legal Reasoning, embed a clear PRINCIPLE and FACTS in the question text; the answer must follow from applying the principle to the facts.
+- Exactly four options and exactly one correct answer per question. Avoid "All/None of the above".
+- For each question include a short "explanation" (1–3 sentences) of why the correct option is right.
+- Keep each question self-contained and unambiguous.`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are a senior CLAT question setter. You produce accurate, exam-realistic MCQs with a single defensible correct answer and a clear short explanation.",
+        maxOutputTokens: 8192,
+        temperature: 0.8,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              subject: { type: Type.STRING },
+              text: { type: Type.STRING },
+              a: { type: Type.STRING },
+              b: { type: Type.STRING },
+              c: { type: Type.STRING },
+              d: { type: Type.STRING },
+              correct: { type: Type.STRING, enum: ["a", "b", "c", "d"] },
+              explanation: { type: Type.STRING },
+            },
+            required: ["subject", "text", "a", "b", "c", "d", "correct", "explanation"],
+            propertyOrdering: ["subject", "text", "a", "b", "c", "d", "correct", "explanation"],
+          },
+        },
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const raw = res.text?.trim();
+    if (!raw) return { questions: [], error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
+    const parsed = JSON.parse(raw) as PracticeMCQ[];
+    const questions = parsed
+      .filter((q) => q && q.text && q.a && q.b && q.c && q.d && ["a", "b", "c", "d"].includes(q.correct))
+      .slice(0, count)
+      .map((q) => ({
+        subject: (q.subject || sub).slice(0, 80),
+        text: q.text.trim(),
+        a: q.a.trim(),
+        b: q.b.trim(),
+        c: q.c.trim(),
+        d: q.d.trim(),
+        correct: q.correct,
+        explanation: (q.explanation || "").trim(),
+      }));
+    if (questions.length === 0) return { questions, error: "The AI returned no usable questions — try rephrasing the topic." };
+    return { questions };
+  } catch (err) {
+    console.error("generatePractice error:", err);
+    return { questions: [], error: friendlyAiError(err) };
+  }
+}
+
 export type DigestResult = { title: string; body: string; error?: string };
 
 /**

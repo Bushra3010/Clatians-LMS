@@ -11,6 +11,7 @@ import DoubtsScreen from "./components/DoubtsScreen";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
+import AiPracticePage from "./components/detail/AiPracticePage";
 import TopperStoriesPage from "./components/detail/TopperStoriesPage";
 import WhatsNewPage from "./components/detail/WhatsNewPage";
 import TipsTricksPage from "./components/detail/TipsTricksPage";
@@ -62,7 +63,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "help" | "settings" | null;
+type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "help" | "settings" | null;
 
 const TOPBAR_H = 90;
 const BOTTOMNAV_H = 70;
@@ -109,6 +110,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
       "videos": "videos",
       "notes": "notes",
       "practice": "practice",
+      "ai-practice": "ai-practice",
       "current-affairs": "current-affairs",
     };
     if (map[tool]) openDetail(map[tool]);
@@ -242,6 +244,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "videos"          && <ContentListPage onBack={closeDetail} type="video" items={content.video} onToggleDone={handleToggleDone} />}
           {detailPage === "notes"           && <ContentListPage onBack={closeDetail} type="notes" items={content.notes} onToggleDone={handleToggleDone} />}
           {detailPage === "practice"        && <ContentListPage onBack={closeDetail} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
+          {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
           {detailPage === "current-affairs" && <ContentListPage onBack={closeDetail} type="current-affairs" items={content["current-affairs"]} onToggleDone={handleToggleDone} />}
           {detailPage === "toppers"         && <TopperStoriesPage onBack={closeDetail} stories={resources.stories} />}
           {detailPage === "whats-new"       && <WhatsNewPage onBack={closeDetail} updates={resources.updates} />}

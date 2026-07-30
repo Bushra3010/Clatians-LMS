@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, generatePractice, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ } from "./ai";
+
+export type { PracticeMCQ };
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -237,4 +239,30 @@ export async function generateCurrentAffairsAction(input: string): Promise<Diges
   const { title, body, error } = await generateCurrentAffairs(topic);
   if (error) return { ok: false, error };
   return { ok: true, title, body };
+}
+
+export type PracticeOutcome = { ok: boolean; questions?: PracticeMCQ[]; error?: string };
+
+/**
+ * Generate an on-demand practice quiz (with explanations) for a student.
+ * Any signed-in learner may use it; count is clamped to 3–10.
+ */
+export async function generatePracticeAction(input: {
+  topic: string;
+  subject: string;
+  difficulty: string;
+  count: number;
+}): Promise<PracticeOutcome> {
+  await requireRole(["student", "teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const topic = String(input.topic ?? "").trim().slice(0, 300);
+  const subject = String(input.subject ?? "").trim();
+  const difficulty = String(input.difficulty ?? "medium");
+  const count = Math.min(10, Math.max(3, Math.round(Number(input.count) || 5)));
+  if (!topic) return { ok: false, error: "Enter a topic to practise first." };
+
+  const { questions, error } = await generatePractice(topic, count, subject, difficulty);
+  if (error) return { ok: false, error };
+  return { ok: true, questions };
 }
