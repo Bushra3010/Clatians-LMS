@@ -17,7 +17,8 @@ export type StudentProgress = {
 const barColor = (p: number) => (p < 40 ? "#DC2626" : p < 70 ? "#D97706" : "#059669");
 
 // AI study coach — turns the student's test data into a personalised plan.
-function AiStudyPlan() {
+// Always shown; when there's no test data yet it explains how to unlock it.
+function AiStudyPlan({ hasData }: { hasData: boolean }) {
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -48,7 +49,11 @@ function AiStudyPlan() {
           A personalised plan based on your mock-test performance.
         </p>
 
-        {plan ? (
+        {!hasData ? (
+          <div style={{ marginTop: 12, background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 14px", fontSize: 12.5, lineHeight: 1.5, color: "rgba(255,255,255,0.85)" }}>
+            📝 Take at least one mock test to unlock your personalised study plan. Once you&apos;ve submitted a test, come back here and I&apos;ll analyse your weak areas.
+          </div>
+        ) : plan ? (
           <div style={{ marginTop: 12, background: "#FBF7EF", color: "#2E2013", borderRadius: 12, padding: "12px 14px", fontSize: 12.5, lineHeight: 1.55 }}>
             <AiText text={plan} />
             <button onClick={run} disabled={busy} style={{ marginTop: 8, background: "none", border: "none", color: "#8A5A08", fontSize: 11.5, fontWeight: 800, cursor: busy ? "default" : "pointer", padding: 0 }}>
@@ -152,8 +157,8 @@ export default function ProgressPage({ onBack, progress }: { onBack: () => void;
         )}
       </div>
 
-      {/* AI study coach — only once there is test data to analyse */}
-      {progress.subjects.length > 0 && <AiStudyPlan />}
+      {/* AI study coach — always visible; unlocks once there is test data */}
+      <AiStudyPlan hasData={progress.subjects.length > 0} />
     </div>
   );
 }
