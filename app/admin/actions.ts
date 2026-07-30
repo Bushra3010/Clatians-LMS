@@ -115,6 +115,38 @@ export async function enrollStudentAction(formData: FormData) {
   revalidatePath("/");
 }
 
+/**
+ * Record a manual / offline fee payment (cash, cheque, bank transfer, UPI).
+ * Creates a paid invoice and enrolls the student in the batch if not already.
+ */
+export async function recordPaymentAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const courseId = String(formData.get("courseId") ?? "") || null;
+  const amount = Math.max(0, Math.round(Number(formData.get("amount") ?? 0) || 0));
+  const method = String(formData.get("method") ?? "cash").trim() || "cash";
+  if (!userId) return;
+
+  const invoiceNo = "CLT-" + Date.now().toString().slice(-8);
+  await db.prepare(
+    `INSERT INTO payments (id, user_id, course_id, amount, status, method, invoice_no)
+     VALUES (?, ?, ?, ?, 'paid', ?, ?)`
+  ).run(newId(), userId, courseId, amount, method, invoiceNo);
+
+  // A recorded fee usually means the student should have batch access.
+  if (courseId) {
+    await db.prepare(
+      "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+    ).run(userId, courseId);
+  }
+
+  await notify(userId, "payment", "Payment recorded", `Invoice ${invoiceNo} · ₹${amount.toLocaleString("en-IN")} (${method}) recorded by the office.`);
+  await logAudit(admin, "Recorded payment", `${invoiceNo} · ₹${amount} · ${method}`);
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
 export async function unenrollStudentAction(formData: FormData) {
   const admin = await requireAdmin();
   const userId = String(formData.get("userId") ?? "");

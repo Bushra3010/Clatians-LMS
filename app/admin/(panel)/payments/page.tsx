@@ -1,4 +1,5 @@
 import { db } from "@/app/lib/db";
+import { recordPaymentAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,11 @@ type Row = {
   student: string | null;
   course: string | null;
 };
+type Student = { id: string; name: string };
+type Course = { id: string; name: string };
+
+const inputCls =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
@@ -37,8 +43,29 @@ export default async function AdminPaymentsPage() {
     )
     .all() as Row[];
 
-  const revenue = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
-  const paidCount = rows.filter((r) => r.status === "paid").length;
+  const students = await db
+    .prepare("SELECT id, name FROM users WHERE role='student' AND status='active' ORDER BY name")
+    .all() as Student[];
+  const courses = await db
+    .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
+    .all() as Course[];
+
+  const paid = rows.filter((r) => r.status === "paid");
+  const revenue = paid.reduce((s, r) => s + r.amount, 0);
+  const paidCount = paid.length;
+
+  const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM (UTC)
+  const monthRevenue = paid
+    .filter((r) => r.created_at.slice(0, 7) === monthKey)
+    .reduce((s, r) => s + r.amount, 0);
+
+  // Revenue by batch (paid only).
+  const byCourse = new Map<string, number>();
+  for (const r of paid) {
+    const key = r.course ?? "No batch / other";
+    byCourse.set(key, (byCourse.get(key) ?? 0) + r.amount);
+  }
+  const courseRevenue = [...byCourse.entries()].sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -47,10 +74,14 @@ export default async function AdminPaymentsPage() {
         <p className="text-sm text-slate-500">{rows.length} transactions · invoices from batch enrollments</p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="rounded-xl bg-white border border-slate-200 p-5">
           <div className="inline-block rounded-md px-2 py-0.5 text-xs font-medium text-gold-700 bg-gold-50">Total revenue</div>
           <div className="mt-3 text-3xl font-semibold text-slate-900 tabular-nums">{inr(revenue)}</div>
+        </div>
+        <div className="rounded-xl bg-white border border-slate-200 p-5">
+          <div className="inline-block rounded-md px-2 py-0.5 text-xs font-medium text-emerald-700 bg-emerald-50">This month</div>
+          <div className="mt-3 text-3xl font-semibold text-slate-900 tabular-nums">{inr(monthRevenue)}</div>
         </div>
         <div className="rounded-xl bg-white border border-slate-200 p-5">
           <div className="inline-block rounded-md px-2 py-0.5 text-xs font-medium text-green-700 bg-green-50">Paid invoices</div>
@@ -61,6 +92,66 @@ export default async function AdminPaymentsPage() {
           <div className="mt-3 text-3xl font-semibold text-slate-900 tabular-nums">{inr(paidCount ? Math.round(revenue / paidCount) : 0)}</div>
         </div>
       </div>
+
+      {/* Record an offline payment */}
+      <section className="rounded-xl bg-white border border-slate-200 p-6 mb-6">
+        <h2 className="text-sm font-semibold text-slate-900 mb-4">Record a payment (cash / cheque / bank / UPI)</h2>
+        <form action={recordPaymentAction} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_2fr_1fr_1fr_auto] gap-3 items-end">
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Student</span>
+            <select name="userId" required className={inputCls} defaultValue="">
+              <option value="" disabled>Select student…</option>
+              {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Batch (also enrolls)</span>
+            <select name="courseId" className={inputCls} defaultValue="">
+              <option value="">— No specific batch —</option>
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Amount (₹)</span>
+            <input name="amount" type="number" min={0} step={100} defaultValue={0} className={inputCls} />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Method</span>
+            <select name="method" className={inputCls} defaultValue="cash">
+              <option value="cash">Cash</option>
+              <option value="cheque">Cheque</option>
+              <option value="bank">Bank transfer</option>
+              <option value="upi">UPI</option>
+            </select>
+          </label>
+          <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">
+            Record
+          </button>
+        </form>
+      </section>
+
+      {/* Revenue by batch */}
+      {courseRevenue.length > 0 && (
+        <section className="rounded-xl bg-white border border-slate-200 p-6 mb-6">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">Revenue by batch</h2>
+          <div className="space-y-2.5">
+            {courseRevenue.map(([name, amt]) => {
+              const pct = revenue > 0 ? Math.round((amt / revenue) * 100) : 0;
+              return (
+                <div key={name}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-slate-700">{name}</span>
+                    <span className="font-semibold text-slate-900 tabular-nums">{inr(amt)} <span className="text-xs text-slate-400 font-normal">· {pct}%</span></span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full rounded-full bg-gold-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-xl bg-white border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
