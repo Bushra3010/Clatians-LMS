@@ -4,6 +4,7 @@ import {
   editCourseAction,
   setCourseStatusAction,
   enrollStudentAction,
+  unenrollStudentAction,
 } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,15 @@ export default async function CoursesPage() {
   const students = await db
     .prepare("SELECT id, name FROM users WHERE role='student' AND status='active' ORDER BY name")
     .all() as Student[];
+
+  const enrolledRows = await db
+    .prepare(
+      `SELECT e.course_id, u.id AS user_id, u.name
+       FROM enrollments e JOIN users u ON u.id = e.user_id
+       ORDER BY u.name`
+    )
+    .all() as { course_id: string; user_id: string; name: string }[];
+  const enrolledByCourse = (courseId: string) => enrolledRows.filter((r) => r.course_id === courseId);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -138,6 +148,29 @@ export default async function CoursesPage() {
                 </button>
               </form>
             </details>
+
+            {/* Enrolled students */}
+            {enrolledByCourse(c.id).length > 0 && (
+              <details className="mt-2 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">
+                  Enrolled students ({enrolledByCourse(c.id).length})
+                </summary>
+                <ul className="mt-3 space-y-1.5">
+                  {enrolledByCourse(c.id).map((s) => (
+                    <li key={s.user_id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-slate-700">{s.name}</span>
+                      <form action={unenrollStudentAction}>
+                        <input type="hidden" name="courseId" value={c.id} />
+                        <input type="hidden" name="userId" value={s.user_id} />
+                        <button className="text-xs rounded-md px-2.5 py-1 border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition">
+                          Remove
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
         ))}
       </div>

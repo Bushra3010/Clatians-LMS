@@ -112,6 +112,19 @@ export async function enrollStudentAction(formData: FormData) {
     "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(userId, courseId);
   revalidatePath("/admin/courses");
+  revalidatePath("/");
+}
+
+export async function unenrollStudentAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const courseId = String(formData.get("courseId") ?? "");
+  if (!userId || !courseId) return;
+
+  await db.prepare("DELETE FROM enrollments WHERE user_id = ? AND course_id = ?").run(userId, courseId);
+  await logAudit(admin, "Removed enrollment", `student ${userId} from course ${courseId}`);
+  revalidatePath("/admin/courses");
+  revalidatePath("/");
 }
 
 // ────────────────────────────────────────────────────────────
