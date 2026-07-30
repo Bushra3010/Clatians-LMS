@@ -104,13 +104,18 @@ export default async function Home() {
     `SELECT c.id, c.name, c.description, c.price,
             (EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id))::int AS enrolled,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS content_count,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'video') AS videos,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'notes') AS notes,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'practice') AS practice,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'current-affairs') AS current_affairs,
             (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id = c.id) AS class_count
      FROM courses c WHERE c.status = 'active'
      ORDER BY enrolled DESC, c.price ASC`
-  ).all(user.id) as { id: string; name: string; description: string; price: number; enrolled: number; content_count: number; class_count: number }[])
+  ).all(user.id) as { id: string; name: string; description: string; price: number; enrolled: number; content_count: number; videos: number; notes: number; practice: number; current_affairs: number; class_count: number }[])
     .map((r) => ({
       id: r.id, name: r.name, description: r.description, price: r.price,
       enrolled: r.enrolled === 1, contentCount: r.content_count, classCount: r.class_count,
+      breakdown: { videos: r.videos, notes: r.notes, practice: r.practice, currentAffairs: r.current_affairs },
     }));
 
   // ── Test series (published, available to the student's batches) ──

@@ -10,6 +10,7 @@ export type CatalogItem = {
   enrolled: boolean;
   contentCount: number;
   classCount: number;
+  breakdown: { videos: number; notes: number; practice: number; currentAffairs: number };
 };
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
@@ -30,6 +31,7 @@ interface CoursesScreenProps {
 
 type View =
   | { name: "list" }
+  | { name: "detail"; course: CatalogItem }
   | { name: "checkout"; course: CatalogItem }
   | { name: "success"; course: CatalogItem; invoiceNo: string; amount: number };
 
@@ -84,6 +86,74 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
           padding: "15px 28px", fontSize: 15, fontWeight: 800, cursor: "pointer",
           boxShadow: "0 6px 16px rgba(61,36,17,0.35)",
         }}>Go to My Batches</button>
+      </div>
+    );
+  }
+
+  // ── DETAIL ──
+  if (view.name === "detail") {
+    const c = view.course;
+    const included = [
+      { icon: "🎥", label: "Video lectures", n: c.breakdown.videos },
+      { icon: "📄", label: "Study notes", n: c.breakdown.notes },
+      { icon: "📝", label: "Practice sets", n: c.breakdown.practice },
+      { icon: "🗞", label: "Current affairs", n: c.breakdown.currentAffairs },
+      { icon: "🎓", label: "Live classes", n: c.classCount },
+    ].filter((x) => x.n > 0);
+    return (
+      <div style={{ background: "#F7F3EA", minHeight: "100vh", paddingBottom: 28 }}>
+        <button onClick={() => setView({ name: "list" })} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700, padding: "14px 16px 4px" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B1700" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          Course details
+        </button>
+
+        <div style={{ padding: "0 16px" }}>
+          <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", right: -24, top: -24, width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+            <div style={{ width: 54, height: 54, borderRadius: 15, background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>⚖️</div>
+            <h2 style={{ margin: "12px 0 0", fontSize: 20, fontWeight: 900 }}>{c.name}</h2>
+            {c.enrolled && <span style={{ display: "inline-block", marginTop: 8, background: "#059669", color: "white", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 20 }}>✓ ENROLLED</span>}
+          </div>
+
+          {c.description && (
+            <div style={{ background: "white", borderRadius: 16, padding: "16px", marginTop: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
+              <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 800, color: "#1A1A2E" }}>About this batch</p>
+              <p style={{ margin: 0, fontSize: 13, color: "#4B5563", lineHeight: 1.6 }}>{c.description}</p>
+            </div>
+          )}
+
+          <div style={{ background: "white", borderRadius: 16, padding: "16px", marginTop: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
+            <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: "#1A1A2E" }}>What&apos;s included</p>
+            {included.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12.5, color: "#9CA3AF" }}>Content for this batch is being added.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {included.map((x) => (
+                  <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>{x.icon}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: "#374151" }}>{x.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "#3D2411" }}>{x.n}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sticky enroll bar */}
+        <div style={{ position: "sticky", bottom: 0, marginTop: 16, background: "white", borderTop: "1px solid #ECE0CE", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 10.5, color: "#9CA3AF" }}>{c.enrolled ? "You have access" : "One-time payment"}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: c.price === 0 ? "#059669" : "#1A1A2E" }}>{c.price === 0 ? "FREE" : inr(c.price)}</p>
+          </div>
+          {c.enrolled ? (
+            <span style={{ background: "#DCFCE7", color: "#15803D", fontSize: 14, fontWeight: 800, padding: "13px 26px", borderRadius: 14 }}>✓ Enrolled</span>
+          ) : (
+            <button onClick={() => { setError(""); setMethod("upi"); setView({ name: "checkout", course: c }); }} style={{ background: gradient, color: "white", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 6px 16px rgba(61,36,17,0.35)" }}>
+              {c.price === 0 ? "Enroll Free" : "Buy Now →"}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -194,7 +264,7 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
         )}
 
         {shown.map((c) => (
-          <div key={c.id} style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
+          <div key={c.id} onClick={() => setView({ name: "detail", course: c })} style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", cursor: "pointer" }}>
             <div style={{ height: 84, background: gradient, display: "flex", alignItems: "center", padding: "0 18px", gap: 14, position: "relative" }}>
               <div style={{ position: "absolute", right: -20, top: -20, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
               <div style={{ width: 52, height: 52, borderRadius: 15, background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>⚖️</div>
@@ -219,7 +289,7 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
                 {c.enrolled ? (
                   <span style={{ background: "#DCFCE7", color: "#15803D", fontSize: 13, fontWeight: 700, padding: "11px 20px", borderRadius: 14 }}>Enrolled</span>
                 ) : (
-                  <button onClick={() => { setError(""); setMethod("upi"); setView({ name: "checkout", course: c }); }} style={{
+                  <button onClick={(e) => { e.stopPropagation(); setError(""); setMethod("upi"); setView({ name: "checkout", course: c }); }} style={{
                     background: gradient, color: "white", border: "none", borderRadius: 14,
                     padding: "11px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer",
                     boxShadow: "0 4px 12px rgba(61,36,17,0.3)",
