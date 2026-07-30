@@ -1,8 +1,11 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { createContentAction, deleteContentAction } from "../../actions";
+import CurrentAffairsGenerator from "./CurrentAffairsGenerator";
+import { aiConfigured } from "@/app/lib/ai";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // AI digest generation can take longer than 10s
 
 type Row = {
   id: string;
@@ -43,6 +46,8 @@ export default async function TeacherContentPage() {
   const courses = await db
     .prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name")
     .all() as Course[];
+
+  const aiOn = aiConfigured();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -111,6 +116,9 @@ export default async function TeacherContentPage() {
           </button>
         </form>
       </section>
+
+      {/* AI current-affairs digest generator */}
+      {aiOn && <CurrentAffairsGenerator courses={courses} />}
 
       {/* My submissions */}
       <div className="space-y-3">

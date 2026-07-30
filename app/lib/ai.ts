@@ -311,3 +311,54 @@ Draft a reply a CLAT faculty member could send, in a warm, direct teacher's voic
     return { text: "", error: friendlyAiError(err) };
   }
 }
+
+export type DigestResult = { title: string; body: string; error?: string };
+
+/**
+ * Draft a CLAT-focused current-affairs digest from a teacher-supplied theme or
+ * raw notes. The model structures/expands what it's given — it is instructed
+ * NOT to fabricate specific dates/case names, since it can't know live news.
+ */
+export async function generateCurrentAffairs(input: string): Promise<DigestResult> {
+  const prompt = `A CLAT faculty member wants a Current Affairs digest for students, based on this topic or set of notes:
+"${input}"
+
+Produce a CLAT UG–focused current-affairs digest.
+- If the input is raw notes or headlines, organise and expand them. If it's a theme, cover the key points you are confident about.
+- For each item: a short "## " heading, then 2–4 sentences on what happened, then a bold "CLAT angle:" line — the legal / constitutional / polity significance and the kind of question it could appear in.
+- Cover 3–6 items grouped under the theme.
+- IMPORTANT: Do NOT invent specific dates, case names, statistics, or figures you are unsure of. If unsure, stay general and append "(verify)".
+Return JSON with a concise "title" and the digest as Markdown in "body".`;
+
+  try {
+    const res = await client.models.generateContent({
+      model: MODEL,
+      config: {
+        systemInstruction:
+          "You are a CLAT current-affairs editor. You write accurate, exam-focused digests and never fabricate specific facts, dates, or case names.",
+        maxOutputTokens: 4096,
+        temperature: 0.6,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            body: { type: Type.STRING },
+          },
+          required: ["title", "body"],
+          propertyOrdering: ["title", "body"],
+        },
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const raw = res.text?.trim();
+    if (!raw) return { title: "", body: "", error: friendlyAiError(res.candidates?.[0]?.finishReason ?? "empty") };
+    const parsed = JSON.parse(raw) as { title?: string; body?: string };
+    if (!parsed.body?.trim()) return { title: "", body: "", error: "The AI returned an empty digest — try rephrasing the topic." };
+    return { title: (parsed.title || "Current Affairs Digest").slice(0, 160), body: parsed.body.trim() };
+  } catch (err) {
+    console.error("generateCurrentAffairs error:", err);
+    return { title: "", body: "", error: friendlyAiError(err) };
+  }
+}

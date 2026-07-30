@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, explainAnswer, coachStudy, draftDoubtAnswer, aiConfigured, type ChatMsg, type Role } from "./ai";
+import { runTutor, generateQuestions, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role } from "./ai";
 
 export type AskResult = { threadId: string; reply: string };
 
@@ -218,4 +218,23 @@ export async function draftDoubtAnswerAction(doubtId: string): Promise<ExplainOu
   const { text, error } = await draftDoubtAnswer({ subject: doubt.subject, body: doubt.body });
   if (error) return { ok: false, error };
   return { ok: true, text };
+}
+
+export type DigestOutcome = { ok: boolean; title?: string; body?: string; error?: string };
+
+/**
+ * Draft a CLAT current-affairs digest (title + body) from a teacher-supplied
+ * theme or notes. Teacher/admin only; the teacher edits and submits the result
+ * through the normal content-approval flow.
+ */
+export async function generateCurrentAffairsAction(input: string): Promise<DigestOutcome> {
+  await requireRole(["teacher", "admin"]);
+  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
+
+  const topic = String(input ?? "").trim().slice(0, 2000);
+  if (!topic) return { ok: false, error: "Enter a topic or paste some notes first." };
+
+  const { title, body, error } = await generateCurrentAffairs(topic);
+  if (error) return { ok: false, error };
+  return { ok: true, title, body };
 }
