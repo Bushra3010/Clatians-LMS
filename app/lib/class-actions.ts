@@ -119,9 +119,19 @@ export async function setClassStatusAction(formData: FormData) {
   if (!STATUSES.includes(status)) return;
   if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
 
-  const cls = await db.prepare("SELECT title FROM live_classes WHERE id = ?").get(classId) as { title: string } | undefined;
+  const cls = await db.prepare("SELECT title, course_id FROM live_classes WHERE id = ?").get(classId) as { title: string; course_id: string | null } | undefined;
   await db.prepare("UPDATE live_classes SET status = ? WHERE id = ?").run(status, classId);
   await logAudit(user, `Class ${status}`, cls?.title ?? classId);
+
+  // Keep the batch in the loop when a class is cancelled or goes live.
+  if (cls?.course_id && (status === "cancelled" || status === "live")) {
+    const students = (await db.prepare("SELECT user_id FROM enrollments WHERE course_id = ?").all(cls.course_id) as { user_id: string }[]).map((r) => r.user_id);
+    if (status === "cancelled") {
+      await notifyMany(students, "class", "Class cancelled", `“${cls.title}” has been cancelled.`);
+    } else {
+      await notifyMany(students, "class", "Class is live now", `“${cls.title}” has started — tap Live Classes to join.`);
+    }
+  }
 
   revalidatePath("/teacher/classes");
   revalidatePath("/admin/classes");

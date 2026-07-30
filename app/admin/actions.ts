@@ -178,9 +178,13 @@ export async function enrollStudentAction(formData: FormData) {
   const courseId = String(formData.get("courseId") ?? "");
   if (!userId || !courseId) return;
 
-  await db.prepare(
+  const res = await db.prepare(
     "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(userId, courseId);
+  if (res.changes > 0) {
+    const c = await db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId) as { name: string } | undefined;
+    await notify(userId, "info", "Enrolled in a batch", `You now have access to ${c?.name ?? "a new batch"} — its classes, notes and tests are unlocked.`);
+  }
   revalidatePath("/admin/courses");
   revalidatePath("/");
 }
