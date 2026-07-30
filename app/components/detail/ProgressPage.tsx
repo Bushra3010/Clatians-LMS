@@ -12,6 +12,7 @@ export type StudentProgress = {
   testAvgPct: number | null;
   testBestPct: number | null;
   subjects: { subject: string; correct: number; total: number; pct: number }[];
+  practice: { sessions: number; questions: number; accuracy: number | null };
 };
 
 const barColor = (p: number) => (p < 40 ? "#DC2626" : p < 70 ? "#D97706" : "#059669");
@@ -132,6 +133,25 @@ export default function ProgressPage({ onBack, progress }: { onBack: () => void;
           ))}
         </div>
       </div>
+
+      {/* AI practice activity */}
+      {progress.practice.sessions > 0 && (
+        <div style={{ padding: "18px 14px 0" }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>✨ AI Practice</h3>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { v: String(progress.practice.sessions), l: "Sessions" },
+              { v: String(progress.practice.questions), l: "Questions" },
+              { v: progress.practice.accuracy === null ? "—" : `${progress.practice.accuracy}%`, l: "Accuracy" },
+            ].map((s, i) => (
+              <div key={i} style={{ flex: 1, background: "white", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#9CA3AF" }}>{s.l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Weak areas */}
       <div style={{ padding: "18px 14px 0" }}>

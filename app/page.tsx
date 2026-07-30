@@ -179,6 +179,19 @@ export default async function Home() {
     .map(([subject, v]) => ({ subject, correct: v.correct, total: v.total, pct: Math.round((v.correct / v.total) * 100) }))
     .sort((a, b) => a.pct - b.pct);
 
+  // AI practice activity (persisted sessions).
+  const practiceAgg = (await db.prepare(
+    `SELECT COUNT(*) AS sessions, COALESCE(SUM(total),0) AS questions, COALESCE(SUM(correct),0) AS correct
+     FROM practice_sessions WHERE user_id = ?`
+  ).get(user.id)) as { sessions: number; questions: number; correct: number };
+  const practice = {
+    sessions: Number(practiceAgg.sessions),
+    questions: Number(practiceAgg.questions),
+    accuracy: Number(practiceAgg.questions) > 0
+      ? Math.round((Number(practiceAgg.correct) / Number(practiceAgg.questions)) * 100)
+      : null,
+  };
+
   const progress: StudentProgress = {
     contentTotal: contentRows.length,
     contentDone,
@@ -187,6 +200,7 @@ export default async function Home() {
     testAvgPct,
     testBestPct,
     subjects,
+    practice,
   };
 
   // ── Engagement (leaderboard, streak, badges) ──
