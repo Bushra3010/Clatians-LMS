@@ -290,7 +290,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             <NotificationsPage onBack={closeDetail} items={notifications} />
           )}
           {detailPage === "progress" && (
-            <ProgressPage onBack={closeDetail} progress={progress} />
+            <ProgressPage onBack={closeDetail} progress={progress} student={{ name: profile.name, batch: profile.batches[0] ?? "", attendancePct: profile.attendancePct }} />
           )}
           {detailPage === "leaderboard" && (
             <LeaderboardPage onBack={closeDetail} engagement={engagement} />

@@ -72,15 +72,87 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
   );
 }
 
-export default function ProgressPage({ onBack, progress }: { onBack: () => void; progress: StudentProgress }) {
+const escHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+
+export default function ProgressPage({ onBack, progress, student }: { onBack: () => void; progress: StudentProgress; student: { name: string; batch: string; attendancePct: number | null } }) {
   const overall = progress.contentTotal > 0 ? Math.round((progress.contentDone / progress.contentTotal) * 100) : 0;
+
+  const downloadReport = () => {
+    const w = window.open("", "_blank", "width=820,height=1000");
+    if (!w) { alert("Please allow pop-ups to download your report."); return; }
+    const generated = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    const stat = (label: string, value: string) => `<div class="stat"><div class="sv">${escHtml(value)}</div><div class="sl">${escHtml(label)}</div></div>`;
+    const subjectRows = progress.subjects.length
+      ? progress.subjects.map((s) => `<tr><td>${escHtml(s.subject)}</td><td>${s.correct}/${s.total}</td><td class="pct" style="color:${s.pct < 40 ? "#DC2626" : s.pct < 70 ? "#D97706" : "#059669"}">${s.pct}%</td></tr>`).join("")
+      : `<tr><td colspan="3" style="color:#9A8A73">Attempt a test to see subject-wise accuracy.</td></tr>`;
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Progress Report — ${escHtml(student.name)}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#231911;margin:0;padding:40px;background:#fff}
+  .wrap{max-width:680px;margin:0 auto}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #3D2411;padding-bottom:16px}
+  .brand{font-size:22px;font-weight:800;color:#3D2411}
+  .brand span{font-size:12px;font-weight:500;color:#8A6A45;display:block;margin-top:2px}
+  .doc{text-align:right;font-size:12px;color:#6B5842}
+  .doc b{display:block;font-size:15px;color:#231911}
+  .who{margin:20px 0}
+  .who .n{font-size:18px;font-weight:800}
+  .who .b{font-size:12.5px;color:#6B5842;margin-top:2px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#9A8A73;margin:26px 0 10px}
+  .stats{display:flex;gap:12px}
+  .stat{flex:1;border:1px solid #E7DCC9;border-radius:10px;padding:12px;text-align:center}
+  .sv{font-size:22px;font-weight:800;color:#3D2411}
+  .sl{font-size:11px;color:#8A6A45;margin-top:3px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;color:#9A8A73;border-bottom:1px solid #E7DCC9;padding:8px 6px}
+  td{padding:10px 6px;border-bottom:1px solid #F0EADD;font-size:13.5px}
+  td.pct{text-align:right;font-weight:800} th:last-child{text-align:right}
+  .foot{margin-top:34px;font-size:11px;color:#9A8A73;border-top:1px solid #E7DCC9;padding-top:14px}
+  @media print{body{padding:0}}
+</style></head><body><div class="wrap">
+  <div class="head">
+    <div><div class="brand">⚖️ CLATians LMS<span>CLAT Coaching &amp; Test Prep</span></div></div>
+    <div class="doc">PROGRESS REPORT<b>${escHtml(generated)}</b></div>
+  </div>
+  <div class="who">
+    <div class="n">${escHtml(student.name)}</div>
+    <div class="b">${escHtml(student.batch || "No batch")}</div>
+  </div>
+
+  <h2>Overview</h2>
+  <div class="stats">
+    ${stat("Course completion", overall + "%")}
+    ${stat("Attendance", student.attendancePct == null ? "—" : student.attendancePct + "%")}
+    ${stat("Tests taken", String(progress.testsTaken))}
+  </div>
+
+  <h2>Test performance</h2>
+  <div class="stats">
+    ${stat("Average", progress.testAvgPct == null ? "—" : progress.testAvgPct + "%")}
+    ${stat("Best", progress.testBestPct == null ? "—" : progress.testBestPct + "%")}
+    ${stat("AI practice", progress.practice.accuracy == null ? "—" : progress.practice.accuracy + "%")}
+  </div>
+
+  <h2>Subject accuracy</h2>
+  <table><thead><tr><th>Section</th><th>Correct</th><th>Accuracy</th></tr></thead><tbody>${subjectRows}</tbody></table>
+
+  <div class="foot">Computer-generated progress report from CLATians LMS. Figures reflect activity up to ${escHtml(generated)}.</div>
+</div><script>window.onload=function(){setTimeout(function(){window.print()},150)}<\/script></body></html>`;
+    w.document.write(html);
+    w.document.close();
+  };
 
   return (
     <div style={{ background: "#F7F3EA", minHeight: "100%", paddingBottom: 24 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B1700" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        My Progress
-      </button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B1700" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          My Progress
+        </button>
+        <button onClick={downloadReport} style={{ background: "#F6ECD9", color: "#6B4A28", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+          📄 Download report
+        </button>
+      </div>
 
       {/* Overall completion */}
       <div style={{ padding: "14px 14px 0" }}>
