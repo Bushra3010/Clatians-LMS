@@ -126,7 +126,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
             <p style={{ margin: "2px 0", fontSize: 36, fontWeight: 900, color: "#F5A623", lineHeight: 1 }}>
               90<span style={{ fontSize: 19 }}>%</span>
             </p>
-            <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>Scholarship</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>Scholarship</p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
               <CalendarIcon />
               <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>17 May 2026</span>
@@ -178,7 +178,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
                 <tool.Icon />
               </div>
               <span style={{
-                fontSize: 10.5, fontWeight: 700, color: "#374151",
+                fontSize: 11, fontWeight: 700, color: "#374151",
                 textAlign: "center", lineHeight: 1.3, whiteSpace: "pre-line",
               }}>
                 {tool.label}
@@ -248,9 +248,9 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
                       </div>
                       <p style={{ margin: 0, fontSize: 12, color: "#374151", fontWeight: 500 }}>{cls.title}</p>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 10.5, color: "#9CA3AF" }}>{cls.teacher ?? "Faculty"}</span>
+                        <span style={{ fontSize: 11, color: "#9CA3AF" }}>{cls.teacher ?? "Faculty"}</span>
                         <span style={{ fontSize: 10, color: "#9CA3AF" }}>•</span>
-                        <span style={{ fontSize: 10.5, color: "#9CA3AF" }}>⏰ {fmtTime(cls.startAt)}</span>
+                        <span style={{ fontSize: 11, color: "#9CA3AF" }}>⏰ {fmtTime(cls.startAt)}</span>
                       </div>
                     </div>
                     <button
@@ -333,7 +333,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
                   <span style={{
                     background: "rgba(255,255,255,0.12)",
                     color: "rgba(255,255,255,0.85)",
-                    fontSize: 10.5, fontWeight: 700,
+                    fontSize: 11, fontWeight: 700,
                     padding: "3px 9px", borderRadius: 20,
                   }}>{t.rank}</span>
                   <span style={{ fontSize: 14, fontWeight: 900, color: "#F5A623" }}>{t.score}</span>
@@ -362,7 +362,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
                 boxShadow: `0 2px 10px ${item.color}15`,
               }}>{item.emoji}</div>
               <span style={{
-                fontSize: 10.5, fontWeight: 700, color: "#374151",
+                fontSize: 11, fontWeight: 700, color: "#374151",
                 textAlign: "center", whiteSpace: "pre-line", lineHeight: 1.35,
               }}>{item.label}</span>
             </button>
@@ -581,7 +581,7 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
               </div>
               <div style={{ padding: "10px 12px 14px" }}>
                 <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800, color: "#1A1A2E" }}>{s.name}</p>
-                <p style={{ margin: "2px 0 6px", fontSize: 10.5, color: "#6B7280" }}>{s.college}</p>
+                <p style={{ margin: "2px 0 6px", fontSize: 11, color: "#6B7280" }}>{s.college}</p>
                 <span style={{
                   background: "#F6ECD9", color: "#3D2411",
                   fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 20,

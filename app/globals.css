@@ -24,13 +24,26 @@ html, body {
   margin: 0;
   padding: 0;
   background: #E9E4DA;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #231911;
+  /* Prices, ranks & stats line up cleanly in columns. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* iOS Safari inflates text on rotation without this. */
+  -webkit-text-size-adjust: 100%;
 }
 
 button, input, textarea, select { font-family: inherit; }
+
+/* iOS zooms the whole page into any focused input under 16px — a very
+ * un-app-like jolt. Force 16px on touch-size screens (beats inline styles). */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
 
 /* Subtle press feedback for tappable cards/buttons (native-app feel). */
 .press { transition: transform 0.12s ease, opacity 0.12s ease; }
