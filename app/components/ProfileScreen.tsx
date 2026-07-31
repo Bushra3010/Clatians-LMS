@@ -2,7 +2,7 @@
 
 import type { StudentProfile } from "../StudentApp";
 
-export type ProfileMenuKey = "progress" | "planner" | "notes" | "ai-tutor" | "refer" | "courses" | "tests" | "saved" | "payments" | "certificates" | "achievements" | "notifications" | "help" | "settings";
+export type ProfileMenuKey = "progress" | "planner" | "notes" | "ai-tutor" | "refer" | "courses" | "browse-courses" | "tests" | "saved" | "payments" | "certificates" | "achievements" | "notifications" | "help" | "settings";
 
 interface ProfileScreenProps {
   profile: StudentProfile;
@@ -82,7 +82,7 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
                 </span>
               ))}
               <span style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
-                FREE PLAN
+                {profile.batches.length > 0 ? "⭐ ENROLLED" : "FREE PLAN"}
               </span>
             </div>
           </div>
@@ -103,26 +103,28 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
         </div>
       </div>
 
-      {/* Upgrade Banner */}
-      <div style={{ padding: "16px 16px 0" }}>
-        <div style={{
-          background: "linear-gradient(135deg, #F5A623, #E8930A)",
-          borderRadius: 16, padding: "16px",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "white" }}>Upgrade to Pro 🚀</p>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>
-              Unlock 500+ hours of content
-            </p>
+      {/* Upgrade banner — only while the student has no batch yet */}
+      {profile.batches.length === 0 && (
+        <div style={{ padding: "16px 16px 0" }}>
+          <div style={{
+            background: "linear-gradient(135deg, #F5A623, #E8930A)",
+            borderRadius: 16, padding: "16px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "white" }}>Join a batch 🚀</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>
+                Unlock live classes, notes &amp; the full course
+              </p>
+            </div>
+            <button onClick={() => onMenu("browse-courses")} className="press" style={{
+              background: "white", color: "#E8930A",
+              border: "none", borderRadius: 10, padding: "8px 16px",
+              fontSize: 12, fontWeight: 800, cursor: "pointer",
+            }}>Browse</button>
           </div>
-          <button style={{
-            background: "white", color: "#E8930A",
-            border: "none", borderRadius: 10, padding: "8px 16px",
-            fontSize: 12, fontWeight: 800, cursor: "pointer",
-          }}>Upgrade</button>
         </div>
-      </div>
+      )}
 
       {/* Menu Items */}
       <div style={{ padding: "16px 16px 0" }}>

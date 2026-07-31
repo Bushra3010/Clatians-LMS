@@ -220,6 +220,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
       case "ai-tutor": router.push("/tutor"); break;
       case "refer": openDetail("refer"); break;
       case "courses": setDetailPage(null); setCoursesTab("mine"); setActiveScreen("courses"); break;
+      case "browse-courses": setDetailPage(null); setCoursesTab("all"); setActiveScreen("courses"); break;
       case "tests": openDetail("tests"); break;
       case "saved": openDetail("saved"); break;
       case "payments": openDetail("payments"); break;
