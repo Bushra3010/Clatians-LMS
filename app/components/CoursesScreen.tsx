@@ -28,9 +28,12 @@ const contentIcon: Record<string, string> = {
   video: "🎥", notes: "📄", practice: "📝", "current-affairs": "🗞",
 };
 
+type ContentKey = "videos" | "notes" | "practice" | "current-affairs";
+
 interface CoursesScreenProps {
   catalog: CatalogItem[];
   onEnroll: (courseId: string, method: string) => Promise<{ ok: boolean; invoiceNo?: string; amount?: number; error?: string }>;
+  onOpenContent?: (key: ContentKey) => void;
   initialTab?: "all" | "mine";
 }
 
@@ -40,7 +43,7 @@ type View =
   | { name: "checkout"; course: CatalogItem }
   | { name: "success"; course: CatalogItem; invoiceNo: string; amount: number };
 
-export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }: CoursesScreenProps) {
+export default function CoursesScreen({ catalog, onEnroll, onOpenContent, initialTab = "all" }: CoursesScreenProps) {
   const [tab, setTab] = useState<"all" | "mine">(initialTab);
   const [view, setView] = useState<View>({ name: "list" });
   const [method, setMethod] = useState("upi");
@@ -98,13 +101,13 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
   // ── DETAIL ──
   if (view.name === "detail") {
     const c = view.course;
-    const included = [
-      { icon: "🎥", label: "Video lectures", n: c.breakdown.videos },
-      { icon: "📄", label: "Study notes", n: c.breakdown.notes },
-      { icon: "📝", label: "Practice sets", n: c.breakdown.practice },
-      { icon: "🗞", label: "Current affairs", n: c.breakdown.currentAffairs },
+    const included = ([
+      { icon: "🎥", label: "Video lectures", n: c.breakdown.videos, key: "videos" },
+      { icon: "📄", label: "Study notes", n: c.breakdown.notes, key: "notes" },
+      { icon: "📝", label: "Practice sets", n: c.breakdown.practice, key: "practice" },
+      { icon: "🗞", label: "Current affairs", n: c.breakdown.currentAffairs, key: "current-affairs" },
       { icon: "🎓", label: "Live classes", n: c.classCount },
-    ].filter((x) => x.n > 0);
+    ] as { icon: string; label: string; n: number; key?: ContentKey }[]).filter((x) => x.n > 0);
     return (
       <div style={{ background: "#F7F3EA", minHeight: "100vh", paddingBottom: 28 }}>
         <button onClick={() => setView({ name: "list" })} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700, padding: "14px 16px 4px" }}>
@@ -128,18 +131,44 @@ export default function CoursesScreen({ catalog, onEnroll, initialTab = "all" }:
           )}
 
           <div style={{ background: "white", borderRadius: 16, padding: "16px", marginTop: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-            <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: "#1A1A2E" }}>What&apos;s included</p>
+            <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: "#1A1A2E" }}>
+              {c.enrolled ? "Start learning" : "What's included"}
+            </p>
             {included.length === 0 ? (
               <p style={{ margin: 0, fontSize: 12.5, color: "#9CA3AF" }}>Content for this batch is being added.</p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                {included.map((x) => (
-                  <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 18 }}>{x.icon}</span>
-                    <span style={{ flex: 1, fontSize: 13, color: "#374151" }}>{x.label}</span>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "#3D2411" }}>{x.n}</span>
-                  </div>
-                ))}
+                {included.map((x) => {
+                  // When enrolled, each content section is a shortcut into its list.
+                  const clickable = c.enrolled && !!x.key && !!onOpenContent;
+                  const content = (
+                    <>
+                      <span style={{ fontSize: 18 }}>{x.icon}</span>
+                      <span style={{ flex: 1, fontSize: 13, color: "#374151", textAlign: "left" }}>{x.label}</span>
+                      {clickable ? (
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#3D2411" }}>{x.n} · Open →</span>
+                      ) : (
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "#3D2411" }}>{x.n}</span>
+                      )}
+                    </>
+                  );
+                  return clickable ? (
+                    <button
+                      key={x.label}
+                      onClick={() => onOpenContent!(x.key!)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#FBF7EF", border: "1px solid #ECE0CE", borderRadius: 12, padding: "11px 12px", cursor: "pointer" }}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 0" }}>
+                      {content}
+                    </div>
+                  );
+                })}
+                {c.enrolled && c.classCount > 0 && (
+                  <p style={{ margin: "4px 2px 0", fontSize: 11, color: "#9CA3AF" }}>Live classes appear on your Home &amp; in the Classes list.</p>
+                )}
               </div>
             )}
           </div>

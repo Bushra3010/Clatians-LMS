@@ -364,7 +364,12 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             />
           )}
           {!detailPage && activeScreen === "courses" && (
-            <CoursesScreen catalog={catalog} onEnroll={handleEnroll} initialTab={coursesTab} />
+            <CoursesScreen
+              catalog={catalog}
+              onEnroll={handleEnroll}
+              onOpenContent={(key) => openDetail(key)}
+              initialTab={coursesTab}
+            />
           )}
           {!detailPage && activeScreen === "study"   && (
             <StudyScreen
