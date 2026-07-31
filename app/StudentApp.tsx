@@ -14,6 +14,8 @@ import ContentListPage, { type ContentItem } from "./components/detail/ContentLi
 import AiPracticePage from "./components/detail/AiPracticePage";
 import SlotsPage, { type SlotOpen, type SlotBooking } from "./components/detail/SlotsPage";
 import MyPaymentsPage, { type PaymentItem } from "./components/detail/MyPaymentsPage";
+import StudyPlannerPage from "./components/detail/StudyPlannerPage";
+import type { StudyTask } from "./lib/study-actions";
 import TopperStoriesPage from "./components/detail/TopperStoriesPage";
 import WhatsNewPage from "./components/detail/WhatsNewPage";
 import TipsTricksPage from "./components/detail/TipsTricksPage";
@@ -65,7 +67,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "payments" | "help" | "settings" | null;
+type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "payments" | "help" | "settings" | null;
 
 const TOPBAR_H = 90;
 const BOTTOMNAV_H = 70;
@@ -89,9 +91,10 @@ interface StudentAppProps {
   resources: StudentResources;
   slots: { open: SlotOpen[]; mine: SlotBooking[] };
   payments: PaymentItem[];
+  tasks: StudyTask[];
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
@@ -197,6 +200,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     setShowProfile(false);
     switch (key) {
       case "progress": openDetail("progress"); break;
+      case "planner": openDetail("planner"); break;
       case "courses": setDetailPage(null); setCoursesTab("mine"); setActiveScreen("courses"); break;
       case "tests": openDetail("tests"); break;
       case "saved": openDetail("saved"); break;
@@ -253,6 +257,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
           {detailPage === "slots"           && <SlotsPage onBack={closeDetail} openSlots={slots.open} myBookings={slots.mine} />}
           {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} studentName={profile.name} studentEmail={profile.email} />}
+          {detailPage === "planner"         && <StudyPlannerPage onBack={closeDetail} initialTasks={tasks} />}
           {detailPage === "current-affairs" && <ContentListPage onBack={closeDetail} type="current-affairs" items={content["current-affairs"]} onToggleDone={handleToggleDone} />}
           {detailPage === "toppers"         && <TopperStoriesPage onBack={closeDetail} stories={resources.stories} />}
           {detailPage === "whats-new"       && <WhatsNewPage onBack={closeDetail} updates={resources.updates} />}

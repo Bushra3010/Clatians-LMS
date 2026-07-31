@@ -307,6 +307,12 @@ export default async function Home() {
     .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, topic: s.topic, teacher: s.teacher }));
   const slots = { open: openSlots, mine: myBookings };
 
+  // ── Study planner tasks ──
+  const tasks = (await db.prepare(
+    "SELECT id, title, done, due_date FROM study_tasks WHERE user_id = ? ORDER BY done ASC, (due_date = '') ASC, due_date ASC, created_at DESC"
+  ).all(user.id) as { id: string; title: string; done: number; due_date: string }[])
+    .map((t) => ({ id: t.id, title: t.title, done: t.done === 1, dueDate: t.due_date }));
+
   // ── Payment history (student's own invoices) ──
   const myPayments = (await db.prepare(
     `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
@@ -335,6 +341,7 @@ export default async function Home() {
       resources={resources}
       slots={slots}
       payments={myPayments}
+      tasks={tasks}
     />
   );
 }
