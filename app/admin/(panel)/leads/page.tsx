@@ -3,6 +3,7 @@ import { updateLeadStatusAction, saveLeadNoteAction, deleteLeadAction } from "@/
 import { convertLeadAction } from "../../actions";
 import { fmtIST } from "@/app/lib/dates";
 import ExportCsvButton from "@/app/components/ExportCsvButton";
+import ListFilter from "@/app/components/ListFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -63,10 +64,15 @@ export default async function AdminLeadsPage() {
       </div>
 
       {/* Leads */}
-      <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-sm font-semibold text-slate-900">Enquiries</h2>
+        <ListFilter selector="#leads-list > [data-lead]" placeholder="Search name, phone, email…" emptyId="leads-empty" />
+      </div>
+      <div id="leads-list" className="space-y-3">
         {leads.length === 0 && <p className="text-sm text-slate-400">No enquiries yet.</p>}
+        <p id="leads-empty" className="text-sm text-slate-400" style={{ display: "none" }}>No enquiries match your search.</p>
         {leads.map((l) => (
-          <div key={l.id} className="rounded-xl bg-white border border-slate-200 p-5">
+          <div key={l.id} data-lead className="rounded-xl bg-white border border-slate-200 p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">

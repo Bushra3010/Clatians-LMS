@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { createUserAction, setUserStatusAction, editUserAction, resetUserPasswordAction } from "../../actions";
+import ListFilter from "@/app/components/ListFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +58,13 @@ export default async function UsersPage() {
       </section>
 
       {/* Users table */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-sm font-semibold text-slate-900">All users</h2>
+        <ListFilter selector="#users-table tbody tr:not(#users-empty)" placeholder="Search name, email, role…" emptyId="users-empty" />
+      </div>
       <section className="rounded-xl bg-white border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+        <table id="users-table" className="w-full text-sm min-w-[560px]">
           <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
             <tr>
               <th className="text-left font-medium px-5 py-3">Name</th>
@@ -70,6 +75,7 @@ export default async function UsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
+            <tr id="users-empty" style={{ display: "none" }}><td colSpan={5} className="px-5 py-6 text-center text-slate-400">No users match your search.</td></tr>
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50">
                 <td className="px-5 py-3 text-slate-800">{u.name}</td>
