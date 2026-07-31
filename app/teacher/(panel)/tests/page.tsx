@@ -3,6 +3,8 @@ import { requireRole } from "@/app/lib/auth";
 import { createTestAction, addQuestionAction, setTestStatusAction, deleteTestAction, editTestAction, deleteQuestionAction } from "@/app/lib/test-actions";
 import { aiConfigured } from "@/app/lib/ai";
 import AiGenerateForm from "@/app/components/AiGenerateForm";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI question generation can take up to ~40s
@@ -62,6 +64,25 @@ export default async function TeacherTestsPage() {
     const agg = testAgg.get(testId);
     return agg && agg.attempts > 0 ? Math.round(agg.pctSum / agg.attempts) : null;
   };
+
+  // Per-student results (for CSV export), best score first.
+  const results = await db.prepare(
+    `SELECT a.test_id, u.name AS student, a.score, a.total, a.submitted_at
+     FROM test_attempts a JOIN users u ON u.id = a.user_id
+     WHERE a.status='submitted' AND a.test_id IN (SELECT id FROM tests WHERE created_by=?)
+     ORDER BY a.score DESC, a.submitted_at ASC`
+  ).all(user.id) as { test_id: string; student: string; score: number; total: number; submitted_at: string | null }[];
+  const resultRowsFor = (testId: string) =>
+    results
+      .filter((r) => r.test_id === testId)
+      .map((r, i) => [
+        i + 1,
+        r.student,
+        r.score,
+        r.total,
+        r.total > 0 ? `${Math.round((r.score / r.total) * 100)}%` : "—",
+        r.submitted_at ? fmtIST(r.submitted_at, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) : "",
+      ]);
   // Batch accuracy per section within a test (weakest first).
   const subjectBreakdownFor = (testId: string) => {
     const map = new Map<string, { correct: number; answered: number }>();
@@ -167,6 +188,15 @@ export default async function TeacherTestsPage() {
                 <summary className="text-xs font-medium text-gold-700 cursor-pointer">
                   📊 Analytics · {t.attempts} attempt{t.attempts === 1 ? "" : "s"}{avgPctFor(t.id) !== null ? ` · avg ${avgPctFor(t.id)}%` : ""}
                 </summary>
+
+                <div className="mt-3 flex justify-end">
+                  <ExportCsvButton
+                    filename={`results-${t.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}`}
+                    headers={["Rank", "Student", "Score", "Total", "Percent", "Submitted"]}
+                    rows={resultRowsFor(t.id)}
+                    label="⬇ Export results"
+                  />
+                </div>
 
                 {/* By section — batch accuracy per subject */}
                 {(() => {
