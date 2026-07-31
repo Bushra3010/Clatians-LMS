@@ -5,6 +5,7 @@ import {
   setCourseStatusAction,
   enrollStudentAction,
   unenrollStudentAction,
+  bulkEnrollAction,
 } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +126,31 @@ export default async function CoursesPage() {
                 </button>
               </form>
             </div>
+
+            {/* Bulk enroll — everyone not already in this batch */}
+            {students.filter((s) => !enrolledByCourse(c.id).some((e) => e.user_id === s.id)).length > 0 && (
+              <details className="mt-4 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">
+                  Bulk enroll ({students.filter((s) => !enrolledByCourse(c.id).some((e) => e.user_id === s.id)).length} available)
+                </summary>
+                <form action={bulkEnrollAction} className="mt-3">
+                  <input type="hidden" name="courseId" value={c.id} />
+                  <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+                    {students
+                      .filter((s) => !enrolledByCourse(c.id).some((e) => e.user_id === s.id))
+                      .map((s) => (
+                        <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" name="userIds" value={s.id} className="accent-gold-600 h-4 w-4" />
+                          {s.name}
+                        </label>
+                      ))}
+                  </div>
+                  <button className="mt-2 rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4">
+                    Enroll selected
+                  </button>
+                </form>
+              </details>
+            )}
 
             {/* Edit */}
             <details className="mt-4 border-t border-slate-100 pt-3">

@@ -59,6 +59,19 @@ export default function AdminShell({
         </button>
       </div>
 
+      {/* Global student search — plain GET form, lands on /admin/search */}
+      <form action="/admin/search" method="get" className="px-3 pt-4">
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⌕</span>
+          <input
+            name="q"
+            placeholder="Find a student…"
+            aria-label="Find a student"
+            className="w-full rounded-lg bg-brand-800 border border-brand-700 pl-8 pr-3 py-2 text-sm text-white placeholder:text-slate-400 focus:border-gold-500 outline-none"
+          />
+        </div>
+      </form>
+
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map((item) => {
           const active =

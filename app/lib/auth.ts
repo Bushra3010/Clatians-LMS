@@ -7,7 +7,7 @@ import { db, newId } from "./db";
 const SESSION_COOKIE = "lms_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-export type Role = "student" | "teacher" | "admin";
+export type Role = "student" | "teacher" | "admin" | "parent";
 
 export type User = {
   id: string;

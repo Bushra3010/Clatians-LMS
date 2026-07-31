@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
 
-export type Referral = { code: string; total: number; enrolled: number };
+export type Referral = { code: string; total: number; enrolled: number; credit: number };
 
 export default function ReferPage({ onBack, referral }: { onBack: () => void; referral: Referral }) {
   const [copied, setCopied] = useState<"" | "code" | "link">("");
@@ -54,12 +54,20 @@ export default function ReferPage({ onBack, referral }: { onBack: () => void; re
           {[
             { v: String(referral.total), l: "Enquiries referred" },
             { v: String(referral.enrolled), l: "Enrolled" },
+            { v: `₹${referral.credit.toLocaleString("en-IN")}`, l: "Credit earned" },
           ].map((s, i) => (
             <div key={i} style={{ flex: 1, background: "white", borderRadius: 14, padding: "16px 12px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
               <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9CA3AF" }}>{s.l}</p>
             </div>
           ))}
+        </div>
+
+        {/* Credit explainer */}
+        <div style={{ marginTop: 14, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 14, padding: "12px 14px" }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: "#065F46", lineHeight: 1.55 }}>
+            💰 <b>Earn ₹500 per enrollment.</b> When a friend you referred joins a batch, ₹500 credit lands here — it auto-applies as a discount on your next fee payment.
+          </p>
         </div>
 
         {/* Share link */}

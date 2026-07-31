@@ -5,7 +5,10 @@ import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { runTutor, generateQuestions, generatePractice, generateVocab, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ, type VocabWord } from "./ai";
 
-export type { PracticeMCQ, VocabWord };
+// NOTE: no `export type {...}` here — this Next version's server-actions loader
+// turns every export of a "use server" module into a runtime server reference,
+// so re-exporting types crashes module evaluation ("PracticeMCQ is not defined").
+// Clients should `import type` these from "./ai" instead (type-only, erased at build).
 
 export type AskResult = { threadId: string; reply: string };
 

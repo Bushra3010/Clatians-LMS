@@ -31,7 +31,10 @@ const pool: Pool =
     connectionString,
     // Supabase requires TLS; its chain isn't in Node's default trust store,
     // so accept it without local verification (standard for Supabase clients).
-    ssl: connectionString ? { rejectUnauthorized: false } : undefined,
+    // A local dev Postgres has no TLS at all, so skip SSL for localhost.
+    ssl: connectionString && !/localhost|127\.0\.0\.1/.test(connectionString)
+      ? { rejectUnauthorized: false }
+      : undefined,
     max: 3,
     idleTimeoutMillis: 10_000,
   });
@@ -115,6 +118,13 @@ const SCHEMA = `
     password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'student',
     status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL DEFAULT ${NOW}
   );
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_prefs TEXT NOT NULL DEFAULT '{"push":true,"email":true,"sms":false}';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_credit INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE IF NOT EXISTS guardian_links (
+    guardian_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT ${NOW}, PRIMARY KEY (guardian_id, student_id)
+  );
   CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT ${NOW}
@@ -158,6 +168,12 @@ const SCHEMA = `
     course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, subject TEXT NOT NULL DEFAULT '',
     body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', answer TEXT NOT NULL DEFAULT '',
     answered_by TEXT REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS doubt_messages (
+    id TEXT PRIMARY KEY, doubt_id TEXT NOT NULL REFERENCES doubts(id) ON DELETE CASCADE,
+    sender_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    sender_role TEXT NOT NULL DEFAULT 'student', body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT ${NOW_US}
   );
   CREATE TABLE IF NOT EXISTS tests (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
@@ -224,6 +240,7 @@ const SCHEMA = `
     created_at TEXT NOT NULL DEFAULT ${NOW}, updated_at TEXT NOT NULL DEFAULT ${NOW}
   );
   ALTER TABLE leads ADD COLUMN IF NOT EXISTS referred_by TEXT REFERENCES users(id) ON DELETE SET NULL;
+  ALTER TABLE leads ADD COLUMN IF NOT EXISTS reward_given INTEGER NOT NULL DEFAULT 0;
   CREATE TABLE IF NOT EXISTS audit_log (
     id TEXT PRIMARY KEY, actor_id TEXT, actor_name TEXT NOT NULL DEFAULT '', actor_role TEXT NOT NULL DEFAULT '',
     action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT ${NOW}

@@ -45,3 +45,51 @@ export async function answerDoubtAction(formData: FormData) {
   revalidatePath("/teacher/doubts");
   revalidatePath("/");
 }
+
+export type DoubtMessage = {
+  id: string;
+  role: "student" | "faculty";
+  sender: string | null;
+  body: string;
+  createdAt: string;
+};
+
+/**
+ * Follow-up message on an existing doubt (both directions).
+ * A student's follow-up reopens the doubt; a teacher's reply marks it answered.
+ */
+export async function postDoubtMessageAction(doubtId: string, body: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireRole(["student", "teacher", "admin"]);
+  const text = (body ?? "").trim();
+  if (!doubtId || !text) return { ok: false, error: "Message can't be empty." };
+
+  const doubt = await db.prepare("SELECT student_id, subject, answered_by FROM doubts WHERE id = ?").get(doubtId) as
+    | { student_id: string; subject: string; answered_by: string | null }
+    | undefined;
+  if (!doubt) return { ok: false, error: "Doubt not found." };
+
+  const isStudent = user.role === "student";
+  if (isStudent && doubt.student_id !== user.id) return { ok: false, error: "Not your doubt." };
+
+  await db.prepare(
+    "INSERT INTO doubt_messages (id, doubt_id, sender_id, sender_role, body) VALUES (?, ?, ?, ?, ?)"
+  ).run(newId(), doubtId, user.id, isStudent ? "student" : "faculty", text);
+
+  if (isStudent) {
+    // Reopen so the follow-up shows in the teachers' "awaiting answer" queue.
+    await db.prepare("UPDATE doubts SET status = 'open' WHERE id = ?").run(doubtId);
+    if (doubt.answered_by) {
+      await notify(doubt.answered_by, "doubt", "Follow-up on a doubt you answered", `${user.name} asked a follow-up on their ${doubt.subject || "doubt"}.`);
+    }
+  } else {
+    await db.prepare(
+      "UPDATE doubts SET status = 'answered', answered_by = COALESCE(answered_by, ?) WHERE id = ?"
+    ).run(user.id, doubtId);
+    await notify(doubt.student_id, "doubt", "New reply on your doubt", `${user.name} replied to your ${doubt.subject || "doubt"}.`);
+  }
+
+  // Note: no revalidatePath("/") here — it remounts the student SPA (state
+  // resets to Home mid-conversation). The client calls router.refresh() itself.
+  revalidatePath("/teacher/doubts");
+  return { ok: true };
+}

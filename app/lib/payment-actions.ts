@@ -31,11 +31,20 @@ export async function payForCourseAction(courseId: string, method = "upi") {
   // confirm via webhook/signature before this point. Here we treat it as paid.
   const invoiceNo = "CLT-" + Date.now().toString().slice(-8);
 
+  // Referral credit auto-applies as a discount on paid batches.
+  let discount = 0;
+  let amount = course.price;
   if (course.price > 0) {
+    const row = await db.prepare("SELECT referral_credit FROM users WHERE id = ?").get(user.id) as { referral_credit: number } | undefined;
+    discount = Math.min(row?.referral_credit ?? 0, course.price);
+    amount = course.price - discount;
+    if (discount > 0) {
+      await db.prepare("UPDATE users SET referral_credit = referral_credit - ? WHERE id = ?").run(discount, user.id);
+    }
     await db.prepare(
       `INSERT INTO payments (id, user_id, course_id, amount, status, method, invoice_no)
        VALUES (?, ?, ?, ?, 'paid', ?, ?)`
-    ).run(newId(), user.id, courseId, course.price, method, invoiceNo);
+    ).run(newId(), user.id, courseId, amount, method, invoiceNo);
   }
   await db.prepare(
     "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
@@ -46,10 +55,10 @@ export async function payForCourseAction(courseId: string, method = "upi") {
     "payment",
     course.price > 0 ? "Payment successful" : "Enrolled",
     course.price > 0
-      ? `Invoice ${invoiceNo} · ₹${course.price.toLocaleString("en-IN")}. Your batch is now unlocked.`
+      ? `Invoice ${invoiceNo} · ₹${amount.toLocaleString("en-IN")}${discount > 0 ? ` (₹${discount.toLocaleString("en-IN")} referral credit applied)` : ""}. Your batch is now unlocked.`
       : "Your free batch is now unlocked."
   );
 
   revalidatePath("/");
-  return { ok: true, invoiceNo, amount: course.price };
+  return { ok: true, invoiceNo, amount, discount };
 }

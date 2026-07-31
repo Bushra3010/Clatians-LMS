@@ -15,6 +15,7 @@ interface HomeScreenProps {
   onSeeAllClasses?: () => void;
   onOpenTests?: () => void;
   onOpenStories?: () => void;
+  onOpenTutor?: () => void;
   stories?: Story[];
 }
 
@@ -79,7 +80,7 @@ const knowMore = [
 const fmtBooking = (iso: string) =>
   fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 
-export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, liveClasses = [], onJoinClass, onSeeAllClasses, onOpenTests, onOpenStories, stories = [], nextBooking = null }: HomeScreenProps) {
+export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, liveClasses = [], onJoinClass, onSeeAllClasses, onOpenTests, onOpenStories, onOpenTutor, stories = [], nextBooking = null }: HomeScreenProps) {
   return (
     <div style={{ background: "#F7F3EA", paddingBottom: 20 }}>
 
@@ -452,6 +453,45 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
             fontSize: 12, fontWeight: 700,
             whiteSpace: "nowrap",
           }}>Start →</span>
+        </button>
+      </div>
+
+      {/* ── AI Tutor Banner ── */}
+      <div style={{ padding: "14px 14px 0" }}>
+        <button onClick={() => onOpenTutor?.()} style={{
+          width: "100%",
+          background: "linear-gradient(135deg,#7C3AED,#6D28D9)",
+          borderRadius: 20,
+          padding: "16px",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          boxShadow: "0 6px 20px rgba(124,58,237,0.28)",
+          cursor: "pointer",
+          textAlign: "left",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: "rgba(255,255,255,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22,
+            }}>🤖</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "white" }}>AI Tutor</p>
+                <span style={{ background: "rgba(255,255,255,0.18)", color: "white", fontSize: 9.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.3)" }}>24×7</span>
+              </div>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Ask any CLAT doubt · instant answers</p>
+            </div>
+          </div>
+          <span style={{
+            background: "white", color: "#6D28D9",
+            borderRadius: 12, padding: "11px 16px",
+            fontSize: 12, fontWeight: 800,
+            whiteSpace: "nowrap",
+          }}>Chat →</span>
         </button>
       </div>
 

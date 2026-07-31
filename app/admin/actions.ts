@@ -10,6 +10,7 @@ import {
 } from "@/app/lib/auth";
 import { notify } from "@/app/lib/notify";
 import { logAudit } from "@/app/lib/audit";
+import { awardReferralIfDue } from "@/app/lib/referral-server";
 
 // ────────────────────────────────────────────────────────────
 // User management
@@ -64,11 +65,47 @@ export async function convertLeadAction(formData: FormData) {
   }
 
   await db.prepare("UPDATE leads SET status='enrolled' WHERE id = ?").run(leadId);
+  await awardReferralIfDue(leadId); // referrer earns credit exactly once
   await logAudit(admin, "Converted lead to student", `${lead.name} (${email})`);
   revalidatePath("/admin/leads");
   revalidatePath("/admin/users");
   revalidatePath("/admin");
   revalidatePath("/");
+}
+
+/**
+ * Create (or link) a parent/guardian account for a student. If the email
+ * already belongs to a parent account, it's simply linked to this student too
+ * (one parent can follow several children).
+ */
+export async function createParentAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const studentId = String(formData.get("studentId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  if (!studentId || !email) return;
+
+  const student = await db.prepare("SELECT id, name FROM users WHERE id = ? AND role = 'student'").get(studentId) as { id: string; name: string } | undefined;
+  if (!student) return;
+
+  let parent = await findUserByEmail(email);
+  if (!parent) {
+    if (!name || password.length < 6) return; // creating anew needs name + password
+    await db.prepare(
+      "INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'parent', 'active')"
+    ).run(newId(), name, email, hashPassword(password));
+    parent = await findUserByEmail(email);
+  }
+  if (!parent || parent.role !== "parent") return; // never link a non-parent account
+
+  await db.prepare(
+    "INSERT INTO guardian_links (guardian_id, student_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+  ).run(parent.id, studentId);
+
+  await notify(parent.id, "info", "Guardian access ready", `You can now follow ${student.name}'s progress, attendance and fees on the parent portal.`);
+  await logAudit(admin, "Linked parent to student", `${parent.name} → ${student.name}`);
+  revalidatePath("/admin/users");
 }
 
 /** Edit a user's name and role. An admin can't demote their own account. */
@@ -185,6 +222,32 @@ export async function enrollStudentAction(formData: FormData) {
     const c = await db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId) as { name: string } | undefined;
     await notify(userId, "info", "Enrolled in a batch", `You now have access to ${c?.name ?? "a new batch"} — its classes, notes and tests are unlocked.`);
   }
+  revalidatePath("/admin/courses");
+  revalidatePath("/");
+}
+
+/** Enroll many students into a batch at once. Notifies each newly-added student. */
+export async function bulkEnrollAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const courseId = String(formData.get("courseId") ?? "");
+  const userIds = formData.getAll("userIds").map(String).filter(Boolean).slice(0, 500);
+  if (!courseId || userIds.length === 0) return;
+
+  const course = await db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId) as { name: string } | undefined;
+  if (!course) return;
+
+  let added = 0;
+  for (const userId of userIds) {
+    const res = await db.prepare(
+      "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+    ).run(userId, courseId);
+    if (res.changes > 0) {
+      added++;
+      await notify(userId, "info", "Enrolled in a batch", `You now have access to ${course.name} — its classes, notes and tests are unlocked.`);
+    }
+  }
+
+  await logAudit(admin, "Bulk enrolled students", `${added} student(s) → ${course.name}`);
   revalidatePath("/admin/courses");
   revalidatePath("/");
 }

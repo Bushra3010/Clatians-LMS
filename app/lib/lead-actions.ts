@@ -5,6 +5,7 @@ import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { notify, notifyMany } from "./notify";
 import { logAudit } from "./audit";
+import { awardReferralIfDue } from "./referral-server";
 
 export type LeadState = { ok?: boolean; error?: string };
 
@@ -56,6 +57,7 @@ export async function updateLeadStatusAction(formData: FormData) {
   if (!id || !STATUSES.includes(status)) return;
   const lead = await db.prepare("SELECT name FROM leads WHERE id=?").get(id) as { name: string } | undefined;
   await db.prepare("UPDATE leads SET status=?, updated_at=to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS') WHERE id=?").run(status, id);
+  if (status === "enrolled") await awardReferralIfDue(id); // referrer earns credit exactly once
   await logAudit(admin, "Updated lead status", `${lead?.name ?? id} → ${status}`);
   revalidatePath("/admin/leads");
 }

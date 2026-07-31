@@ -1,11 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { StudentProfile } from "../../StudentApp";
-import { changePasswordAction } from "../../lib/session-actions";
+import { changePasswordAction, updateNotifyPrefsAction, type NotifyPrefs } from "../../lib/session-actions";
 
-export default function SettingsPage({ onBack, profile, onLogout }: { onBack: () => void; profile: StudentProfile; onLogout: () => void }) {
-  const [prefs, setPrefs] = useState({ push: true, email: true, sms: false });
+export default function SettingsPage({ onBack, profile, initialPrefs, onLogout }: { onBack: () => void; profile: StudentProfile; initialPrefs: NotifyPrefs; onLogout: () => void }) {
+  const [prefs, setPrefs] = useState<NotifyPrefs>(initialPrefs);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Optimistic toggle: flip locally, persist in the background.
+  const togglePref = (key: keyof NotifyPrefs) => {
+    setPrefs((p) => {
+      const next = { ...p, [key]: !p[key] };
+      updateNotifyPrefsAction(next).then((res) => {
+        if (!res.ok) return;
+        setPrefsSaved(true);
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setPrefsSaved(false), 2000);
+      });
+      return next;
+    });
+  };
   const [pw, setPw] = useState({ current: "", next: "" });
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -82,11 +98,14 @@ export default function SettingsPage({ onBack, profile, onLogout }: { onBack: ()
         </form>
 
         {/* Notifications */}
-        <h3 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>Notifications</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>Notifications</h3>
+          {prefsSaved && <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D" }}>✓ Saved</span>}
+        </div>
         <div style={{ background: "white", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: 24 }}>
-          {row("Push notifications", "Doubt replies, class reminders", <Toggle on={prefs.push} onClick={() => setPrefs((p) => ({ ...p, push: !p.push }))} />)}
-          {row("Email updates", "Weekly progress & announcements", <Toggle on={prefs.email} onClick={() => setPrefs((p) => ({ ...p, email: !p.email }))} />)}
-          <div style={{ borderBottom: "none" }}>{row("SMS alerts", "Important reminders only", <Toggle on={prefs.sms} onClick={() => setPrefs((p) => ({ ...p, sms: !p.sms }))} />)}</div>
+          {row("Push notifications", "Doubt replies, class reminders", <Toggle on={prefs.push} onClick={() => togglePref("push")} />)}
+          {row("Email updates", "Weekly progress & announcements", <Toggle on={prefs.email} onClick={() => togglePref("email")} />)}
+          <div style={{ borderBottom: "none" }}>{row("SMS alerts", "Important reminders only", <Toggle on={prefs.sms} onClick={() => togglePref("sms")} />)}</div>
         </div>
 
         <button onClick={onLogout} style={{ width: "100%", background: "#FEF2F2", color: "#E63946", border: "1.5px solid #FECACA", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>

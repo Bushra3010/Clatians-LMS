@@ -2,7 +2,7 @@
 
 import type { StudentProfile } from "../StudentApp";
 
-export type ProfileMenuKey = "progress" | "planner" | "notes" | "refer" | "courses" | "tests" | "saved" | "payments" | "achievements" | "notifications" | "help" | "settings";
+export type ProfileMenuKey = "progress" | "planner" | "notes" | "ai-tutor" | "refer" | "courses" | "tests" | "saved" | "payments" | "certificates" | "achievements" | "notifications" | "help" | "settings";
 
 interface ProfileScreenProps {
   profile: StudentProfile;
@@ -22,11 +22,13 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
     { key: "progress", icon: "📊", label: "My Progress", desc: "Completion, weak areas & scores", color: "#3D2411" },
     { key: "planner", icon: "📋", label: "Study Planner", desc: "Your study to-do list & deadlines", color: "#0891B2" },
     { key: "notes", icon: "📝", label: "My Notes", desc: "Your personal study notebook", color: "#7C3AED" },
+    { key: "ai-tutor", icon: "✨", label: "AI Tutor", desc: "Ask any CLAT doubt, any time", color: "#F5A623" },
     { key: "refer", icon: "🎁", label: "Refer a Friend", desc: "Share your code & invite friends", color: "#DB2777" },
     { key: "courses", icon: "📚", label: "My Courses", desc: `${profile.batches.length} enrolled batch${profile.batches.length === 1 ? "" : "es"}`, color: "#059669" },
     { key: "payments", icon: "🧾", label: "Payments & Invoices", desc: "Your fee receipts & history", color: "#3D2411" },
     { key: "tests", icon: "📝", label: "My Tests", desc: "Mock tests & results", color: "#E63946" },
     { key: "saved", icon: "🔖", label: "Saved Content", desc: "Your saved notes & words", color: "#8B5CF6" },
+    { key: "certificates", icon: "🎓", label: "Certificates", desc: "Course completion certificates", color: "#15803D" },
     { key: "achievements", icon: "🏆", label: "Achievements", desc: "Badges & leaderboard", color: "#F5A623" },
     { key: "notifications", icon: "🔔", label: "Notifications", desc: "Your alerts", color: "#06B6D4" },
     { key: "help", icon: "❓", label: "Help & Support", desc: "FAQs & contact us", color: "#6B7280" },

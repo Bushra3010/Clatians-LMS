@@ -18,6 +18,7 @@ const HOME_BY_ROLE: Record<string, string> = {
   admin: "/admin",
   teacher: "/teacher",
   student: "/",
+  parent: "/parent",
 };
 
 /**
@@ -60,5 +61,16 @@ export async function changePasswordAction(current: string, next: string): Promi
   }
 
   await db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashPassword(String(next)), user.id);
+  return { ok: true };
+}
+
+export type NotifyPrefs = { push: boolean; email: boolean; sms: boolean };
+
+/** Persist the signed-in user's notification preferences (Settings toggles). */
+export async function updateNotifyPrefsAction(prefs: NotifyPrefs): Promise<{ ok: boolean }> {
+  const user = await auth();
+  if (!user) return { ok: false };
+  const clean: NotifyPrefs = { push: !!prefs.push, email: !!prefs.email, sms: !!prefs.sms };
+  await db.prepare("UPDATE users SET notify_prefs = ? WHERE id = ?").run(JSON.stringify(clean), user.id);
   return { ok: true };
 }

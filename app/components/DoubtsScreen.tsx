@@ -21,9 +21,32 @@ function ago(iso: string): string {
 interface DoubtsScreenProps {
   doubts: DoubtItem[];
   onAskDoubt: (subject: string, body: string) => Promise<void>;
+  onFollowUp: (doubtId: string, body: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
-export default function DoubtsScreen({ doubts, onAskDoubt }: DoubtsScreenProps) {
+/** One chat bubble in a doubt thread — student on the right, faculty on the left. */
+function ThreadBubble({ role, sender, body }: { role: "student" | "faculty"; sender: string | null; body: string }) {
+  const isFaculty = role === "faculty";
+  return (
+    <div style={{ display: "flex", justifyContent: isFaculty ? "flex-start" : "flex-end" }}>
+      <div style={{
+        maxWidth: "85%",
+        background: isFaculty ? "white" : "#3D2411",
+        color: isFaculty ? "#374151" : "#F7EFE2",
+        border: isFaculty ? "1px solid #E5E7EB" : "none",
+        borderRadius: isFaculty ? "4px 14px 14px 14px" : "14px 4px 14px 14px",
+        padding: "9px 12px",
+      }}>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: isFaculty ? "#8A5A08" : "#F5C97A" }}>
+          {isFaculty ? `👩‍🏫 ${sender ?? "Faculty"}` : "You"}
+        </p>
+        <p style={{ margin: "3px 0 0", fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{body}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsScreenProps) {
   const [activeSection, setActiveSection] = useState<"mydoubts" | "ask">("mydoubts");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "open" | "answered">("all");
@@ -31,6 +54,16 @@ export default function DoubtsScreen({ doubts, onAskDoubt }: DoubtsScreenProps) 
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState(false);
   const [justSent, setJustSent] = useState(false);
+  const [followUp, setFollowUp] = useState("");
+  const [followUpPending, setFollowUpPending] = useState(false);
+
+  const sendFollowUp = async (doubtId: string) => {
+    if (!followUp.trim() || followUpPending) return;
+    setFollowUpPending(true);
+    const res = await onFollowUp(doubtId, followUp.trim());
+    setFollowUpPending(false);
+    if (res.ok) setFollowUp("");
+  };
 
   const counts = {
     all: doubts.length,
@@ -126,16 +159,44 @@ export default function DoubtsScreen({ doubts, onAskDoubt }: DoubtsScreenProps) 
                       <p style={{ margin: "6px 0 0", fontSize: 12, color: "#3D2411", fontWeight: 600 }}>Tap to view answer →</p>
                     )}
                   </div>
-                  {isOpen && answered && (
+                  {isOpen && (
                     <div style={{ borderTop: "1px solid #F3F4F6", padding: "14px 16px", background: "#F9FAFB" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#3D2411,#8A5A08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👩‍🏫</div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#1A1A2E" }}>{d.teacher ?? "Faculty"}</p>
-                          <p style={{ margin: 0, fontSize: 10, color: "#9CA3AF" }}>Faculty · CLATians</p>
-                        </div>
+                      {/* Thread: first answer, then follow-up messages in order */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {d.answer && <ThreadBubble role="faculty" sender={d.teacher} body={d.answer} />}
+                        {d.messages.map((m) => (
+                          <ThreadBubble key={m.id} role={m.role} sender={m.sender} body={m.body} />
+                        ))}
+                        {!d.answer && d.messages.length === 0 && (
+                          <p style={{ margin: 0, fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>⏳ Waiting for faculty to reply…</p>
+                        )}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>{d.answer}</p>
+
+                      {/* Follow-up composer */}
+                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        <input
+                          value={followUp}
+                          onChange={(e) => setFollowUp(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") sendFollowUp(d.id); }}
+                          placeholder={answered ? "Ask a follow-up…" : "Add more detail…"}
+                          style={{
+                            flex: 1, background: "white", border: "1.5px solid #E5E7EB",
+                            borderRadius: 12, padding: "10px 12px", fontSize: 13, color: "#374151",
+                            outline: "none",
+                          }}
+                        />
+                        <button
+                          onClick={() => sendFollowUp(d.id)}
+                          disabled={!followUp.trim() || followUpPending}
+                          style={{
+                            background: followUp.trim() && !followUpPending ? "#3D2411" : "#E5E7EB",
+                            color: followUp.trim() && !followUpPending ? "white" : "#9CA3AF",
+                            border: "none", borderRadius: 12, padding: "0 16px",
+                            fontSize: 13, fontWeight: 700,
+                            cursor: followUp.trim() && !followUpPending ? "pointer" : "default",
+                          }}
+                        >{followUpPending ? "…" : "Send"}</button>
+                      </div>
                     </div>
                   )}
                 </div>

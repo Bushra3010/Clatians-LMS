@@ -1,5 +1,5 @@
 import { db } from "@/app/lib/db";
-import { createUserAction, setUserStatusAction, editUserAction, resetUserPasswordAction } from "../../actions";
+import { createUserAction, setUserStatusAction, editUserAction, resetUserPasswordAction, createParentAction } from "../../actions";
 import ListFilter from "@/app/components/ListFilter";
 import ExportCsvButton from "@/app/components/ExportCsvButton";
 import { fmtIST } from "@/app/lib/dates";
@@ -19,6 +19,7 @@ const roleBadge: Record<string, string> = {
   admin: "bg-purple-50 text-purple-700",
   teacher: "bg-emerald-50 text-emerald-700",
   student: "bg-sky-50 text-sky-700",
+  parent: "bg-amber-50 text-amber-700",
 };
 
 export default async function UsersPage() {
@@ -139,6 +140,15 @@ export default async function UsersPage() {
                         <input name="password" required minLength={6} placeholder="New password" className={inputCls + " !w-40"} aria-label="New password" />
                         <button className="text-xs rounded-md px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50">Reset password</button>
                       </form>
+                      {u.role === "student" && (
+                        <form action={createParentAction} className="flex items-end gap-2 flex-wrap">
+                          <input type="hidden" name="studentId" value={u.id} />
+                          <input name="name" placeholder="Parent name" className={inputCls + " !w-36"} aria-label="Parent name" />
+                          <input name="email" type="email" required placeholder="Parent email" className={inputCls + " !w-44"} aria-label="Parent email" />
+                          <input name="password" placeholder="Password (new acct)" minLength={6} className={inputCls + " !w-40"} aria-label="Parent password" />
+                          <button className="text-xs rounded-md px-3 py-1.5 border border-amber-200 text-amber-700 hover:bg-amber-50">Add parent</button>
+                        </form>
+                      )}
                     </div>
                   </details>
                 </td>

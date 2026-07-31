@@ -30,15 +30,16 @@ import ProgressPage, { type StudentProgress } from "./components/detail/Progress
 import LeaderboardPage, { type Engagement } from "./components/detail/LeaderboardPage";
 import ClatToolsPage from "./components/detail/ClatToolsPage";
 import SavedItemsPage, { type SavedItem } from "./components/detail/SavedItemsPage";
+import CertificatePage, { type CertificateItem } from "./components/detail/CertificatePage";
 import HelpSupportPage from "./components/detail/HelpSupportPage";
 import SettingsPage from "./components/detail/SettingsPage";
 
-import { logoutAction } from "./lib/session-actions";
+import { logoutAction, type NotifyPrefs } from "./lib/session-actions";
 import { markNotificationsReadAction } from "./lib/notification-actions";
 import { toggleContentDoneAction } from "./lib/progress-actions";
 import { toggleSavedAction } from "./lib/saved-actions";
 import { joinClassAction } from "./lib/class-actions";
-import { askDoubtAction } from "./lib/doubt-actions";
+import { askDoubtAction, postDoubtMessageAction, type DoubtMessage } from "./lib/doubt-actions";
 import { payForCourseAction } from "./lib/payment-actions";
 import { startTestAction, submitAttemptAction, type StartResult, type SubmitResult } from "./lib/test-actions";
 import type { StudentResources } from "./lib/resource-types";
@@ -51,6 +52,7 @@ export type DoubtItem = {
   answer: string;
   teacher: string | null;
   createdAt: string;
+  messages: DoubtMessage[];
 };
 
 export type StudentProfile = {
@@ -70,7 +72,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "payments" | "help" | "settings" | null;
+type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "payments" | "certificates" | "help" | "settings" | null;
 
 const TOPBAR_H = 90;
 const BOTTOMNAV_H = 70;
@@ -97,9 +99,11 @@ interface StudentAppProps {
   tasks: StudyTask[];
   notes: Note[];
   referral: Referral;
+  notifyPrefs: NotifyPrefs;
+  certificates: CertificateItem[];
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
@@ -171,6 +175,12 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     router.refresh(); // re-fetch server props so the new doubt shows
   };
 
+  const handleFollowUp = async (doubtId: string, body: string) => {
+    const res = await postDoubtMessageAction(doubtId, body);
+    if (res.ok) router.refresh();
+    return res;
+  };
+
   const handleEnroll = async (courseId: string, method: string) => {
     const res = await payForCourseAction(courseId, method);
     if (res.ok) router.refresh(); // unlock the batch's content/classes
@@ -206,12 +216,14 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     switch (key) {
       case "progress": openDetail("progress"); break;
       case "planner": openDetail("planner"); break;
-      case "notes": openDetail("notes"); break;
+      case "notes": openDetail("my-notes"); break;
+      case "ai-tutor": router.push("/tutor"); break;
       case "refer": openDetail("refer"); break;
       case "courses": setDetailPage(null); setCoursesTab("mine"); setActiveScreen("courses"); break;
       case "tests": openDetail("tests"); break;
       case "saved": openDetail("saved"); break;
       case "payments": openDetail("payments"); break;
+      case "certificates": openDetail("certificates"); break;
       case "achievements": openDetail("leaderboard"); break;
       case "notifications": openNotifications(); break;
       case "help": openDetail("help"); break;
@@ -265,7 +277,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "slots"           && <SlotsPage onBack={closeDetail} openSlots={slots.open} myBookings={slots.mine} />}
           {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} studentName={profile.name} studentEmail={profile.email} />}
           {detailPage === "planner"         && <StudyPlannerPage onBack={closeDetail} initialTasks={tasks} />}
-          {detailPage === "notes"           && <NotesPage onBack={closeDetail} initialNotes={notes} />}
+          {detailPage === "my-notes"        && <NotesPage onBack={closeDetail} initialNotes={notes} />}
           {detailPage === "refer"           && <ReferPage onBack={closeDetail} referral={referral} />}
           {detailPage === "current-affairs" && <ContentListPage onBack={closeDetail} type="current-affairs" items={content["current-affairs"]} onToggleDone={handleToggleDone} />}
           {detailPage === "toppers"         && <TopperStoriesPage onBack={closeDetail} stories={resources.stories} />}
@@ -327,9 +339,12 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpen={(kind) => openDetail(kind === "vocab" ? "clat-tools" : "tips")}
             />
           )}
+          {detailPage === "certificates" && (
+            <CertificatePage onBack={closeDetail} certificates={certificates} studentName={profile.name} />
+          )}
           {detailPage === "help" && <HelpSupportPage onBack={closeDetail} />}
           {detailPage === "settings" && (
-            <SettingsPage onBack={closeDetail} profile={profile} onLogout={() => { logoutAction(); }} />
+            <SettingsPage onBack={closeDetail} profile={profile} initialPrefs={notifyPrefs} onLogout={() => { logoutAction(); }} />
           )}
 
           {/* ── Main screens ── */}
@@ -343,6 +358,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onJoinClass={handleJoinClass}
               onSeeAllClasses={() => openDetail("live-classes")}
               onOpenTests={() => openDetail("tests")}
+              onOpenTutor={() => router.push("/tutor")}
               onOpenStories={() => openDetail("toppers")}
               stories={resources.stories}
             />
@@ -365,7 +381,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             />
           )}
           {!detailPage && activeScreen === "doubts"  && (
-            <DoubtsScreen doubts={doubts} onAskDoubt={handleAskDoubt} />
+            <DoubtsScreen doubts={doubts} onAskDoubt={handleAskDoubt} onFollowUp={handleFollowUp} />
           )}
         </div>
 

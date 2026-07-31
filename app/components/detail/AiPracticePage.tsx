@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { generatePracticeAction, savePracticeResultAction, type PracticeMCQ } from "../../lib/ai-actions";
+import { generatePracticeAction, savePracticeResultAction } from "../../lib/ai-actions";
+import type { PracticeMCQ } from "../../lib/ai"; // type-only — safe for clients (erased at build)
 
 const ESPRESSO = "#3D2411";
 const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";

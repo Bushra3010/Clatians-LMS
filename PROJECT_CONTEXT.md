@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — CLATians LMS
 
 > Handoff for continuing this project on another machine / new Claude session.
-> Last updated after commit `402341c` (referral program). Keep this file current.
+> Last updated: 1 Aug 2026 (uncommitted work session: doubt follow-up threads, persisted notification prefs, student AI-Tutor entry points, course-completion certificates, referral rewards (₹500 credit + checkout auto-apply), admin bulk enroll, admin global student search, parent/guardian portal, `"notes"` detail-key collision fix, removed 4 dead dummy detail pages, fixed server-actions crash from a type re-export in `ai-actions.ts`). Keep this file current.
 
 ---
 
@@ -64,7 +64,9 @@ Objective: a production-ready, hybrid (online + offline) coaching platform with 
 
 **Init:** On cold start, `init()` takes a `pg_advisory_xact_lock` (pooler-safe) and runs `SCHEMA` (all `CREATE TABLE IF NOT EXISTS` + a few `ALTER ... ADD COLUMN IF NOT EXISTS`), then seeds demo data once (guarded by a `meta` row claim). Init promise cached in `global.__lmsInit`.
 
-**Tables (26):** `users, sessions, meta, courses, enrollments, payments, content, content_progress, live_classes, class_attendance, doubts, tests, questions, test_attempts, notifications, leads, audit_log, saved_items, resources, ai_threads, ai_messages, practice_sessions, booking_slots, announcements, study_tasks, notes`.
+**Tables (28):** `users, sessions, meta, courses, enrollments, payments, content, content_progress, live_classes, class_attendance, doubts, doubt_messages, tests, questions, test_attempts, notifications, leads, audit_log, saved_items, resources, ai_threads, ai_messages, practice_sessions, booking_slots, announcements, study_tasks, notes, guardian_links`. (Columns added: `users.notify_prefs` JSON, `users.referral_credit` INT, `leads.reward_given` INT.)
+
+**Roles:** `student | teacher | admin | parent` — parent lands on `/parent` (login redirect + root redirect + proxy matcher all cover it).
 
 **Auth:** Password = `scrypt` hash (`salt:hash`). Session token row in `sessions`, cookie `lms_session` (httpOnly, 7-day). `requireRole(["..."])` / `requireAdmin()` guard server components/actions. Roles: **`student` | `teacher` | `admin`**.
 
@@ -80,11 +82,13 @@ Objective: a production-ready, hybrid (online + offline) coaching platform with 
 
 ## 5. Features — Completed
 
-**Student:** courses (browse → detail+syllabus → checkout+GST → invoice → gated content unlock), live classes (join→attendance, watch recordings), test series (take → result/rank → **Explain-with-AI**), doubts, notifications, saved content, **AI Tutor** chat, **AI Practice** (instant quiz, counts to streak), **AI Study Coach**, progress + **printable report**, **Study Planner**, **Notes** (notebook), **Payments & Invoices** (printable), **1:1 slot booking**, **Refer-a-Friend**, self-service **change password**, CLAT tools (predictor/CA quiz/**AI vocab**).
+**Student:** courses (browse → detail+syllabus → checkout+GST → invoice → gated content unlock), live classes (join→attendance, watch recordings), test series (take → result/rank → **Explain-with-AI**), doubts (+ **follow-up threads**: chat-style back-and-forth on every doubt), notifications, saved content, **AI Tutor** chat (entry points: TopBar, Home banner, profile menu), **AI Practice** (instant quiz, counts to streak), **AI Study Coach**, progress + **printable report**, **Study Planner**, **Notes** (notebook), **Payments & Invoices** (printable), **1:1 slot booking**, **Refer-a-Friend**, self-service **change password**, **notification preferences (persisted per-user)**, **course-completion certificates** (printable, unlocked at 100% content completion; deterministic cert number, no DB storage), CLAT tools (predictor/CA quiz/**AI vocab**).
 
-**Teacher:** content submit + **AI current-affairs digest**, classes (schedule/recurring/edit-reschedule, recordings, roster, **manual attendance**), tests (create/edit, add + **AI-generate** MCQs, delete question, **item analytics**: per-question + per-section + results CSV export), doubts (+ **AI draft reply**), **1:1 slots**, attendance (per-student **drill-down** + CSV), workload dashboard.
+**Teacher:** content submit + **AI current-affairs digest**, classes (schedule/recurring/edit-reschedule, recordings, roster, **manual attendance**), tests (create/edit, add + **AI-generate** MCQs, delete question, **item analytics**: per-question + per-section + results CSV export), doubts (+ **AI draft reply** + **follow-up threads**: student follow-up reopens the doubt, teacher reply re-answers, both notified), **1:1 slots**, attendance (per-student **drill-down** + CSV), workload dashboard.
 
-**Admin:** users (CRUD + role edit + **password reset**), leads/admissions (pipeline + notes + **convert-to-student** + referral source + search + CSV), courses (full CRUD + enroll/unenroll + roster), classes, **1:1 slots** oversight, attendance (CSV), progress, leaderboard, tests, **content approval** (full preview + **bulk approve/reject** + search + CSV), announcements (+ persistent history), payments (**record offline fee** + revenue-by-batch + CSV), audit log, revenue+funnel dashboard.
+**Admin:** users (CRUD + role edit + **password reset** + **create/link parent accounts**), leads/admissions (pipeline + notes + **convert-to-student** + referral source + search + CSV), courses (full CRUD + enroll/unenroll + **bulk enroll** + roster), classes, **1:1 slots** oversight, attendance (CSV), progress, leaderboard, tests, **content approval** (full preview + **bulk approve/reject** + search + CSV), announcements (+ persistent history), payments (**record offline fee** + revenue-by-batch + CSV), audit log, revenue+funnel dashboard, **global student search** (sidebar box → `/admin/search`: per-student attendance/tests/fees/credit summary).
+
+**Parent portal** (`/parent`, role `parent`): read-only per-child dashboard — attendance (red <75%), study-material %, mock tests (avg/best), open doubts, fees paid + last invoice, next class. Parents created/linked from Admin → Users (one parent can follow several children via `guardian_links`).
 
 **Cross-cutting:** notifications on all key events; IST timezone everywhere; cross-browser date parsing; reusable CSV export + search primitives.
 
@@ -95,15 +99,15 @@ Objective: a production-ready, hybrid (online + offline) coaching platform with 
 | Item | State |
 |---|---|
 | File uploads | Works only if `BLOB_READ_WRITE_TOKEN` set; else writes to local `data/` (won't persist on Vercel serverless). **Needs a Vercel Blob store.** |
-| Settings notification toggles (push/email/SMS) | UI only — local `useState`, **not persisted**; no delivery provider wired. Intentional placeholder. |
+| Settings notification toggles (push/email/SMS) | **Persisted** now (`users.notify_prefs` JSON + `updateNotifyPrefsAction`); delivery provider still not wired (in-app only). |
 | Notifications channel | In-app only. Email/SMS/WhatsApp would fan out from existing `notify()` calls once a provider is added. |
 | Payments | **Simulated** (test-mode) gateway; no real payment provider. Offline recording is real. |
-| Referral rewards | Attribution + counts done; **no reward/discount logic**. |
+| Referral rewards | **DONE** — ₹500 credit per enrolled referral (`REFERRAL_REWARD` in `referral.ts`, awarded once per lead via `leads.reward_given` + `awardReferralIfDue` in `referral-server.ts`); credit auto-applies as a discount in `payForCourseAction`; shown on student ReferPage + admin search. |
 
 ---
 
 ## 7. Features — Not Started (candidates)
-Doubt follow-up threads; course-completion certificates; dark mode; real payment gateway; email/SMS provider; bulk enroll; global student search; parent/guardian portal. *(Not committed; verify need before building.)*
+Dark mode; real payment gateway; email/SMS provider. *(Done since this list was written: doubt follow-up threads, certificates, referral rewards, bulk enroll, global student search, parent portal.)*
 
 ---
 
@@ -196,9 +200,9 @@ There is **no automated test suite** — verification = `tsc --noEmit` + compili
 1. **[Ops, not code] Rotate exposed secrets** (Supabase pw, Gemini key, Vercel token); update `.env.local` + Vercel env; redeploy.
 2. **[Ops] Enable Gemini billing** (or accept 20/day) so AI features are demoable.
 3. **Vercel Blob store** so teacher uploads persist (create store → `BLOB_READ_WRITE_TOKEN` auto-set → redeploy).
-4. **Doubt follow-up threads** (student ↔ teacher back-and-forth on a doubt).
-5. **Course-completion certificate** (printable, reuse print-window pattern).
-6. **Persist Settings notification prefs** + (later) real email/SMS provider.
+4. ~~Doubt follow-up threads~~ ✅ DONE (`doubt_messages` + `postDoubtMessageAction`; student & teacher UIs).
+5. ~~Course-completion certificate~~ ✅ DONE (`CertificatePage.tsx`; eligibility computed in `page.tsx`, print-window pattern).
+6. ~~Persist Settings notification prefs~~ ✅ DONE (delivery provider still pending — email/SMS).
 7. Dark mode; real payment gateway. *(Confirm need first.)*
 
 ---
@@ -220,7 +224,9 @@ There is **no automated test suite** — verification = `tsc --noEmit` + compili
 - **`await` every DB call** — the facade is async.
 - **Format all timestamps with `fmtIST`**; never `new Date(serverTimestamp)` directly. For `datetime-local` storage use `datetimeLocalToUtcISO`, and `toDatetimeLocalIST` to prefill edit forms.
 - **Adding a table/column:** put it in `SCHEMA` in `db.ts` **and** apply it to the live DB directly (dev caches init). Pattern used this session: run a one-off `node` script with `pg` against `DATABASE_URL` doing `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. Verify with `to_regclass`/`information_schema`.
-- **Server-only leakage:** `ai.ts` imports `server-only`. Import AI **actions** from `ai-actions.ts` into clients — never `ai.ts` directly. Removing a dep requires a **dev server restart** (stale module graph caused a past "Router action dispatched before initialization" outage).
+- **Server-only leakage:** `ai.ts` imports `server-only`. Import AI **actions** from `ai-actions.ts` into clients — never `ai.ts` directly (**exception:** `import type` from `ai.ts` is fine — type-only, erased at build). Removing a dep requires a **dev server restart** (stale module graph caused a past "Router action dispatched before initialization" outage).
+- **Never `export type {...}` (re-export) from a "use server" file.** This Next version's server-actions loader turns every export into a runtime server reference — a type re-export crashes module evaluation at runtime ("PracticeMCQ is not defined", broke ALL server actions). Locally-declared `export type Foo = ...` aliases are fine.
+- **`revalidatePath("/")` inside a server action remounts the student SPA** (client state resets → user lands on Home mid-flow). Prefer client-side `router.refresh()` after the action for student-facing mutations.
 - **Restart dev after dependency or schema changes.**
 - **Don't change `next.config.ts` bodySizeLimit down** (breaks uploads).
 - Read `node_modules/next/dist/docs/` before Next-specific patterns (per AGENTS.md).

@@ -45,6 +45,7 @@ export default async function Home() {
   if (!user) redirect("/login");
   if (user.role === "admin") redirect("/admin");
   if (user.role === "teacher") redirect("/teacher");
+  if (user.role === "parent") redirect("/parent");
 
   // ── Live classes ──
   const classSelect = (statusClause: string, order: string, limit = "") => `
@@ -90,7 +91,20 @@ export default async function Home() {
     "current-affairs": byType("current-affairs"),
   };
 
-  // ── Doubts ──
+  // ── Doubts (with follow-up threads) ──
+  const doubtMsgRows = await db.prepare(
+    `SELECT m.id, m.doubt_id, m.sender_role, m.body, m.created_at, u.name AS sender
+     FROM doubt_messages m LEFT JOIN users u ON u.id = m.sender_id
+     WHERE m.doubt_id IN (SELECT id FROM doubts WHERE student_id = ?)
+     ORDER BY m.created_at ASC`
+  ).all(user.id) as { id: string; doubt_id: string; sender_role: string; body: string; created_at: string; sender: string | null }[];
+  const msgsByDoubt = new Map<string, DoubtItem["messages"]>();
+  for (const m of doubtMsgRows) {
+    const list = msgsByDoubt.get(m.doubt_id) ?? [];
+    list.push({ id: m.id, role: m.sender_role === "faculty" ? "faculty" : "student", sender: m.sender, body: m.body, createdAt: m.created_at });
+    msgsByDoubt.set(m.doubt_id, list);
+  }
+
   const doubts: DoubtItem[] = (await db.prepare(
     `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
@@ -98,6 +112,7 @@ export default async function Home() {
   ).all(user.id) as DoubtRow[]).map((d) => ({
     id: d.id, subject: d.subject, body: d.body, status: d.status,
     answer: d.answer, teacher: d.teacher, createdAt: d.created_at,
+    messages: msgsByDoubt.get(d.id) ?? [],
   }));
 
   // ── Course catalog (for enroll / buy) ──
@@ -290,6 +305,37 @@ export default async function Home() {
     doubtsAsked: doubts.length,
   };
 
+  // ── Course-completion certificates ──
+  // Eligible when every approved content item of an enrolled course is marked done.
+  const certRows = await db.prepare(
+    `SELECT c.id, c.name,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS total,
+            (SELECT COUNT(*) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
+              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS done,
+            (SELECT MAX(cp.created_at) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
+              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS completed_at
+     FROM enrollments e JOIN courses c ON c.id = e.course_id
+     WHERE e.user_id = ? ORDER BY c.name`
+  ).all(user.id, user.id, user.id) as { id: string; name: string; total: number; done: number; completed_at: string | null }[];
+  const certificates = certRows.map((r) => ({
+    courseId: r.id,
+    course: r.name,
+    total: r.total,
+    done: r.done,
+    eligible: r.total > 0 && r.done >= r.total,
+    completedAt: r.completed_at,
+    // Deterministic, verifiable-looking certificate number (no DB storage needed).
+    certNo: `CLT-CERT-${user.id.slice(0, 6).toUpperCase()}-${r.id.slice(0, 6).toUpperCase()}`,
+  }));
+
+  // ── Notification preferences (Settings toggles) ──
+  const prefsRow = await db.prepare("SELECT notify_prefs FROM users WHERE id = ?").get(user.id) as { notify_prefs: string } | undefined;
+  let notifyPrefs = { push: true, email: true, sms: false };
+  try {
+    const p = JSON.parse(prefsRow?.notify_prefs ?? "{}");
+    notifyPrefs = { push: p.push !== false, email: p.email !== false, sms: p.sms === true };
+  } catch { /* keep defaults */ }
+
   // ── 1:1 booking slots ──
   const nowIso = new Date().toISOString();
   const openSlots = (await db.prepare(
@@ -320,10 +366,12 @@ export default async function Home() {
   ).all(user.id) as { id: string; title: string; body: string }[];
 
   // ── Referral program ──
+  const creditRow = await db.prepare("SELECT referral_credit FROM users WHERE id = ?").get(user.id) as { referral_credit: number } | undefined;
   const referral = {
     code: referralCode(user.id),
     total: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ?").get(user.id) as { n: number }).n,
     enrolled: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ? AND status='enrolled'").get(user.id) as { n: number }).n,
+    credit: creditRow?.referral_credit ?? 0,
   };
 
   // ── Payment history (student's own invoices) ──
@@ -357,6 +405,8 @@ export default async function Home() {
       tasks={tasks}
       notes={notes}
       referral={referral}
+      notifyPrefs={notifyPrefs}
+      certificates={certificates}
     />
   );
 }

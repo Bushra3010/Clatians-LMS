@@ -12,7 +12,9 @@ export function proxy(request: NextRequest) {
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
     pathname === "/teacher" ||
-    pathname.startsWith("/teacher/");
+    pathname.startsWith("/teacher/") ||
+    pathname === "/parent" ||
+    pathname.startsWith("/parent/");
 
   if (isProtected && !hasSession) {
     const url = request.nextUrl.clone();
@@ -24,5 +26,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/teacher/:path*"],
+  matcher: ["/admin/:path*", "/teacher/:path*", "/parent/:path*"],
 };
