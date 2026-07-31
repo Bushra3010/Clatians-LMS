@@ -2,6 +2,7 @@ import { db } from "@/app/lib/db";
 import { setContentStatusAction } from "../../actions";
 import ListFilter from "@/app/components/ListFilter";
 import ExportCsvButton from "@/app/components/ExportCsvButton";
+import BulkContentBar from "@/app/components/BulkContentBar";
 import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,8 @@ export default async function ContentPage() {
         </div>
       </header>
 
+      {pending > 0 && <BulkContentBar />}
+
       <div id="content-list" className="space-y-3">
         {rows.length === 0 && (
           <p className="text-sm text-slate-400">No content submitted yet.</p>
@@ -75,7 +78,9 @@ export default async function ContentPage() {
           return (
             <div key={r.id} data-content className="rounded-xl bg-white border border-slate-200 p-5">
               <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  {r.status === "pending" && <input type="checkbox" className="bulk-check accent-gold-600 mt-1 shrink-0" value={r.id} aria-label={`Select ${r.title}`} />}
+                  <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-slate-500">{typeLabel[r.type] ?? r.type}</span>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusBadge[r.status]}`}>
@@ -87,6 +92,7 @@ export default async function ContentPage() {
                   <p className="text-xs text-slate-400 mt-2">
                     by {r.author ?? "Unknown"} · {r.course ?? "No course"}
                   </p>
+                  </div>
                 </div>
 
                 <div className="shrink-0 flex flex-col gap-2">

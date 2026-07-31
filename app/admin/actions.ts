@@ -236,6 +236,32 @@ export async function unenrollStudentAction(formData: FormData) {
 // ────────────────────────────────────────────────────────────
 // Content approval
 // ────────────────────────────────────────────────────────────
+/** Approve or reject many content items at once. Notifies each author. */
+export async function bulkSetContentStatusAction(ids: string[], status: string) {
+  const admin = await requireAdmin();
+  if (!["approved", "rejected", "pending"].includes(status)) return;
+  const list = (Array.isArray(ids) ? ids : []).map(String).filter(Boolean).slice(0, 200);
+  if (list.length === 0) return;
+
+  for (const id of list) {
+    const item = await db.prepare("SELECT title, author_id FROM content WHERE id = ?").get(id) as { title: string; author_id: string | null } | undefined;
+    if (!item) continue;
+    await db.prepare("UPDATE content SET status = ? WHERE id = ?").run(status, id);
+    if (item.author_id && (status === "approved" || status === "rejected")) {
+      await notify(
+        item.author_id,
+        "content",
+        status === "approved" ? "Content approved" : "Content needs changes",
+        status === "approved" ? `“${item.title}” is now live for students.` : `“${item.title}” was sent back for changes.`
+      );
+    }
+  }
+
+  await logAudit(admin, `Bulk content ${status}`, `${list.length} item(s)`);
+  revalidatePath("/admin/content");
+  revalidatePath("/");
+}
+
 export async function setContentStatusAction(formData: FormData) {
   const admin = await requireAdmin();
   const contentId = String(formData.get("contentId") ?? "");
