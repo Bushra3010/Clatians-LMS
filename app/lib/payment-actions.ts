@@ -31,13 +31,15 @@ export async function payForCourseAction(courseId: string, method = "upi") {
   // confirm via webhook/signature before this point. Here we treat it as paid.
   const invoiceNo = "CLT-" + Date.now().toString().slice(-8);
 
-  // Referral credit auto-applies as a discount on paid batches.
+  // The invoice records exactly what checkout showed: price + 18% GST,
+  // minus any referral credit.
   let discount = 0;
   let amount = course.price;
   if (course.price > 0) {
+    const gross = course.price + Math.round(course.price * 0.18); // matches the checkout GST line
     const row = await db.prepare("SELECT referral_credit FROM users WHERE id = ?").get(user.id) as { referral_credit: number } | undefined;
-    discount = Math.min(row?.referral_credit ?? 0, course.price);
-    amount = course.price - discount;
+    discount = Math.min(row?.referral_credit ?? 0, gross);
+    amount = gross - discount;
     if (discount > 0) {
       await db.prepare("UPDATE users SET referral_credit = referral_credit - ? WHERE id = ?").run(discount, user.id);
     }

@@ -409,9 +409,14 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
         </div>
       </div>
 
-      {/* ── AI Practice Banner ── */}
-      <div style={{ padding: "14px 14px 0" }}>
-        <button onClick={() => onToolClick?.("ai-practice")} style={{
+      {/* ── AI Zone ── */}
+      <div style={{ padding: "26px 16px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1A1A2E", letterSpacing: "-0.2px" }}>AI-Powered Prep</h3>
+          <span style={{ background: "linear-gradient(135deg,#3D2411,#5C3A00)", color: "#F5C97A", fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.04em" }}>✨ SMART</span>
+        </div>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9CA3AF" }}>Your personal AI toolkit — practice, doubts & more</p>
+        <button onClick={() => onToolClick?.("ai-practice")} className="press" style={{
           width: "100%",
           background: "linear-gradient(135deg,#3D2411,#5C3A00)",
           borderRadius: 20,
@@ -450,8 +455,8 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
         </button>
       </div>
 
-      {/* ── AI Tutor Banner ── */}
-      <div style={{ padding: "14px 14px 0" }}>
+      {/* ── AI Tutor Banner (part of AI Zone) ── */}
+      <div style={{ padding: "10px 16px 0" }}>
         <button onClick={() => onOpenTutor?.()} className="press" style={{
           width: "100%",
           background: "white",

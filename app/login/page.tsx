@@ -140,10 +140,17 @@ export default function LoginPage() {
             ))}
           </div>
 
-          <p style={{ margin: "18px 0 0", textAlign: "center", fontSize: 13, color: "#6B7280" }}>
-            New here?{" "}
-            <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 700, textDecoration: "none" }}>
-              Enquire &amp; book a free demo
+          <Link href="/signup" style={{
+            display: "block", marginTop: 18, textAlign: "center", textDecoration: "none",
+            background: "#FBF6EC", border: "1.5px solid #F0E3C8", borderRadius: 14,
+            padding: "13px", fontSize: 14, fontWeight: 800, color: "#6B4A28",
+          }}>
+            🎓 New student? Create a free account →
+          </Link>
+          <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>
+            Prefer talking to us first?{" "}
+            <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 600, textDecoration: "none" }}>
+              Book a free demo
             </Link>
           </p>
         </div>

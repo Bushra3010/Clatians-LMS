@@ -9,7 +9,8 @@ import {
   hashPassword,
   auth,
 } from "./auth";
-import { db } from "./db";
+import { db, newId } from "./db";
+import { notify, notifyMany } from "./notify";
 
 export type LoginState = { error?: string };
 
@@ -47,6 +48,47 @@ export async function loginAction(
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+export type SignupState = { error?: string };
+
+/**
+ * PUBLIC self-signup — creates a student account and signs them straight in.
+ * New students land on the app with the free material unlocked; paid batches
+ * unlock after checkout.
+ */
+export async function signupAction(
+  _prev: SignupState,
+  formData: FormData
+): Promise<SignupState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (name.length < 2) return { error: "Please enter your full name." };
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Please enter a valid email address." };
+  if (password.length < 6) return { error: "Password must be at least 6 characters." };
+  if (await findUserByEmail(email)) {
+    return { error: "An account with this email already exists — please sign in instead." };
+  }
+
+  const id = newId();
+  await db.prepare(
+    "INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'student', 'active')"
+  ).run(id, name, email, hashPassword(password));
+
+  // Warm welcome + a heads-up to the admissions team.
+  await notify(
+    id,
+    "announcement",
+    "Welcome to CLATians! 🎉",
+    "Explore your free study material, attempt the scholarship mock test, and enroll in a batch to unlock live classes & the full course."
+  );
+  const admins = (await db.prepare("SELECT id FROM users WHERE role='admin'").all() as { id: string }[]).map((a) => a.id);
+  await notifyMany(admins, "info", "New student signup", `${name} (${email}) just created an account.`);
+
+  await createSession(id);
+  redirect("/");
 }
 
 /** Self-service password change for the signed-in user (any role). */
