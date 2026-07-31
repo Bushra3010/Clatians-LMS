@@ -313,6 +313,11 @@ export default async function Home() {
   ).all(user.id) as { id: string; title: string; done: number; due_date: string }[])
     .map((t) => ({ id: t.id, title: t.title, done: t.done === 1, dueDate: t.due_date }));
 
+  // ── Personal notes ──
+  const notes = await db.prepare(
+    "SELECT id, title, body FROM notes WHERE user_id = ? ORDER BY updated_at DESC"
+  ).all(user.id) as { id: string; title: string; body: string }[];
+
   // ── Payment history (student's own invoices) ──
   const myPayments = (await db.prepare(
     `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
@@ -342,6 +347,7 @@ export default async function Home() {
       slots={slots}
       payments={myPayments}
       tasks={tasks}
+      notes={notes}
     />
   );
 }
