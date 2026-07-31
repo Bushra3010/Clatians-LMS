@@ -62,6 +62,23 @@ export default async function TeacherTestsPage() {
     const agg = testAgg.get(testId);
     return agg && agg.attempts > 0 ? Math.round(agg.pctSum / agg.attempts) : null;
   };
+  // Batch accuracy per section within a test (weakest first).
+  const subjectBreakdownFor = (testId: string) => {
+    const map = new Map<string, { correct: number; answered: number }>();
+    for (const q of questions) {
+      if (q.test_id !== testId) continue;
+      const s = qStats.get(q.id);
+      if (!s || s.answered === 0) continue;
+      const subj = q.subject || "General";
+      const agg = map.get(subj) ?? { correct: 0, answered: 0 };
+      agg.correct += s.correct;
+      agg.answered += s.answered;
+      map.set(subj, agg);
+    }
+    return [...map.entries()]
+      .map(([subject, v]) => ({ subject, pct: Math.round((v.correct / v.answered) * 100), correct: v.correct, answered: v.answered }))
+      .sort((a, b) => a.pct - b.pct);
+  };
 
   const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
   const aiOn = aiConfigured();
@@ -150,7 +167,37 @@ export default async function TeacherTestsPage() {
                 <summary className="text-xs font-medium text-gold-700 cursor-pointer">
                   📊 Analytics · {t.attempts} attempt{t.attempts === 1 ? "" : "s"}{avgPctFor(t.id) !== null ? ` · avg ${avgPctFor(t.id)}%` : ""}
                 </summary>
-                <ol className="mt-3 space-y-3">
+
+                {/* By section — batch accuracy per subject */}
+                {(() => {
+                  const bd = subjectBreakdownFor(t.id);
+                  if (bd.length < 1) return null;
+                  return (
+                    <div className="mt-3 rounded-lg bg-slate-50 border border-slate-100 p-3">
+                      <p className="text-xs font-semibold text-slate-600 mb-2">By section</p>
+                      <div className="space-y-2">
+                        {bd.map((s) => {
+                          const color = s.pct < 40 ? "#DC2626" : s.pct < 70 ? "#D97706" : "#059669";
+                          return (
+                            <div key={s.subject}>
+                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="text-slate-700">{s.subject}</span>
+                                <span className="font-semibold tabular-nums" style={{ color }}>{s.pct}% <span className="text-slate-400 font-normal">({s.correct}/{s.answered})</span></span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${s.pct}%`, background: color }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-400">Weakest sections first — reteach the red/amber ones.</p>
+                    </div>
+                  );
+                })()}
+
+                <p className="mt-3 mb-1 text-xs font-semibold text-slate-600">By question</p>
+                <ol className="space-y-3">
                   {qByTest(t.id).map((q, i) => {
                     const s = qStats.get(q.id);
                     const answered = s?.answered ?? 0;
