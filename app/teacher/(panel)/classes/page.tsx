@@ -5,6 +5,7 @@ import {
   editClassAction,
   setClassStatusAction,
   saveRecordingAction,
+  setAttendanceAction,
 } from "@/app/lib/class-actions";
 import { fmtIST, toDatetimeLocalIST } from "@/app/lib/dates";
 
@@ -68,6 +69,20 @@ export default async function TeacherClassesPage() {
     )
     .all(user.id) as Attendee[];
   const rosterFor = (classId: string) => attendees.filter((a) => a.class_id === classId);
+
+  // Full batch roster per class (for manual attendance marking) with present flag.
+  const marks = await db
+    .prepare(
+      `SELECT lc.id AS class_id, u.id AS user_id, u.name,
+              (EXISTS(SELECT 1 FROM class_attendance a WHERE a.class_id=lc.id AND a.user_id=u.id))::int AS present
+       FROM live_classes lc
+       JOIN enrollments e ON e.course_id = lc.course_id
+       JOIN users u ON u.id = e.user_id AND u.role='student' AND u.status='active'
+       WHERE lc.teacher_id = ? AND lc.status IN ('live','ended')
+       ORDER BY u.name`
+    )
+    .all(user.id) as { class_id: string; user_id: string; name: string; present: number }[];
+  const markableFor = (classId: string) => marks.filter((m) => m.class_id === classId);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -201,8 +216,30 @@ export default async function TeacherClassesPage() {
               </details>
             )}
 
-            {/* Attendance roster */}
-            {r.attendees > 0 && (
+            {/* Attendance */}
+            {(r.status === "live" || r.status === "ended") && markableFor(r.id).length > 0 ? (
+              <details className="mt-2 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">
+                  Mark attendance ({markableFor(r.id).filter((m) => m.present).length}/{markableFor(r.id).length} present)
+                </summary>
+                <ul className="mt-3 space-y-1.5">
+                  {markableFor(r.id).map((m) => (
+                    <li key={m.user_id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-slate-700">{m.name}</span>
+                      <form action={setAttendanceAction}>
+                        <input type="hidden" name="classId" value={r.id} />
+                        <input type="hidden" name="userId" value={m.user_id} />
+                        <input type="hidden" name="present" value={m.present ? "0" : "1"} />
+                        <button className={`w-24 text-xs rounded-md px-3 py-1 border transition ${m.present ? "border-green-200 text-green-700 bg-green-50 hover:bg-green-100" : "border-slate-200 text-slate-400 hover:bg-slate-50"}`}>
+                          {m.present ? "✓ Present" : "Absent"}
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] text-slate-400">Tap to toggle. Students who tapped “Join” are already marked present.</p>
+              </details>
+            ) : r.attendees > 0 ? (
               <details className="mt-2 border-t border-slate-100 pt-3">
                 <summary className="text-xs font-medium text-gold-700 cursor-pointer">Who attended ({r.attendees})</summary>
                 <ul className="mt-3 space-y-1.5">
@@ -214,7 +251,7 @@ export default async function TeacherClassesPage() {
                   ))}
                 </ul>
               </details>
-            )}
+            ) : null}
 
             {/* Recording — for ended classes */}
             {r.status === "ended" && (

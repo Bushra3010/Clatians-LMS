@@ -170,6 +170,31 @@ export async function deleteClassAction(formData: FormData) {
 }
 
 /**
+ * Manually mark a student present or absent for a class (for offline classes,
+ * or attendees who didn't tap Join). "Present" adds an attendance row; "absent"
+ * removes it. Teacher must own the class (admins may mark any).
+ */
+export async function setAttendanceAction(formData: FormData) {
+  const user = await requireRole(["teacher", "admin"]);
+  const classId = String(formData.get("classId") ?? "");
+  const userId = String(formData.get("userId") ?? "");
+  const present = String(formData.get("present") ?? "") === "1";
+  if (!classId || !userId) return;
+  if (!await assertOwnerOrAdmin(classId, user.id, user.role)) return;
+
+  if (present) {
+    await db.prepare("INSERT INTO class_attendance (class_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING").run(classId, userId);
+  } else {
+    await db.prepare("DELETE FROM class_attendance WHERE class_id = ? AND user_id = ?").run(classId, userId);
+  }
+
+  revalidatePath("/teacher/classes");
+  revalidatePath("/teacher/attendance");
+  revalidatePath("/admin/attendance");
+  revalidatePath("/");
+}
+
+/**
  * Nudge a student whose attendance is low. In-app for now; a parent SMS/email
  * would fan out from the same await notify() call once a provider is connected.
  */
