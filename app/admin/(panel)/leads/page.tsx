@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 type Lead = {
   id: string; name: string; phone: string; email: string; interest: string;
   demo_date: string; message: string; status: string; notes: string; created_at: string;
+  referrer: string | null;
 };
 type Course = { id: string; name: string };
 
@@ -29,15 +30,16 @@ function fmt(iso: string) {
 
 export default async function AdminLeadsPage() {
   const leads = await db.prepare(
-    `SELECT * FROM leads
-     ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 WHEN 'demo' THEN 2 WHEN 'enrolled' THEN 3 ELSE 4 END, created_at DESC`
+    `SELECT l.*, u.name AS referrer
+     FROM leads l LEFT JOIN users u ON u.id = l.referred_by
+     ORDER BY CASE l.status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 WHEN 'demo' THEN 2 WHEN 'enrolled' THEN 3 ELSE 4 END, l.created_at DESC`
   ).all() as Lead[];
 
   const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
   const counts = STATUSES.map((s) => ({ s, n: leads.filter((l) => l.status === s).length }));
   const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
-  const csvRows = leads.map((l) => [l.name, l.phone, l.email, l.interest, statusLabel[l.status] ?? l.status, l.notes, fmt(l.created_at)]);
+  const csvRows = leads.map((l) => [l.name, l.phone, l.email, l.interest, statusLabel[l.status] ?? l.status, l.referrer ?? "", l.notes, fmt(l.created_at)]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -48,7 +50,7 @@ export default async function AdminLeadsPage() {
         </div>
         <ExportCsvButton
           filename={`leads-${new Date().toISOString().slice(0, 10)}`}
-          headers={["Name", "Phone", "Email", "Interest", "Status", "Notes", "Enquired"]}
+          headers={["Name", "Phone", "Email", "Interest", "Status", "Referred by", "Notes", "Enquired"]}
           rows={csvRows}
         />
       </header>
@@ -78,6 +80,7 @@ export default async function AdminLeadsPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusStyle[l.status]}`}>{statusLabel[l.status]}</span>
                   {l.interest && <span className="text-xs text-slate-400">{l.interest}</span>}
+                  {l.referrer && <span className="rounded bg-pink-50 text-pink-700 px-2 py-0.5 text-xs font-medium">🎁 {l.referrer}</span>}
                 </div>
                 <h3 className="text-sm font-semibold text-slate-900 mt-1">{l.name}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">

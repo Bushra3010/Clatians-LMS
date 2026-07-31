@@ -220,8 +220,10 @@ const SCHEMA = `
     id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
     interest TEXT NOT NULL DEFAULT '', demo_date TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'new', notes TEXT NOT NULL DEFAULT '',
+    referred_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT ${NOW}, updated_at TEXT NOT NULL DEFAULT ${NOW}
   );
+  ALTER TABLE leads ADD COLUMN IF NOT EXISTS referred_by TEXT REFERENCES users(id) ON DELETE SET NULL;
   CREATE TABLE IF NOT EXISTS audit_log (
     id TEXT PRIMARY KEY, actor_id TEXT, actor_name TEXT NOT NULL DEFAULT '', actor_role TEXT NOT NULL DEFAULT '',
     action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT ${NOW}

@@ -10,7 +10,7 @@ const initial: LeadState = {};
 const label: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 };
 const input: React.CSSProperties = { width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 12, background: "#F9FAFB", padding: "12px 14px", fontSize: 15, outline: "none", color: "#1A1A2E" };
 
-export default function EnquiryForm({ courses }: { courses: string[] }) {
+export default function EnquiryForm({ courses, defaultRef = "" }: { courses: string[]; defaultRef?: string }) {
   const [state, action, pending] = useActionState(createLeadAction, initial);
 
   return (
@@ -66,6 +66,11 @@ export default function EnquiryForm({ courses }: { courses: string[] }) {
                 <div>
                   <label style={label}>Message</label>
                   <textarea name="message" rows={3} style={{ ...input, resize: "vertical" }} placeholder="Anything you'd like us to know?" />
+                </div>
+
+                <div>
+                  <label style={label}>Referral code (optional)</label>
+                  <input name="ref" defaultValue={defaultRef} style={{ ...input, textTransform: "uppercase" }} placeholder="Friend's code, if any" />
                 </div>
 
                 {state.error && (

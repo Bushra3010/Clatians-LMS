@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { notifyMany } from "./notify";
+import { notify, notifyMany } from "./notify";
 import { logAudit } from "./audit";
 
 export type LeadState = { ok?: boolean; error?: string };
@@ -24,14 +24,26 @@ export async function createLeadAction(_prev: LeadState, formData: FormData): Pr
 
   if (!name || !phone) return { error: "Please enter your name and phone number." };
 
+  // Resolve a referral code (first 6 hex of a student's id) to the referrer.
+  const ref = String(formData.get("ref") ?? "").trim().toUpperCase();
+  let referredBy: string | null = null;
+  if (ref) {
+    const r = await db.prepare(
+      "SELECT id FROM users WHERE role='student' AND status='active' AND upper(substr(id, 1, 6)) = ? LIMIT 1"
+    ).get(ref) as { id: string } | undefined;
+    if (r) referredBy = r.id;
+  }
+
   await db.prepare(
-    `INSERT INTO leads (id, name, phone, email, interest, demo_date, message, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(newId(), name, phone, email, interest, demoDate, message, demoDate ? "demo" : "new");
+    `INSERT INTO leads (id, name, phone, email, interest, demo_date, message, status, referred_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(newId(), name, phone, email, interest, demoDate, message, demoDate ? "demo" : "new", referredBy);
 
   // Alert admins about the new enquiry.
   const admins = (await db.prepare("SELECT id FROM users WHERE role='admin'").all() as { id: string }[]).map((a) => a.id);
-  await notifyMany(admins, "info", "New enquiry", `${name} is interested in ${interest || "your courses"}.`);
+  await notifyMany(admins, "info", "New enquiry", `${name} is interested in ${interest || "your courses"}.${referredBy ? " (referral)" : ""}`);
+  // Thank the referrer.
+  if (referredBy) await notify(referredBy, "info", "Your referral came in! 🎁", `${name} enquired using your referral code. Thank you for spreading the word!`);
 
   revalidatePath("/admin/leads");
   return { ok: true };

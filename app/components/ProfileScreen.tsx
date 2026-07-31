@@ -2,7 +2,7 @@
 
 import type { StudentProfile } from "../StudentApp";
 
-export type ProfileMenuKey = "progress" | "planner" | "notes" | "courses" | "tests" | "saved" | "payments" | "achievements" | "notifications" | "help" | "settings";
+export type ProfileMenuKey = "progress" | "planner" | "notes" | "refer" | "courses" | "tests" | "saved" | "payments" | "achievements" | "notifications" | "help" | "settings";
 
 interface ProfileScreenProps {
   profile: StudentProfile;
@@ -22,6 +22,7 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
     { key: "progress", icon: "📊", label: "My Progress", desc: "Completion, weak areas & scores", color: "#3D2411" },
     { key: "planner", icon: "📋", label: "Study Planner", desc: "Your study to-do list & deadlines", color: "#0891B2" },
     { key: "notes", icon: "📝", label: "My Notes", desc: "Your personal study notebook", color: "#7C3AED" },
+    { key: "refer", icon: "🎁", label: "Refer a Friend", desc: "Share your code & invite friends", color: "#DB2777" },
     { key: "courses", icon: "📚", label: "My Courses", desc: `${profile.batches.length} enrolled batch${profile.batches.length === 1 ? "" : "es"}`, color: "#059669" },
     { key: "payments", icon: "🧾", label: "Payments & Invoices", desc: "Your fee receipts & history", color: "#3D2411" },
     { key: "tests", icon: "📝", label: "My Tests", desc: "Mock tests & results", color: "#E63946" },

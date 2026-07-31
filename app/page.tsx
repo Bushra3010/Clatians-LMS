@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "./lib/auth";
 import { db } from "./lib/db";
+import { referralCode } from "./lib/referral";
 import StudentApp from "./StudentApp";
 import type { LiveClassItem } from "./components/detail/LiveClassesPage";
 import type { ContentItem } from "./components/detail/ContentListPage";
@@ -318,6 +319,13 @@ export default async function Home() {
     "SELECT id, title, body FROM notes WHERE user_id = ? ORDER BY updated_at DESC"
   ).all(user.id) as { id: string; title: string; body: string }[];
 
+  // ── Referral program ──
+  const referral = {
+    code: referralCode(user.id),
+    total: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ?").get(user.id) as { n: number }).n,
+    enrolled: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ? AND status='enrolled'").get(user.id) as { n: number }).n,
+  };
+
   // ── Payment history (student's own invoices) ──
   const myPayments = (await db.prepare(
     `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
@@ -348,6 +356,7 @@ export default async function Home() {
       payments={myPayments}
       tasks={tasks}
       notes={notes}
+      referral={referral}
     />
   );
 }
