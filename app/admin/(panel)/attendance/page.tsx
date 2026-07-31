@@ -1,5 +1,6 @@
 import { db } from "@/app/lib/db";
 import { sendAttendanceReminderAction } from "@/app/lib/class-actions";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,16 @@ export default async function AdminAttendancePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Attendance</h1>
-        <p className="text-sm text-slate-500">Live-class attendance across batches · {low.length} student{low.length === 1 ? "" : "s"} below {LOW}%</p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Attendance</h1>
+          <p className="text-sm text-slate-500">Live-class attendance across batches · {low.length} student{low.length === 1 ? "" : "s"} below {LOW}%</p>
+        </div>
+        <ExportCsvButton
+          filename={`attendance-${new Date().toISOString().slice(0, 10)}`}
+          headers={["Student", "Batch", "Attended", "Classes held", "Percent"]}
+          rows={rows.map((r) => [r.student, r.batch, r.attended, r.total, pct(r) === null ? "—" : `${pct(r)}%`])}
+        />
       </header>
 
       {/* Batch cards */}

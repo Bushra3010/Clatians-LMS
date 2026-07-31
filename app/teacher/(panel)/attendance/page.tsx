@@ -2,6 +2,7 @@ import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { sendAttendanceReminderAction } from "@/app/lib/class-actions";
 import { fmtIST } from "@/app/lib/dates";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,14 @@ export default async function TeacherAttendancePage() {
       </div>
 
       {/* Per-student roster with drill-down */}
-      <h2 className="text-sm font-semibold text-slate-900 mb-3">Student attendance</h2>
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="text-sm font-semibold text-slate-900">Student attendance</h2>
+        <ExportCsvButton
+          filename={`attendance-${new Date().toISOString().slice(0, 10)}`}
+          headers={["Student", "Batch", "Attended", "Classes held", "Percent"]}
+          rows={students.map((r) => [r.student, r.batch, r.attended, r.total, pct(r) === null ? "—" : `${pct(r)}%`])}
+        />
+      </div>
       <p className="text-xs text-slate-400 mb-3">Tap a student to see class-by-class attendance.</p>
       <div className="space-y-2">
         {students.length === 0 && <p className="text-sm text-slate-400">No students yet.</p>}
