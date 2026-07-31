@@ -1,5 +1,8 @@
 import { db } from "@/app/lib/db";
 import { setContentStatusAction } from "../../actions";
+import ListFilter from "@/app/components/ListFilter";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -43,23 +46,34 @@ export default async function ContentPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Content Approval</h1>
-        <p className="text-sm text-slate-500">
-          {pending} item{pending === 1 ? "" : "s"} awaiting review · teacher-submitted content
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Content Approval</h1>
+          <p className="text-sm text-slate-500">
+            {pending} item{pending === 1 ? "" : "s"} awaiting review · teacher-submitted content
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ListFilter selector="#content-list > [data-content]" placeholder="Search title, author, type…" emptyId="content-empty" />
+          <ExportCsvButton
+            filename={`content-${new Date().toISOString().slice(0, 10)}`}
+            headers={["Title", "Type", "Status", "Author", "Batch", "Submitted"]}
+            rows={rows.map((r) => [r.title, r.type, r.status, r.author ?? "", r.course ?? "", fmtIST(r.created_at, { day: "numeric", month: "short", year: "numeric" })])}
+          />
+        </div>
       </header>
 
-      <div className="space-y-3">
+      <div id="content-list" className="space-y-3">
         {rows.length === 0 && (
           <p className="text-sm text-slate-400">No content submitted yet.</p>
         )}
+        <p id="content-empty" className="text-sm text-slate-400" style={{ display: "none" }}>No content matches your search.</p>
 
         {rows.map((r) => {
           const isUrl = /^https?:\/\//i.test(r.body.trim());
           const hasBody = r.body.trim().length > 0;
           return (
-            <div key={r.id} className="rounded-xl bg-white border border-slate-200 p-5">
+            <div key={r.id} data-content className="rounded-xl bg-white border border-slate-200 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

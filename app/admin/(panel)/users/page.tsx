@@ -1,6 +1,8 @@
 import { db } from "@/app/lib/db";
 import { createUserAction, setUserStatusAction, editUserAction, resetUserPasswordAction } from "../../actions";
 import ListFilter from "@/app/components/ListFilter";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
+import { fmtIST } from "@/app/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +60,16 @@ export default async function UsersPage() {
       </section>
 
       {/* Users table */}
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
         <h2 className="text-sm font-semibold text-slate-900">All users</h2>
-        <ListFilter selector="#users-table tbody tr:not(#users-empty)" placeholder="Search name, email, role…" emptyId="users-empty" />
+        <div className="flex items-center gap-2">
+          <ListFilter selector="#users-table tbody tr:not(#users-empty)" placeholder="Search name, email, role…" emptyId="users-empty" />
+          <ExportCsvButton
+            filename={`users-${new Date().toISOString().slice(0, 10)}`}
+            headers={["Name", "Email", "Role", "Status", "Joined"]}
+            rows={users.map((u) => [u.name, u.email, u.role, u.status, fmtIST(u.created_at, { day: "numeric", month: "short", year: "numeric" })])}
+          />
+        </div>
       </div>
       <section className="rounded-xl bg-white border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
