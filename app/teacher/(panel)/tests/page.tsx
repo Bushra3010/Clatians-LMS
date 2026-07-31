@@ -30,6 +30,39 @@ export default async function TeacherTestsPage() {
   ).all(user.id) as Q[];
   const qByTest = (id: string) => questions.filter((q) => q.test_id === id);
 
+  // ── Item analysis: per-question answer distribution across submitted attempts ──
+  const attemptRows = await db.prepare(
+    `SELECT test_id, score, total, answers FROM test_attempts
+     WHERE status='submitted' AND test_id IN (SELECT id FROM tests WHERE created_by=?)`
+  ).all(user.id) as { test_id: string; score: number; total: number; answers: string }[];
+
+  type QStat = { a: number; b: number; c: number; d: number; correct: number; answered: number };
+  const qStats = new Map<string, QStat>(); // by question id
+  const testAgg = new Map<string, { attempts: number; pctSum: number }>();
+  const correctById = new Map(questions.map((q) => [q.id, q.correct]));
+  for (const at of attemptRows) {
+    const agg = testAgg.get(at.test_id) ?? { attempts: 0, pctSum: 0 };
+    agg.attempts += 1;
+    agg.pctSum += at.total > 0 ? (at.score / at.total) * 100 : 0;
+    testAgg.set(at.test_id, agg);
+    let ans: Record<string, string> = {};
+    try { ans = JSON.parse(at.answers); } catch { ans = {}; }
+    for (const [qid, chosen] of Object.entries(ans)) {
+      if (!correctById.has(qid)) continue;
+      const s = qStats.get(qid) ?? { a: 0, b: 0, c: 0, d: 0, correct: 0, answered: 0 };
+      if (chosen === "a" || chosen === "b" || chosen === "c" || chosen === "d") {
+        s[chosen] += 1;
+        s.answered += 1;
+        if (chosen === correctById.get(qid)) s.correct += 1;
+      }
+      qStats.set(qid, s);
+    }
+  }
+  const avgPctFor = (testId: string) => {
+    const agg = testAgg.get(testId);
+    return agg && agg.attempts > 0 ? Math.round(agg.pctSum / agg.attempts) : null;
+  };
+
   const courses = await db.prepare("SELECT id, name FROM courses WHERE status='active' ORDER BY name").all() as Course[];
   const aiOn = aiConfigured();
 
@@ -109,6 +142,47 @@ export default async function TeacherTestsPage() {
                   </li>
                 ))}
               </ol>
+            )}
+
+            {/* Item analysis */}
+            {t.attempts > 0 && qByTest(t.id).length > 0 && (
+              <details className="mt-3 border-t border-slate-100 pt-3">
+                <summary className="text-xs font-medium text-gold-700 cursor-pointer">
+                  📊 Analytics · {t.attempts} attempt{t.attempts === 1 ? "" : "s"}{avgPctFor(t.id) !== null ? ` · avg ${avgPctFor(t.id)}%` : ""}
+                </summary>
+                <ol className="mt-3 space-y-3">
+                  {qByTest(t.id).map((q, i) => {
+                    const s = qStats.get(q.id);
+                    const answered = s?.answered ?? 0;
+                    const correctPct = answered > 0 ? Math.round((s!.correct / answered) * 100) : null;
+                    const barColor = correctPct === null ? "#CBD5E1" : correctPct < 40 ? "#DC2626" : correctPct < 70 ? "#D97706" : "#059669";
+                    return (
+                      <li key={q.id} className="text-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="text-slate-700 min-w-0"><span className="text-slate-400 mr-1">{i + 1}.</span>{q.text}</span>
+                          <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: barColor }}>{correctPct === null ? "—" : `${correctPct}%`}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${correctPct ?? 0}%`, background: barColor }} />
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-2">
+                          {(["a", "b", "c", "d"] as const).map((opt) => {
+                            const n = s?.[opt] ?? 0;
+                            const isCorrect = q.correct === opt;
+                            return (
+                              <span key={opt} className={`text-[11px] rounded px-1.5 py-0.5 ${isCorrect ? "bg-green-50 text-green-700 font-semibold" : "bg-slate-50 text-slate-500"}`}>
+                                {opt.toUpperCase()}: {n}{isCorrect ? " ✓" : ""}
+                              </span>
+                            );
+                          })}
+                          {answered === 0 && <span className="text-[11px] text-slate-400">No responses yet</span>}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="mt-3 text-[11px] text-slate-400">Low %s (red) flag hard or ambiguous questions worth reviewing.</p>
+              </details>
             )}
 
             {/* Edit test details */}
