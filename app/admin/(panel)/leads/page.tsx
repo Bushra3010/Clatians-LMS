@@ -2,6 +2,7 @@ import { db } from "@/app/lib/db";
 import { updateLeadStatusAction, saveLeadNoteAction, deleteLeadAction } from "@/app/lib/lead-actions";
 import { convertLeadAction } from "../../actions";
 import { fmtIST } from "@/app/lib/dates";
+import ExportCsvButton from "@/app/components/ExportCsvButton";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,20 @@ export default async function AdminLeadsPage() {
   const counts = STATUSES.map((s) => ({ s, n: leads.filter((l) => l.status === s).length }));
   const inputCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
 
+  const csvRows = leads.map((l) => [l.name, l.phone, l.email, l.interest, statusLabel[l.status] ?? l.status, l.notes, fmt(l.created_at)]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Admissions &amp; Leads</h1>
-        <p className="text-sm text-slate-500">{leads.length} enquiries · public form at <span className="font-mono">/enquiry</span></p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Admissions &amp; Leads</h1>
+          <p className="text-sm text-slate-500">{leads.length} enquiries · public form at <span className="font-mono">/enquiry</span></p>
+        </div>
+        <ExportCsvButton
+          filename={`leads-${new Date().toISOString().slice(0, 10)}`}
+          headers={["Name", "Phone", "Email", "Interest", "Status", "Notes", "Enquired"]}
+          rows={csvRows}
+        />
       </header>
 
       {/* Pipeline counts */}
