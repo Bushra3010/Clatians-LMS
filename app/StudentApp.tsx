@@ -74,8 +74,8 @@ type ContentBuckets = {
 type Screen = "home" | "courses" | "study" | "doubts";
 type DetailPage = "videos" | "notes" | "practice" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "saved" | "payments" | "certificates" | "help" | "settings" | null;
 
-const TOPBAR_H = 90;
-const BOTTOMNAV_H = 70;
+// Phone-app shell: fluid width up to a phablet cap, centered on desktop.
+const SHELL_MAX_W = 430;
 
 interface StudentAppProps {
   upcomingClasses: LiveClassItem[];
@@ -244,8 +244,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const showNav = !detailPage;
 
   return (
-    <div style={{ minHeight:"100vh", background:"#E0D7C7", display:"flex", alignItems:"flex-start", justifyContent:"center" }}>
-      <div style={{ width:390, minHeight:"100vh", position:"relative", background:"#F7F3EA", overflow:"hidden" }}>
+    <div style={{ minHeight:"100dvh", background:"#E9E4DA", display:"flex", alignItems:"stretch", justifyContent:"center" }}>
+      <div style={{ width:"100%", maxWidth:SHELL_MAX_W, height:"100dvh", display:"flex", flexDirection:"column", position:"relative", background:"#F7F3EA", overflow:"hidden", boxShadow:"0 0 44px rgba(43,23,0,0.14)" }}>
 
         {showProfile && (
           <ProfileScreen
@@ -263,8 +263,9 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         <div
           id="screen-content"
           style={{
+            flex: 1,
+            minHeight: 0,
             overflowY: "auto",
-            height: `calc(100vh - ${TOPBAR_H}px - ${showNav ? BOTTOMNAV_H : 0}px)`,
             WebkitOverflowScrolling: "touch",
           }}
           className="no-scroll"

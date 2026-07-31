@@ -57,16 +57,17 @@ const tabs = [
 export default function BottomNav({ active, onChange }: BottomNavProps) {
   return (
     <div style={{
-      position: "fixed",
-      bottom: 0,
-      width: "390px",
-      height: "70px",
-      background: "white",
-      borderTop: "1.5px solid #F0F0F5",
+      flexShrink: 0,
+      height: "calc(66px + env(safe-area-inset-bottom))",
+      paddingBottom: "env(safe-area-inset-bottom)",
+      background: "rgba(255,255,255,0.96)",
+      backdropFilter: "blur(14px)",
+      WebkitBackdropFilter: "blur(14px)",
+      borderTop: "1px solid #EFE9DD",
       display: "flex",
       alignItems: "stretch",
       zIndex: 50,
-      boxShadow: "0 -6px 24px rgba(0,0,0,0.10)",
+      boxShadow: "0 -4px 20px rgba(43,23,0,0.06)",
     }}>
       {tabs.map((tab) => {
         const isActive = active === tab.id;

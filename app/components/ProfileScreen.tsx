@@ -37,7 +37,7 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
   return (
     <div style={{
       position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)",
-      width: 390, height: "100vh", background: "#F7F3EA",
+      width: "100%", maxWidth: 430, height: "100dvh", background: "#F7F3EA",
       zIndex: 100, overflowY: "auto",
     }}
     className="no-scroll"

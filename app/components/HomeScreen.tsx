@@ -85,58 +85,52 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
     <div style={{ background: "#F7F3EA", paddingBottom: 20 }}>
 
       {/* ── Hero Scholarship Banner ── */}
-      <div style={{ padding: "14px 14px 0" }}>
+      <div style={{ padding: "14px 16px 0" }}>
         <div style={{
-          background: "linear-gradient(135deg,#B8F0E8 0%,#8EE0D6 55%,#6ECFC4 100%)",
-          borderRadius: 22,
-          padding: "18px 14px 18px 18px",
+          background: "linear-gradient(135deg,#2B1700 0%,#3D2411 55%,#5C3A00 100%)",
+          borderRadius: 20,
+          padding: "18px",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 14,
           position: "relative",
           overflow: "hidden",
-          boxShadow: "0 4px 20px rgba(110,207,196,0.3)",
+          boxShadow: "0 10px 28px rgba(43,23,0,0.28)",
         }}>
-          {/* Decorative blobs */}
-          <div style={{ position: "absolute", right: -30, top: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.18)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", right: 60, bottom: -40, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.10)", pointerEvents: "none" }} />
+          {/* Decorative gold glows */}
+          <div style={{ position: "absolute", right: -36, top: -36, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.22), transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: -30, bottom: -50, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.10), transparent 70%)", pointerEvents: "none" }} />
 
-          <div style={{ flex: 1, zIndex: 1 }}>
-            <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: 16, color: "#0D4A42", lineHeight: 1.3 }}>
-              Win Scholarship on<br />CLATians Courses
+          <div style={{ flex: 1, zIndex: 1, minWidth: 0 }}>
+            <span style={{ display: "inline-block", background: "rgba(245,166,35,0.16)", border: "1px solid rgba(245,166,35,0.4)", color: "#F5C97A", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", padding: "3px 10px", borderRadius: 20, marginBottom: 8 }}>
+              SCHOLARSHIP TEST
+            </span>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "white", lineHeight: 1.3, letterSpacing: "-0.2px" }}>
+              Win up to <span style={{ color: "#F5A623" }}>90% off</span><br />on CLATians courses
             </p>
-            <p style={{ margin: "6px 0 10px", fontSize: 12.5, color: "#1A6B60", lineHeight: 1.4 }}>
-              Give CLAT Mock & claim your scholarship
+            <p style={{ margin: "6px 0 12px", fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.45 }}>
+              Attempt the CLAT mock &amp; claim your scholarship
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <CalendarIcon />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#374151" }}>17th May, 2026</span>
-            </div>
+            <button onClick={() => onOpenTests?.()} className="press" style={{
+              background: "linear-gradient(135deg,#F5A623,#E8930A)",
+              color: "#2B1700", border: "none",
+              borderRadius: 12, padding: "10px 18px",
+              fontSize: 13, fontWeight: 800, cursor: "pointer",
+              whiteSpace: "nowrap",
+              boxShadow: "0 6px 16px rgba(245,166,35,0.35)",
+            }}>Register Now →</button>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, zIndex: 1, flexShrink: 0 }}>
-            <div style={{
-              background: "white",
-              borderRadius: 16,
-              padding: "10px 14px",
-              textAlign: "center",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-              minWidth: 88,
-            }}>
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#0D4A42", letterSpacing: "0.5px" }}>UP TO</p>
-              <p style={{ margin: "2px 0", fontSize: 38, fontWeight: 900, color: "#0D4A42", lineHeight: 1 }}>
-                90<span style={{ fontSize: 20 }}>%</span>
-              </p>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: "#0D4A42" }}>Scholarship</p>
+          <div style={{ zIndex: 1, flexShrink: 0, textAlign: "center", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "14px 16px" }}>
+            <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>UP TO</p>
+            <p style={{ margin: "2px 0", fontSize: 36, fontWeight: 900, color: "#F5A623", lineHeight: 1 }}>
+              90<span style={{ fontSize: 19 }}>%</span>
+            </p>
+            <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>Scholarship</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+              <CalendarIcon />
+              <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>17 May 2026</span>
             </div>
-            <button onClick={() => onOpenTests?.()} style={{
-              background: "linear-gradient(135deg,#3D2411,#5C3A00)",
-              color: "white", border: "none",
-              borderRadius: 24, padding: "10px 16px",
-              fontSize: 12, fontWeight: 700, cursor: "pointer",
-              whiteSpace: "nowrap",
-              boxShadow: "0 4px 12px rgba(61,36,17,0.4)",
-            }}>Register Now</button>
           </div>
         </div>
       </div>
@@ -165,21 +159,21 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
           {tools.map((tool, i) => (
-            <button key={i} onClick={() => onToolClick?.(tool.id)} style={{
+            <button key={i} onClick={() => onToolClick?.(tool.id)} className="press" style={{
               background: "white",
-              borderRadius: 18,
-              padding: "14px 6px 12px",
+              borderRadius: 16,
+              padding: "13px 6px 11px",
               display: "flex", flexDirection: "column",
-              alignItems: "center", gap: 9,
-              boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-              cursor: "pointer", border: "none",
-              transition: "transform 0.15s, box-shadow 0.15s",
+              alignItems: "center", gap: 8,
+              boxShadow: "0 1px 8px rgba(43,23,0,0.06)",
+              border: "1px solid #F2EDE2",
+              cursor: "pointer",
             }}>
               <div style={{
-                width: 52, height: 52, borderRadius: 15,
+                width: 48, height: 48, borderRadius: 14,
                 background: tool.bg,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: `0 4px 14px ${tool.shadow}`,
+                boxShadow: `0 4px 12px ${tool.shadow}`,
               }}>
                 <tool.Icon />
               </div>
@@ -458,39 +452,40 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
 
       {/* ── AI Tutor Banner ── */}
       <div style={{ padding: "14px 14px 0" }}>
-        <button onClick={() => onOpenTutor?.()} style={{
+        <button onClick={() => onOpenTutor?.()} className="press" style={{
           width: "100%",
-          background: "linear-gradient(135deg,#7C3AED,#6D28D9)",
-          borderRadius: 20,
+          background: "white",
+          borderRadius: 18,
           padding: "16px",
-          border: "none",
+          border: "1px solid #F2EDE2",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          boxShadow: "0 6px 20px rgba(124,58,237,0.28)",
+          boxShadow: "0 1px 8px rgba(43,23,0,0.06)",
           cursor: "pointer",
           textAlign: "left",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 14,
-              background: "rgba(255,255,255,0.15)",
+              background: "linear-gradient(135deg,#3D2411,#5C3A00)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22,
+              fontSize: 22, boxShadow: "0 4px 12px rgba(61,36,17,0.25)",
             }}>🤖</div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "white" }}>AI Tutor</p>
-                <span style={{ background: "rgba(255,255,255,0.18)", color: "white", fontSize: 9.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.3)" }}>24×7</span>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>AI Tutor</p>
+                <span style={{ background: "#F6ECD9", color: "#6B4A28", fontSize: 9.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>24×7</span>
               </div>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Ask any CLAT doubt · instant answers</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6B7280" }}>Ask any CLAT doubt · instant answers</p>
             </div>
           </div>
           <span style={{
-            background: "white", color: "#6D28D9",
+            background: "linear-gradient(135deg,#3D2411,#5C3A00)", color: "white",
             borderRadius: 12, padding: "11px 16px",
             fontSize: 12, fontWeight: 800,
             whiteSpace: "nowrap",
+            boxShadow: "0 4px 12px rgba(61,36,17,0.25)",
           }}>Chat →</span>
         </button>
       </div>
@@ -595,30 +590,32 @@ export default function HomeScreen({ onNavigate, onToolClick, onKnowMoreClick, l
       {/* ── Current Affairs Strip ── */}
       <div style={{ padding: "22px 14px 0" }}>
         <div style={{
-          background: "linear-gradient(135deg,#7C3AED,#6D28D9)",
-          borderRadius: 20,
+          background: "linear-gradient(135deg,#2B1700,#5C3A00)",
+          borderRadius: 18,
           padding: "16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          boxShadow: "0 6px 20px rgba(124,58,237,0.3)",
+          boxShadow: "0 8px 22px rgba(43,23,0,0.25)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 14,
-              background: "rgba(255,255,255,0.15)",
+              background: "rgba(245,166,35,0.16)",
+              border: "1px solid rgba(245,166,35,0.35)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22,
             }}>📰</div>
             <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "white" }}>Today's Current Affairs</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.75)" }}>Stay updated for CLAT GK</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "white" }}>Today&apos;s Current Affairs</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.65)" }}>Stay updated for CLAT GK</p>
             </div>
           </div>
-          <button onClick={() => onToolClick?.("current-affairs")} style={{
-            background: "white", color: "#6D28D9",
-            border: "none", borderRadius: 12, padding: "9px 16px",
+          <button onClick={() => onToolClick?.("current-affairs")} className="press" style={{
+            background: "linear-gradient(135deg,#F5A623,#E8930A)", color: "#2B1700",
+            border: "none", borderRadius: 12, padding: "10px 16px",
             fontSize: 12, fontWeight: 800, cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
           }}>Read →</button>
         </div>
       </div>
