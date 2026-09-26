@@ -1,5 +1,29 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Course catalog — mirrored from the website
+
+Courses, batches, categories and faculty are owned by the CLATians website
+(`Alok16012/clatinsweb`) and mirrored into this LMS, so students see the same
+catalog here as on the site, and enrollments / content / tests hang off the
+same course rows.
+
+Set `WEBSITE_URL` to pull the live catalog:
+
+```
+WEBSITE_URL=https://clatians.com
+```
+
+With it set, the sync reads the site's `/api/courses`, `/api/batches` and
+`/api/course-categories`. Without it (or if the site is unreachable), it falls
+back to the bundled mirror in `app/lib/catalog/`, which carries the same data
+in the same shape.
+
+The sync runs automatically the first time the app loads against an empty
+catalog, and can be re-run any time from **Admin → Courses → Sync from
+website** (or `POST /api/catalog/sync` as an admin). It only inserts and
+updates, never deletes — so enrollments, payments, seat counts and uploaded
+content are never lost on a re-sync.
+
 ## Getting Started
 
 First, run the development server:

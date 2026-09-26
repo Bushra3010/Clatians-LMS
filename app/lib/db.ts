@@ -134,6 +134,28 @@ const SCHEMA = `
     status TEXT NOT NULL DEFAULT 'active', price INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT ${NOW}
   );
+  -- Catalog columns mirrored from the CLATians website's \`courses\` table, so a
+  -- course looks the same in the app as it does on clatians.com. \`price\` stays
+  -- the integer the checkout charges; \`fee_text\` is the website's display string.
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS slug TEXT;
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'offline';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT '📚';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT 'var(--blue-dark)';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS bg TEXT NOT NULL DEFAULT 'var(--info-border)';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS tagline TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS overview TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS duration TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS batch_size TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS fee_text TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS emi TEXT NOT NULL DEFAULT '';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS features TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS includes TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS curriculum TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS who_for TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS testimonial TEXT NOT NULL DEFAULT '{}';
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+  CREATE UNIQUE INDEX IF NOT EXISTS courses_slug_key ON courses (slug) WHERE slug IS NOT NULL;
   CREATE TABLE IF NOT EXISTS payments (
     id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, amount INTEGER NOT NULL DEFAULT 0,
@@ -163,6 +185,16 @@ const SCHEMA = `
     joined_at TEXT NOT NULL DEFAULT ${NOW}, present INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (class_id, user_id)
   );
+  -- In-class chat. Private by design: each student has one thread with the
+  -- class's teacher, and no student ever sees another student's messages.
+  CREATE TABLE IF NOT EXISTS class_messages (
+    id TEXT PRIMARY KEY, class_id TEXT NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    sender_role TEXT NOT NULL DEFAULT 'student', body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT ${NOW_US}
+  );
+  CREATE INDEX IF NOT EXISTS class_messages_thread ON class_messages (class_id, student_id, created_at);
   CREATE TABLE IF NOT EXISTS doubts (
     id TEXT PRIMARY KEY, student_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, subject TEXT NOT NULL DEFAULT '',
@@ -187,6 +219,12 @@ const SCHEMA = `
     opt_c TEXT NOT NULL, opt_d TEXT NOT NULL, correct TEXT NOT NULL, marks REAL NOT NULL DEFAULT 1,
     negative REAL NOT NULL DEFAULT 0.25, order_idx INTEGER NOT NULL DEFAULT 0
   );
+  -- The written solution shown in review. Practice papers always carry one;
+  -- mocks may leave it blank and fall back to the AI explanation.
+  ALTER TABLE questions ADD COLUMN IF NOT EXISTS explanation TEXT NOT NULL DEFAULT '';
+  -- Passage-based sections (Reading Comprehension, Legal Principle + Facts) share
+  -- one stimulus across several questions; blank for standalone questions.
+  ALTER TABLE questions ADD COLUMN IF NOT EXISTS passage TEXT NOT NULL DEFAULT '';
   CREATE TABLE IF NOT EXISTS test_attempts (
     id TEXT PRIMARY KEY, test_id TEXT NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, score REAL NOT NULL DEFAULT 0,
@@ -264,6 +302,176 @@ const SCHEMA = `
     id TEXT PRIMARY KEY, thread_id TEXT NOT NULL REFERENCES ai_threads(id) ON DELETE CASCADE,
     role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT ${NOW_US}
   );
+  CREATE TABLE IF NOT EXISTS course_categories (
+    id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE, label TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT 'var(--blue-dark)',
+    accent TEXT NOT NULL DEFAULT 'var(--blue-dark)', bg TEXT NOT NULL DEFAULT 'var(--info-border)',
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS subjects (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
+    description TEXT NOT NULL DEFAULT '', icon TEXT NOT NULL DEFAULT '📖',
+    color TEXT NOT NULL DEFAULT 'var(--blue-dark)', sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS modules (
+    id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
+    title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS chapters (
+    id TEXT PRIMARY KEY, module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+    title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS lessons (
+    id TEXT PRIMARY KEY, chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+    title TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'video',
+    body TEXT NOT NULL DEFAULT '', video_url TEXT NOT NULL DEFAULT '',
+    duration_min INTEGER NOT NULL DEFAULT 0, is_free INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  -- A lesson is a syllabus *topic*: one place holding its video (video_url),
+  -- written notes (body), an optional notes PDF/link, a practice test and the
+  -- doubts students raise about it.
+  ALTER TABLE lessons ADD COLUMN IF NOT EXISTS notes_url TEXT NOT NULL DEFAULT '';
+  ALTER TABLE lessons ADD COLUMN IF NOT EXISTS test_id TEXT REFERENCES tests(id) ON DELETE SET NULL;
+  ALTER TABLE doubts ADD COLUMN IF NOT EXISTS lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL;
+  CREATE TABLE IF NOT EXISTS lesson_progress (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    completed INTEGER NOT NULL DEFAULT 0, watch_seconds INTEGER NOT NULL DEFAULT 0,
+    last_position_sec INTEGER NOT NULL DEFAULT 0,
+    completed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    PRIMARY KEY (user_id, lesson_id)
+  );
+  CREATE TABLE IF NOT EXISTS batches (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
+    course_id TEXT REFERENCES courses(id) ON DELETE SET NULL,
+    category TEXT NOT NULL DEFAULT 'offline', exam TEXT NOT NULL DEFAULT '',
+    batch_code TEXT NOT NULL DEFAULT '', start_date TEXT NOT NULL DEFAULT '',
+    end_date TEXT NOT NULL DEFAULT '', duration TEXT NOT NULL DEFAULT '',
+    schedule TEXT NOT NULL DEFAULT '', mode TEXT NOT NULL DEFAULT '',
+    seats INTEGER NOT NULL DEFAULT 30, filled INTEGER NOT NULL DEFAULT 0,
+    fee INTEGER NOT NULL DEFAULT 0, original_fee INTEGER NOT NULL DEFAULT 0,
+    emi TEXT NOT NULL DEFAULT '', offer TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT 'var(--blue-dark)', bg TEXT NOT NULL DEFAULT 'var(--info-border)',
+    status TEXT NOT NULL DEFAULT 'upcoming', language TEXT NOT NULL DEFAULT 'Hinglish',
+    batch_type TEXT NOT NULL DEFAULT '', chips TEXT NOT NULL DEFAULT '[]',
+    faculty TEXT NOT NULL DEFAULT '[]', highlights TEXT NOT NULL DEFAULT '[]',
+    syllabus TEXT NOT NULL DEFAULT '[]', description TEXT NOT NULL DEFAULT '',
+    details TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS batch_enrollments (
+    id TEXT PRIMARY KEY, batch_id TEXT NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    enrolled_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'active', amount INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS faculty (
+    id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    name TEXT NOT NULL, designation TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '', specialization TEXT NOT NULL DEFAULT '',
+    rating REAL NOT NULL DEFAULT 0, students_count TEXT NOT NULL DEFAULT '',
+    experience TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '',
+    photo TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT 'var(--blue-dark)',
+    bg TEXT NOT NULL DEFAULT 'var(--info-border)', tags TEXT NOT NULL DEFAULT '[]',
+    bio TEXT NOT NULL DEFAULT '', education TEXT NOT NULL DEFAULT '[]',
+    achievements TEXT NOT NULL DEFAULT '[]', courses TEXT NOT NULL DEFAULT '[]',
+    expertise TEXT NOT NULL DEFAULT '[]', sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS faculty_assignments (
+    id TEXT PRIMARY KEY, faculty_id TEXT NOT NULL REFERENCES faculty(id) ON DELETE CASCADE,
+    batch_id TEXT REFERENCES batches(id) ON DELETE SET NULL,
+    course_id TEXT REFERENCES courses(id) ON DELETE SET NULL,
+    subject TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'faculty',
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS mentorship_programs (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL DEFAULT 'mentorship', exam TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '', overview TEXT NOT NULL DEFAULT '',
+    duration TEXT NOT NULL DEFAULT '', batch_size TEXT NOT NULL DEFAULT '',
+    mode TEXT NOT NULL DEFAULT 'Online', fee INTEGER NOT NULL DEFAULT 0,
+    original_fee INTEGER NOT NULL DEFAULT 0, emi TEXT NOT NULL DEFAULT '',
+    features TEXT NOT NULL DEFAULT '[]', includes TEXT NOT NULL DEFAULT '[]',
+    curriculum TEXT NOT NULL DEFAULT '[]', who_for TEXT NOT NULL DEFAULT '[]',
+    color TEXT NOT NULL DEFAULT 'var(--purple)', bg TEXT NOT NULL DEFAULT '#EDE9FE',
+    sort_order INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active'
+  );
+  CREATE TABLE IF NOT EXISTS mentorship_enrollments (
+    id TEXT PRIMARY KEY, program_id TEXT NOT NULL REFERENCES mentorship_programs(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mentor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'active', goals TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS mentorship_sessions (
+    id TEXT PRIMARY KEY, enrollment_id TEXT NOT NULL REFERENCES mentorship_enrollments(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '', type TEXT NOT NULL DEFAULT 'session',
+    scheduled_at TEXT NOT NULL DEFAULT '', duration_min INTEGER NOT NULL DEFAULT 30,
+    status TEXT NOT NULL DEFAULT 'scheduled', notes TEXT NOT NULL DEFAULT '',
+    mentor_notes TEXT NOT NULL DEFAULT '', student_notes TEXT NOT NULL DEFAULT '',
+    action_items TEXT NOT NULL DEFAULT '[]', feedback TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS blog_posts (
+    id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL,
+    excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '', category_color TEXT NOT NULL DEFAULT '#08BD80',
+    author TEXT NOT NULL DEFAULT '', author_avatar TEXT NOT NULL DEFAULT '',
+    date TEXT NOT NULL DEFAULT '', read_time TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]', cover_image TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'published', sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS exam_calendars (
+    id TEXT PRIMARY KEY, exam TEXT NOT NULL UNIQUE, full_name TEXT NOT NULL,
+    conducting_body TEXT NOT NULL DEFAULT '', participating_colleges INTEGER NOT NULL DEFAULT 0,
+    seats INTEGER NOT NULL DEFAULT 0, duration_min INTEGER NOT NULL DEFAULT 0,
+    total_questions INTEGER NOT NULL DEFAULT 0, total_marks INTEGER NOT NULL DEFAULT 150,
+    negative_marking REAL NOT NULL DEFAULT 0.25, mode TEXT NOT NULL DEFAULT 'Online',
+    sections TEXT NOT NULL DEFAULT '[]', color TEXT NOT NULL DEFAULT 'var(--blue-dark)',
+    description TEXT NOT NULL DEFAULT '', important_dates TEXT NOT NULL DEFAULT '[]'
+  );
+  CREATE TABLE IF NOT EXISTS college_predictor (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, short_name TEXT NOT NULL,
+    city TEXT NOT NULL DEFAULT '', ranking INTEGER NOT NULL DEFAULT 0,
+    clat_cutoff_general INTEGER NOT NULL DEFAULT 0, clat_cutoff_obc INTEGER NOT NULL DEFAULT 0,
+    clat_cutoff_sc INTEGER NOT NULL DEFAULT 0, clat_cutoff_st INTEGER NOT NULL DEFAULT 0,
+    ailet_cutoff_general INTEGER NOT NULL DEFAULT 0, type TEXT NOT NULL DEFAULT 'NLU',
+    established INTEGER NOT NULL DEFAULT 0, website TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT 'var(--blue-dark)', bg TEXT NOT NULL DEFAULT 'var(--info-border)',
+    details TEXT NOT NULL DEFAULT '{}'
+  );
+  -- seedColleges() upserts with ON CONFLICT (name), which needs this index.
+  CREATE UNIQUE INDEX IF NOT EXISTS college_predictor_name_key ON college_predictor (name);
+  CREATE TABLE IF NOT EXISTS assignments (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+    course_id TEXT REFERENCES courses(id) ON DELETE SET NULL,
+    subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
+    teacher_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    due_date TEXT NOT NULL DEFAULT '', total_marks INTEGER NOT NULL DEFAULT 100,
+    status TEXT NOT NULL DEFAULT 'published', created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  CREATE TABLE IF NOT EXISTS assignment_submissions (
+    id TEXT PRIMARY KEY, assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL DEFAULT '', file_url TEXT NOT NULL DEFAULT '',
+    marks_obtained REAL, feedback TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'submitted', submitted_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  -- Supabase exposes every public table through its REST API to anyone holding
+  -- the (public) anon key. The app talks to Postgres directly as the table
+  -- owner, which RLS doesn't restrict, so RLS with no policies shuts the REST
+  -- door without affecting the app. Runs every boot so new tables are covered.
+  DO $$ DECLARE r record; BEGIN
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND NOT rowsecurity LOOP
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
+    END LOOP;
+  END $$;
 `;
 
 // Advisory-lock key so concurrent serverless instances don't race on the
@@ -394,16 +602,16 @@ async function seed(c: PoolClient): Promise<void> {
     await seedRes("tip", [
       { title: "Master Legal Reasoning", body: "Never use personal knowledge — only the given principle matters.", data: { tag: "Legal Reasoning", icon: "⚖️", color: "#3D2411", points: ["Re-read the principle before the facts.", "Apply only what the principle says.", "Watch keywords: shall, must, except.", "Eliminate options that add extra conditions."] } },
       { title: "Finish all 5 RC passages in 45 min", body: "Reading Comprehension tests inference, not reading speed.", data: { tag: "English", icon: "📖", color: "#0891B2", points: ["Read the questions before the passage.", "Inference answers are never too extreme.", "Spend max 8 minutes per passage.", "Skip and return if stuck."] } },
-      { title: "Current Affairs — 30 minutes daily", body: "A consistent daily routine is all you need for GK.", data: { tag: "GK & CA", icon: "📰", color: "#7C3AED", points: ["Read one editorial daily.", "Focus: Courts, Parliament, Economy.", "Make weekly flashcards of 20 items.", "Revise last month every Sunday."] } },
-      { title: "Score 8+ in Quant with minimum effort", body: "Only 10 questions — be smart about which you attempt.", data: { tag: "Quantitative", icon: "🔢", color: "#059669", points: ["Master Ratio, %, Averages, P&L.", "Skip anything over 90 seconds.", "Target 8/10, not perfection."] } },
+      { title: "Current Affairs — 30 minutes daily", body: "A consistent daily routine is all you need for GK.", data: { tag: "GK & CA", icon: "📰", color: "var(--purple)", points: ["Read one editorial daily.", "Focus: Courts, Parliament, Economy.", "Make weekly flashcards of 20 items.", "Revise last month every Sunday."] } },
+      { title: "Score 8+ in Quant with minimum effort", body: "Only 10 questions — be smart about which you attempt.", data: { tag: "Quantitative", icon: "🔢", color: "var(--green)", points: ["Master Ratio, %, Averages, P&L.", "Skip anything over 90 seconds.", "Target 8/10, not perfection."] } },
     ]);
     await seedRes("story", [
-      { title: "Shreya Agarwal", body: "The mock tests were exactly like the real exam.", data: { college: "NLU Delhi", rank: "AIR 3", initials: "SA", color: "#3D2411" } },
-      { title: "Varun Nair", body: "CLATians faculty made legal reasoning finally click.", data: { college: "NLU Bangalore", rank: "AIR 7", initials: "VN", color: "#DC2626" } },
-      { title: "Priya Singh", body: "Daily practice and honest analysis got me my rank.", data: { college: "NALSAR", rank: "AIR 12", initials: "PS", color: "#7C3AED" } },
+      { title: "Shreya Agarwal", body: "The mock tests were exactly like the real exam.", data: { college: "NLU Delhi", rank: "AIR 3", initials: "SA", color: "var(--blue)" } },
+      { title: "Varun Nair", body: "CLATians faculty made legal reasoning finally click.", data: { college: "NLU Bangalore", rank: "AIR 7", initials: "VN", color: "var(--error-text)" } },
+      { title: "Priya Singh", body: "Daily practice and honest analysis got me my rank.", data: { college: "NALSAR", rank: "AIR 12", initials: "PS", color: "var(--purple)" } },
     ]);
     await seedRes("update", [
-      { title: "CLAT 2026 Mock Test #8 is live", body: "A new full-length mock based on the latest CLAT pattern.", data: { tag: "New Test", icon: "📝", color: "#DC2626", dateLabel: "This week", more: "Open the Daily Mock Test card on Home to attempt it and see your rank.", hot: 1 } },
+      { title: "CLAT 2026 Mock Test #8 is live", body: "A new full-length mock based on the latest CLAT pattern.", data: { tag: "New Test", icon: "📝", color: "var(--error-text)", dateLabel: "This week", more: "Open the Daily Mock Test card on Home to attempt it and see your rank.", hot: 1 } },
       { title: "NLU Spotlight — weekly live sessions", body: "NLU students share their prep experience, live.", data: { tag: "Live Event", icon: "🎓", color: "#0891B2", dateLabel: "This week", more: "Sessions appear in your Live Classes timetable with a reminder.", hot: 0 } },
       { title: "New legal-vocabulary flashcards added", body: "Fresh words with meanings and examples.", data: { tag: "Feature", icon: "💡", color: "#DB2777", dateLabel: "This week", more: "Try them under CLAT Tools → Vocabulary.", hot: 0 } },
     ]);

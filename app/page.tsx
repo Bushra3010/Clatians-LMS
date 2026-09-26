@@ -6,7 +6,7 @@ import StudentApp from "./StudentApp";
 import type { LiveClassItem } from "./components/detail/LiveClassesPage";
 import type { ContentItem } from "./components/detail/ContentListPage";
 import type { DoubtItem, StudentProfile } from "./StudentApp";
-import type { CatalogItem } from "./components/CoursesScreen";
+import type { CatalogItem, CatalogBatch } from "./components/CoursesScreen";
 import type { TestListItem } from "./components/detail/TestPages";
 import type { NotificationItem } from "./components/detail/NotificationsPage";
 import type { StudentProgress } from "./components/detail/ProgressPage";
@@ -14,6 +14,8 @@ import type { Engagement } from "./components/detail/LeaderboardPage";
 import type { SavedItem } from "./components/detail/SavedItemsPage";
 import { computeLeaderboard, computeStreak } from "./lib/engagement";
 import type { StudentResources } from "./lib/resource-types";
+import type { SyllabusSubject } from "./components/StudyScreen";
+import { ensureCatalog } from "./lib/catalog/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,49 @@ type DoubtRow = {
   id: string; subject: string; body: string; status: string;
   answer: string; teacher: string | null; created_at: string;
 };
+type CourseQueryRow = {
+  id: string; slug: string | null; name: string; description: string; price: number;
+  category: string; icon: string; color: string; bg: string;
+  tagline: string; overview: string; duration: string; batch_size: string;
+  mode: string; fee_text: string; emi: string;
+  features: string; includes: string; curriculum: string; who_for: string; testimonial: string;
+  enrolled: number; content_count: number; videos: number; notes: number;
+  practice: number; current_affairs: number; class_count: number; test_count: number;
+};
+type BatchQueryRow = {
+  id: string; slug: string; name: string; course_id: string; category: string; exam: string;
+  batch_code: string; start_date: string; end_date: string; duration: string; schedule: string; mode: string;
+  seats: number; filled: number; fee: number; original_fee: number; emi: string; offer: string;
+  status: string; language: string; batch_type: string;
+  chips: string; faculty: string; highlights: string; syllabus: string;
+  description: string; details: string; enrolled: number;
+};
+
+/** The catalog's list-valued columns are stored as JSON text. */
+function parseJson<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    const v = JSON.parse(raw);
+    return v == null ? fallback : (v as T);
+  } catch {
+    return fallback;
+  }
+}
+
+function toBatch(b: BatchQueryRow): CatalogBatch {
+  return {
+    id: b.id, slug: b.slug, name: b.name, exam: b.exam, batchCode: b.batch_code,
+    startDate: b.start_date, endDate: b.end_date, duration: b.duration, schedule: b.schedule, mode: b.mode,
+    seats: b.seats, filled: b.filled, fee: b.fee, originalFee: b.original_fee,
+    emi: b.emi, offer: b.offer, status: b.status, language: b.language, batchType: b.batch_type,
+    chips: parseJson<string[]>(b.chips, []),
+    faculty: parseJson<string[]>(b.faculty, []),
+    highlights: parseJson<string[]>(b.highlights, []),
+    syllabus: parseJson<string[]>(b.syllabus, []),
+    description: b.description, enrolled: b.enrolled === 1,
+    details: parseJson<CatalogBatch["details"]>(b.details, {}),
+  };
+}
 
 function toClass(r: ClassQueryRow): LiveClassItem {
   return {
@@ -46,6 +91,10 @@ export default async function Home() {
   if (user.role === "admin") redirect("/admin");
   if (user.role === "teacher") redirect("/teacher");
   if (user.role === "parent") redirect("/parent");
+
+  // Mirror the website's course catalog on first run, so a fresh database
+  // shows the same courses and batches as clatians.com. No-op afterwards.
+  await ensureCatalog();
 
   // ── Live classes ──
   const classSelect = (statusClause: string, order: string, limit = "") => `
@@ -129,29 +178,116 @@ export default async function Home() {
     contentByCourse.set(r.course_id, list);
   }
 
+  // Batches, grouped under their course — the cohort a student actually joins.
+  const batchRows = await db.prepare(
+    `SELECT b.id, b.slug, b.name, b.course_id, b.category, b.exam, b.batch_code, b.start_date, b.end_date,
+            b.duration, b.schedule, b.mode, b.seats, b.filled, b.fee, b.original_fee,
+            b.emi, b.offer, b.status, b.language, b.batch_type,
+            b.chips, b.faculty, b.highlights, b.syllabus, b.description, b.details,
+            (EXISTS(SELECT 1 FROM batch_enrollments be WHERE be.user_id = ? AND be.batch_id = b.id))::int AS enrolled
+     FROM batches b WHERE b.course_id IS NOT NULL
+     ORDER BY b.fee ASC, b.name`
+  ).all(user.id) as BatchQueryRow[];
+  const batchesByCourse = new Map<string, CatalogBatch[]>();
+  for (const b of batchRows) {
+    const list = batchesByCourse.get(b.course_id) ?? [];
+    list.push(toBatch(b));
+    batchesByCourse.set(b.course_id, list);
+  }
+
   const catalog: CatalogItem[] = (await db.prepare(
-    `SELECT c.id, c.name, c.description, c.price,
+    `SELECT c.id, c.slug, c.name, c.description, c.price, c.category, c.icon, c.color, c.bg,
+            c.tagline, c.overview, c.duration, c.batch_size, c.mode, c.fee_text, c.emi,
+            c.features, c.includes, c.curriculum, c.who_for, c.testimonial,
             (EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id))::int AS enrolled,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS content_count,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'video') AS videos,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'notes') AS notes,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'practice') AS practice,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'current-affairs') AS current_affairs,
-            (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id = c.id) AS class_count
+            (SELECT COUNT(*) FROM live_classes lc WHERE lc.course_id = c.id) AS class_count,
+            (SELECT COUNT(*) FROM tests t WHERE t.course_id = c.id AND t.status = 'published') AS test_count
      FROM courses c WHERE c.status = 'active'
-     ORDER BY enrolled DESC, c.price ASC`
-  ).all(user.id) as { id: string; name: string; description: string; price: number; enrolled: number; content_count: number; videos: number; notes: number; practice: number; current_affairs: number; class_count: number }[])
+     ORDER BY enrolled DESC, c.sort_order, c.price ASC`
+  ).all(user.id) as CourseQueryRow[])
     .map((r) => ({
-      id: r.id, name: r.name, description: r.description, price: r.price,
+      id: r.id, slug: r.slug ?? r.id, name: r.name, description: r.description, price: r.price,
+      category: r.category || "offline", icon: r.icon || "📚", color: r.color || "", bg: r.bg || "",
+      tagline: r.tagline, overview: r.overview, duration: r.duration, batchSize: r.batch_size,
+      mode: r.mode, feeText: r.fee_text, emi: r.emi,
+      features: parseJson<string[]>(r.features, []),
+      includes: parseJson<CatalogItem["includes"]>(r.includes, []),
+      curriculum: parseJson<CatalogItem["curriculum"]>(r.curriculum, []),
+      whoFor: parseJson<string[]>(r.who_for, []),
+      testimonial: parseJson<CatalogItem["testimonial"]>(r.testimonial, null),
       enrolled: r.enrolled === 1, contentCount: r.content_count, classCount: r.class_count,
+      testCount: r.test_count,
       breakdown: { videos: r.videos, notes: r.notes, practice: r.practice, currentAffairs: r.current_affairs },
       contents: contentByCourse.get(r.id) ?? [],
+      batches: batchesByCourse.get(r.id) ?? [],
     }));
 
-  // ── Test series (published, available to the student's batches) ──
-  const tests: TestListItem[] = (await db.prepare(
+  // ── Course syllabus (subject → chapter → topic) ──
+  // Driven from the student's own courses. Modules are the admin's way of
+  // hanging a subject's chapters on a course; the student just sees
+  // subject → chapter → topic, so a subject's chapters are merged across its
+  // modules. Modules with no subject are grouped under a catch-all.
+  const hierarchyRows = await db.prepare(
+    `SELECT COALESCE(s.id, 'unsorted') AS subject_id,
+            COALESCE(s.name, 'Other topics') AS subject_name,
+            COALESCE(s.slug, 'unsorted') AS subject_slug,
+            COALESCE(s.icon, '📘') AS subject_icon,
+            ch.id AS chapter_id, ch.title AS chapter_title,
+            l.id AS lesson_id, l.title AS lesson_title, l.duration_min AS lesson_duration,
+            l.is_free AS lesson_is_free,
+            (l.video_url <> '')::int AS has_video,
+            (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
+            (l.test_id IS NOT NULL)::int AS has_test,
+            COALESCE(lp.completed, 0) AS lesson_completed
+     FROM modules m
+     LEFT JOIN subjects s ON s.id = m.subject_id
+     JOIN chapters ch ON ch.module_id = m.id
+     JOIN lessons l ON l.chapter_id = ch.id
+     LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
+     WHERE m.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+     ORDER BY s.sort_order NULLS LAST, s.name, m.sort_order, ch.sort_order, l.sort_order`
+  ).all(user.id, user.id) as { subject_id: string; subject_name: string; subject_slug: string; subject_icon: string; chapter_id: string; chapter_title: string; lesson_id: string; lesson_title: string; lesson_duration: number; lesson_is_free: number; has_video: number; has_notes: number; has_test: number; lesson_completed: number }[];
+
+  // Rows arrive ordered by every sort_order in the chain, so appending in
+  // order preserves it.
+  const syllabus: SyllabusSubject[] = [];
+  for (const row of hierarchyRows) {
+    let subject = syllabus.find((s) => s.id === row.subject_id);
+    if (!subject) {
+      subject = { id: row.subject_id, name: row.subject_name, slug: row.subject_slug, icon: row.subject_icon, chapters: [] };
+      syllabus.push(subject);
+    }
+    let chapter = subject.chapters.find((c) => c.id === row.chapter_id);
+    if (!chapter) {
+      chapter = { id: row.chapter_id, title: row.chapter_title || "Untitled chapter", topics: [] };
+      subject.chapters.push(chapter);
+    }
+    chapter.topics.push({
+      id: row.lesson_id,
+      title: row.lesson_title || "Untitled topic",
+      durationMin: row.lesson_duration || 0,
+      isFree: row.lesson_is_free === 1,
+      hasVideo: row.has_video === 1,
+      hasNotes: row.has_notes === 1,
+      hasTest: row.has_test === 1,
+      completed: row.lesson_completed === 1,
+    });
+  }
+
+  // ── Tests & practice papers (published, available to the student's batches) ──
+  // Both run on the same engine; `type` decides which screen they surface on —
+  // 'practice' goes to Practice Questions, everything else to Test Series.
+  const allPapers: TestListItem[] = (await db.prepare(
     `SELECT t.id, t.title, t.description, t.type, t.duration_min,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
+            -- A paper is "a <subject> paper" only when every question shares one.
+            (SELECT CASE WHEN COUNT(DISTINCT q.subject) = 1 THEN MIN(q.subject) ELSE '' END
+               FROM questions q WHERE q.test_id = t.id) AS subject,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
             (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS best_score,
             (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
@@ -159,12 +295,16 @@ export default async function Home() {
      WHERE t.status='published'
        AND (t.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?) OR t.course_id IS NULL)
      ORDER BY t.created_at DESC`
-  ).all(user.id, user.id, user.id, user.id) as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; my_attempts: number; best_score: number | null; best_total: number | null }[])
+  ).all(user.id, user.id, user.id, user.id) as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null }[])
     .map((t) => ({
       id: t.id, title: t.title, description: t.description, type: t.type,
+      subject: t.subject ?? "",
       durationMin: t.duration_min, questionCount: t.qcount, myAttempts: t.my_attempts,
       bestScore: t.best_score, bestTotal: t.best_total,
     }));
+
+  const tests = allPapers.filter((t) => t.type !== "practice");
+  const practicePapers = allPapers.filter((t) => t.type === "practice");
 
   // ── Profile ──
   const batches = (await db.prepare(
@@ -281,8 +421,8 @@ export default async function Home() {
   const ofType = (t: string) => resRows.filter((r) => r.type === t).map((r) => ({ ...r, d: pd(r.data) }));
 
   const resources: StudentResources = {
-    tips: ofType("tip").map((r) => ({ title: r.title, body: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "💡"), color: String(r.d.color ?? "#3D2411"), points: Array.isArray(r.d.points) ? (r.d.points as string[]) : [] })),
-    stories: ofType("story").map((r) => ({ name: r.title, quote: r.body, college: String(r.d.college ?? ""), rank: String(r.d.rank ?? ""), initials: String(r.d.initials ?? r.title.slice(0, 2).toUpperCase()), color: String(r.d.color ?? "#3D2411") })),
+    tips: ofType("tip").map((r) => ({ title: r.title, body: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "💡"), color: String(r.d.color ?? "var(--blue)"), points: Array.isArray(r.d.points) ? (r.d.points as string[]) : [] })),
+    stories: ofType("story").map((r) => ({ name: r.title, quote: r.body, college: String(r.d.college ?? ""), rank: String(r.d.rank ?? ""), initials: String(r.d.initials ?? r.title.slice(0, 2).toUpperCase()), color: String(r.d.color ?? "var(--blue)") })),
     updates: ofType("update").map((r) => ({ title: r.title, desc: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "✨"), color: String(r.d.color ?? "#0891B2"), dateLabel: String(r.d.dateLabel ?? "New"), more: String(r.d.more ?? ""), hot: !!r.d.hot })),
     vocab: ofType("vocab").map((r) => ({ word: r.title, meaning: r.body, example: String(r.d.example ?? "") })),
     caq: ofType("caq").map((r) => ({ q: r.title, options: Array.isArray(r.d.options) ? (r.d.options as string[]) : [], correct: Number(r.d.correct ?? 0), explain: String(r.d.explain ?? "") })),
@@ -392,6 +532,7 @@ export default async function Home() {
       profile={profile}
       catalog={catalog}
       tests={tests}
+      practicePapers={practicePapers}
       notifications={notifications}
       unreadCount={unreadCount}
       progress={progress}
@@ -407,6 +548,7 @@ export default async function Home() {
       referral={referral}
       notifyPrefs={notifyPrefs}
       certificates={certificates}
+      syllabus={syllabus}
     />
   );
 }

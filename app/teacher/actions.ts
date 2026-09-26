@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, newId } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { saveUpload } from "@/app/lib/upload";
+import { isOurFileUrl } from "@/app/lib/storage";
 
 const CONTENT_TYPES = ["video", "notes", "practice", "current-affairs"];
 
@@ -21,9 +22,14 @@ export async function createContentAction(formData: FormData) {
 
   if (!title || !CONTENT_TYPES.includes(type)) return;
 
-  // An uploaded file becomes the content — its public URL overrides the pasted link.
+  // An uploaded file becomes the content — its public URL overrides the pasted
+  // link. Normally the browser has already uploaded it straight to storage and
+  // sends just the URL; a raw file only arrives when storage isn't configured.
+  const fileUrl = String(formData.get("fileUrl") ?? "").trim();
   const file = formData.get("file");
-  if (file instanceof File && file.size > 0) {
+  if (fileUrl && isOurFileUrl(fileUrl)) {
+    body = fileUrl;
+  } else if (file instanceof File && file.size > 0) {
     const url = await saveUpload(file);
     if (url) body = url;
   }

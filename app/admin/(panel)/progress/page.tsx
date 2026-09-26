@@ -19,7 +19,7 @@ export default async function AdminProgressPage() {
      FROM users u WHERE u.role='student' ORDER BY u.name`
   ).all() as Row[];
 
-  const bar = (p: number) => (p < 40 ? "#DC2626" : p < 70 ? "#D97706" : "#2f8f63");
+  const bar = (p: number) => (p < 40 ? "var(--error-text)" : p < 70 ? "var(--warning-text)" : "#2f8f63");
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

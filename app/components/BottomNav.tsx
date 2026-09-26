@@ -1,153 +1,118 @@
 "use client";
 
 type Screen = "home" | "courses" | "study" | "doubts";
+type Tab = Screen | "tests";
 
 interface BottomNavProps {
   active: Screen;
   onChange: (screen: Screen) => void;
+  /** Tests live on a detail page, so the tab hands off instead of switching screens. */
+  onOpenTests?: () => void;
 }
 
-const NavHomeIcon = ({ active }: { active: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H15V16H9V21H4C3.45 21 3 20.55 3 20V10.5Z"
-      fill={active ? "#3D2411" : "none"}
-      stroke={active ? "#3D2411" : "#9CA3AF"}
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+/* Solid glyphs — at 25px a filled shape stays legible where a stroke icon muddies. */
+/** Home wears the brand's own initial — a bold "C" set in the app typeface. */
+const HomeIcon = ({ c }: { c: string }) => (
+  <svg width="25" height="25" viewBox="0 0 24 24" fill={c}>
+    <text
+      x="12" y="12"
+      textAnchor="middle" dominantBaseline="central"
+      fontFamily="var(--font-poppins), sans-serif"
+      fontSize="23" fontWeight={800}
+      fill={c}
+    >
+      C
+    </text>
   </svg>
 );
 
-const NavCoursesIcon = ({ active }: { active: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <rect x="3" y="3" width="18" height="18" rx="3"
-      fill={active ? "#F6ECD9" : "none"}
-      stroke={active ? "#3D2411" : "#9CA3AF"}
-      strokeWidth="1.8" />
-    <path d="M8 8h8M8 12h8M8 16h5"
-      stroke={active ? "#3D2411" : "#9CA3AF"}
-      strokeWidth="1.8" strokeLinecap="round" />
+const CoursesIcon = ({ c }: { c: string }) => (
+  <svg width="25" height="25" viewBox="0 0 24 24" fill={c}>
+    <rect x="3" y="3" width="13" height="12" rx="3.5" />
+    <rect x="7" y="8" width="14" height="13" rx="3.5" />
+    <path d="M10.5 12.5h7M10.5 16.5h4.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
   </svg>
 );
 
-const NavStudyIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-      fill="white" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinejoin="round" />
+const StudyIcon = ({ c }: { c: string }) => (
+  <svg width="25" height="25" viewBox="0 0 24 24" fill="none">
+    <path d="M8.2 3.4L6.4 5.2l2.2 2.9 1.5-1.4-1.9-3.3zM15.8 3.4l-1.9 3.3 1.5 1.4 2.2-2.9-1.8-1.8z" fill={c} />
+    <path d="M11.2 8.6v11.9L4 18.1V8.6h7.2zM12.8 8.6H20v9.5l-7.2 2.4V8.6z" fill={c} />
   </svg>
 );
 
-const NavDoubtsIcon = ({ active }: { active: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-      fill={active ? "#F6ECD9" : "none"}
-      stroke={active ? "#3D2411" : "#9CA3AF"}
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="8.5" cy="11" r="1" fill={active ? "#3D2411" : "#9CA3AF"} />
-    <circle cx="12" cy="11" r="1" fill={active ? "#3D2411" : "#9CA3AF"} />
-    <circle cx="15.5" cy="11" r="1" fill={active ? "#3D2411" : "#9CA3AF"} />
+const DoubtsIcon = ({ c }: { c: string }) => (
+  <svg width="25" height="25" viewBox="0 0 24 24" fill={c}>
+    <path d="M9.8 4.6a4 4 0 0 1 5.6 0l4 4a4 4 0 0 1 0 5.6l-4 4a4 4 0 0 1-5.6 0l-4-4a4 4 0 0 1 0-5.6l4-4z" />
+    <circle cx="10.2" cy="10.6" r="1.15" fill="white" />
+    <circle cx="14.4" cy="10.6" r="1.15" fill="white" />
+    <path d="M10 14.2c.8.9 3.2.9 4 0" stroke="white" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+    <path d="M20.2 2.6l.65 1.75 1.75.65-1.75.65-.65 1.75-.65-1.75-1.75-.65 1.75-.65.65-1.75z" />
   </svg>
 );
 
-const tabs = [
-  { id: "home" as Screen, label: "Home" },
-  { id: "courses" as Screen, label: "Courses" },
-  { id: "study" as Screen, label: "Study" },
-  { id: "doubts" as Screen, label: "Doubts" },
+const TestsIcon = ({ c }: { c: string }) => (
+  <svg width="25" height="25" viewBox="0 0 24 24" fill={c}>
+    <path d="M9 2.6h6a1.6 1.6 0 0 1 0 3.2H9a1.6 1.6 0 0 1 0-3.2z" />
+    <path d="M6.4 4.4h1.2a3 3 0 0 0 2.6 3h3.6a3 3 0 0 0 2.6-3h1.2A2.4 2.4 0 0 1 20 6.8v12.8a2.4 2.4 0 0 1-2.4 2.4H6.4A2.4 2.4 0 0 1 4 19.6V6.8a2.4 2.4 0 0 1 2.4-2.4z" />
+    <path d="M8 15.5c2.4.6 4.4-.4 6.4-2.6" stroke="white" strokeWidth="1.7" strokeLinecap="round" fill="none" />
+    <path d="M13.4 18.2l4.9-4.9 1.7 1.7-4.9 4.9-2.2.5.5-2.2z" fill={c} stroke="white" strokeWidth="1.1" />
+  </svg>
+);
+
+const tabs: { id: Tab; label: string; Icon: ({ c }: { c: string }) => React.ReactElement }[] = [
+  { id: "home", label: "Home", Icon: HomeIcon },
+  { id: "courses", label: "Courses", Icon: CoursesIcon },
+  { id: "study", label: "Study", Icon: StudyIcon },
+  { id: "doubts", label: "Doubts", Icon: DoubtsIcon },
+  { id: "tests", label: "Tests", Icon: TestsIcon },
 ];
 
-export default function BottomNav({ active, onChange }: BottomNavProps) {
+export default function BottomNav({ active, onChange, onOpenTests }: BottomNavProps) {
   return (
     <div style={{
       flexShrink: 0,
-      height: "calc(66px + env(safe-area-inset-bottom))",
-      paddingBottom: "env(safe-area-inset-bottom)",
-      background: "rgba(255,255,255,0.96)",
-      backdropFilter: "blur(14px)",
-      WebkitBackdropFilter: "blur(14px)",
-      borderTop: "1px solid #EFE9DD",
-      display: "flex",
-      alignItems: "stretch",
+      padding: "6px 10px calc(10px + env(safe-area-inset-bottom))",
+      background: "var(--app-bg)",
       zIndex: 50,
-      boxShadow: "0 -4px 20px rgba(43,23,0,0.06)",
     }}>
-      {tabs.map((tab) => {
-        const isActive = active === tab.id;
-        const isStudy = tab.id === "study";
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onChange(tab.id)}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "3px",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px 0 8px",
-              position: "relative",
-            }}
-          >
-            {/* Active indicator line */}
-            {isActive && !isStudy && (
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 28,
-                height: 3,
-                borderRadius: "0 0 4px 4px",
-                background: "linear-gradient(90deg, #3D2411, #8A5A08)",
-              }} />
-            )}
-
-            {isStudy ? (
-              <div style={{
-                background: "linear-gradient(135deg, #3D2411 0%, #5C3A00 100%)",
-                borderRadius: "16px",
-                padding: "8px 18px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "2px",
-                marginTop: "-14px",
-                boxShadow: "0 6px 18px rgba(61,36,17,0.40)",
-                minWidth: 72,
-              }}>
-                <NavStudyIcon />
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "white", letterSpacing: "0.3px" }}>
-                  Study
-                </span>
-              </div>
-            ) : (
-              <>
-                <div style={{
-                  width: 36, height: 36,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: 10,
-                  background: isActive ? "#F6ECD9" : "transparent",
-                  transition: "background 0.2s",
-                }}>
-                  {tab.id === "home" && <NavHomeIcon active={isActive} />}
-                  {tab.id === "courses" && <NavCoursesIcon active={isActive} />}
-                  {tab.id === "doubts" && <NavDoubtsIcon active={isActive} />}
-                </div>
-                <span style={{
-                  fontSize: "10px",
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? "#3D2411" : "#9CA3AF",
-                  letterSpacing: "0.2px",
-                }}>
-                  {tab.label}
-                </span>
-              </>
-            )}
-          </button>
-        );
-      })}
+      <div style={{
+        display: "flex",
+        alignItems: "stretch",
+        background: "var(--surface)",
+        borderRadius: 999,
+        padding: "6px",
+        boxShadow: "0 6px 18px rgba(15,23,41,0.10)",
+      }}>
+        {tabs.map((tab) => {
+          const isActive = active === tab.id;
+          const color = isActive ? "var(--blue)" : "var(--ink)";
+          return (
+            <button
+              key={tab.id}
+              aria-label={tab.label}
+              aria-current={isActive ? "page" : undefined}
+              onClick={() => (tab.id === "tests" ? onOpenTests?.() : onChange(tab.id as Screen))}
+              style={{
+                flex: 1,
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 3,
+                background: isActive ? "var(--blue-tint)" : "transparent",
+                border: "none",
+                borderRadius: 999,
+                cursor: "pointer",
+                padding: "9px 0 8px",
+                transition: "background 0.2s",
+              }}
+            >
+              <tab.Icon c={color} />
+              <span style={{ fontSize: 11.5, fontWeight: isActive ? 600 : 500, color }}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { generateQuestionsAction } from "@/app/lib/ai-actions";
 
 const inputCls =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
+  "w-full rounded-lg border border-(--line) px-3 py-2 text-sm text-(--ink) focus:border-(--gold) focus:ring-1 focus:ring-(--gold) outline-none";
 
 const SUBJECTS = ["Legal Reasoning", "English", "GK & Current Affairs", "Logical Reasoning", "Quantitative"];
 
@@ -73,7 +73,7 @@ export default function AiGenerateForm({ testId }: { testId: string }) {
           type="submit"
           disabled={busy || !topic.trim()}
           className="rounded-lg text-white text-sm font-medium py-2 px-4 disabled:opacity-60"
-          style={{ background: "#3D2411" }}
+          style={{ background: "var(--blue)" }}
         >
           {busy ? "Generating…" : "✨ Generate & add"}
         </button>

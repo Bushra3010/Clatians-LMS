@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import {
@@ -164,6 +165,14 @@ export default async function TeacherClassesPage() {
                 )}
                 {r.status === "live" && (
                   <StatusBtn id={r.id} status="ended" label="End class" cls="border-red-200 text-red-600 hover:bg-red-50" />
+                )}
+                {(r.status === "live" || r.status === "scheduled") && (
+                  <Link
+                    href={`/teacher/classes/${r.id}/live`}
+                    className={`w-24 text-center text-xs rounded-md px-3 py-1.5 font-medium ${r.status === "live" ? "bg-red-600 text-white hover:bg-red-700" : "border border-gold-100 text-gold-700 hover:bg-gold-50"}`}
+                  >
+                    {r.status === "live" ? "Live console" : "Console"}
+                  </Link>
                 )}
                 {r.join_url && r.status !== "ended" && r.status !== "cancelled" && (
                   <a

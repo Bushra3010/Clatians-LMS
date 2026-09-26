@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const gradient = "linear-gradient(135deg,#3D2411,#5C3A00)";
+const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
 export type Referral = { code: string; total: number; enrolled: number; credit: number };
 
@@ -29,22 +29,22 @@ export default function ReferPage({ onBack, referral }: { onBack: () => void; re
   };
 
   return (
-    <div style={{ background: "#F7F3EA", minHeight: "100%", paddingBottom: 28 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B1700" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         Refer a Friend
       </button>
 
       <div style={{ padding: "12px 14px 0" }}>
         {/* Hero */}
-        <div style={{ background: gradient, borderRadius: 20, padding: "22px", color: "#F7EFE2", textAlign: "center", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
+        <div style={{ background: gradient, borderRadius: 20, padding: "22px", color: "white", textAlign: "center", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
           <div style={{ fontSize: 40 }}>🎁</div>
           <p style={{ margin: "6px 0 0", fontSize: 17, fontWeight: 800 }}>Invite friends to CLATians</p>
-          <p style={{ margin: "6px 0 16px", fontSize: 12.5, color: "#D9C6A8" }}>Share your code — when a friend enquires with it, you get credit.</p>
-          <div style={{ background: "rgba(255,255,255,0.12)", border: "1.5px dashed rgba(255,255,255,0.35)", borderRadius: 14, padding: "14px", letterSpacing: "0.15em", fontSize: 28, fontWeight: 900 }}>
+          <p style={{ margin: "6px 0 16px", fontSize: 12.5, color: "rgba(255,255,255,0.78)" }}>Share your code — when a friend enquires with it, you get credit.</p>
+          <div style={{ background: "rgba(255,255,255,0.12)", border: "1.5px dashed rgba(255,255,255,0.35)", borderRadius: 16, padding: "14px", letterSpacing: "0.15em", fontSize: 28, fontWeight: 900 }}>
             {referral.code}
           </div>
-          <button onClick={() => copy("code", referral.code)} style={{ marginTop: 12, background: "#F5A623", color: "#3D2411", border: "none", borderRadius: 12, padding: "11px 20px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => copy("code", referral.code)} style={{ marginTop: 12, background: "var(--gold)", color: "var(--blue)", border: "none", borderRadius: 12, padding: "11px 20px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
             {copied === "code" ? "✓ Copied" : "Copy code"}
           </button>
         </div>
@@ -56,26 +56,26 @@ export default function ReferPage({ onBack, referral }: { onBack: () => void; re
             { v: String(referral.enrolled), l: "Enrolled" },
             { v: `₹${referral.credit.toLocaleString("en-IN")}`, l: "Credit earned" },
           ].map((s, i) => (
-            <div key={i} style={{ flex: 1, background: "white", borderRadius: 14, padding: "16px 12px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9CA3AF" }}>{s.l}</p>
+            <div key={i} style={{ flex: 1, background: "white", borderRadius: 16, padding: "16px 12px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "var(--blue)" }}>{s.v}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-disabled)" }}>{s.l}</p>
             </div>
           ))}
         </div>
 
         {/* Credit explainer */}
-        <div style={{ marginTop: 14, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 14, padding: "12px 14px" }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: "#065F46", lineHeight: 1.55 }}>
+        <div style={{ marginTop: 14, background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 16, padding: "14px 16px" }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--success-text)", lineHeight: 1.55 }}>
             💰 <b>Earn ₹500 per enrollment.</b> When a friend you referred joins a batch, ₹500 credit lands here — it auto-applies as a discount on your next fee payment.
           </p>
         </div>
 
         {/* Share link */}
-        <div style={{ marginTop: 14, background: "white", borderRadius: 14, padding: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-          <p style={{ margin: "0 0 8px", fontSize: 12.5, fontWeight: 700, color: "#1A1A2E" }}>Your invite link</p>
+        <div style={{ marginTop: 14, background: "white", borderRadius: 16, padding: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12.5, fontWeight: 700, color: "var(--ink-primary)" }}>Your invite link</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, border: "1.5px solid #E1D3BC", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: "#4A3826", background: "#FBF7EF", outline: "none" }} />
-            <button onClick={() => copy("link", link)} style={{ flexShrink: 0, background: "#F6ECD9", color: "#6B4A28", border: "1px solid #E7D6BA", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+            <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, border: "1.5px solid var(--border)", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: "var(--text-secondary)", background: "var(--bg-secondary)", outline: "none" }} />
+            <button onClick={() => copy("link", link)} style={{ flexShrink: 0, background: "var(--info-border)", color: "var(--ink-primary)", border: "1px solid #E7D6BA", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
               {copied === "link" ? "✓" : "Copy"}
             </button>
           </div>
@@ -84,7 +84,7 @@ export default function ReferPage({ onBack, referral }: { onBack: () => void; re
           </button>
         </div>
 
-        <p style={{ margin: "14px 4px 0", fontSize: 11, color: "#9CA3AF", textAlign: "center" }}>
+        <p style={{ margin: "14px 4px 0", fontSize: 11, color: "var(--text-disabled)", textAlign: "center" }}>
           Friends enter your code on the enquiry form (or open your link). You&apos;ll get a notification when a referral comes in.
         </p>
       </div>

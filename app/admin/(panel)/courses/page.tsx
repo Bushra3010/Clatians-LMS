@@ -1,5 +1,7 @@
 import { db } from "@/app/lib/db";
+import Link from "next/link";
 import {
+  syncCatalogAction,
   createCourseAction,
   editCourseAction,
   setCourseStatusAction,
@@ -12,20 +14,33 @@ export const dynamic = "force-dynamic";
 
 type Course = {
   id: string;
+  slug: string | null;
   name: string;
   description: string;
   status: string;
   price: number;
+  category: string;
+  icon: string;
+  duration: string;
   students: number;
+  batches: number;
+  lessons: number;
+  tests: number;
 };
 type Student = { id: string; name: string };
 
 export default async function CoursesPage() {
   const courses = await db
     .prepare(
-      `SELECT c.id, c.name, c.description, c.status, c.price,
-              (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
-       FROM courses c ORDER BY c.created_at DESC`
+      `SELECT c.id, c.slug, c.name, c.description, c.status, c.price, c.category, c.icon, c.duration,
+              (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
+              (SELECT COUNT(*) FROM batches b WHERE b.course_id = c.id) AS batches,
+              (SELECT COUNT(*) FROM lessons l
+                 JOIN chapters ch ON ch.id = l.chapter_id
+                 JOIN modules m ON m.id = ch.module_id
+               WHERE m.course_id = c.id) AS lessons,
+              (SELECT COUNT(*) FROM tests t WHERE t.course_id = c.id) AS tests
+       FROM courses c ORDER BY c.sort_order, c.created_at DESC`
     )
     .all() as Course[];
 
@@ -42,11 +57,26 @@ export default async function CoursesPage() {
     .all() as { course_id: string; user_id: string; name: string }[];
   const enrolledByCourse = (courseId: string) => enrolledRows.filter((r) => r.course_id === courseId);
 
+  const synced = courses.filter((c) => c.slug).length;
+  const websiteLabel = process.env.WEBSITE_URL || "the bundled catalog mirror";
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Courses &amp; Batches</h1>
-        <p className="text-sm text-slate-500">{courses.length} courses · create batches and enroll students</p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Courses &amp; Batches</h1>
+          <p className="text-sm text-slate-500">
+            {courses.length} courses · {synced} mirrored from the website
+          </p>
+        </div>
+        <form action={syncCatalogAction} className="flex items-center gap-3">
+          <span className="text-xs text-slate-500 max-w-[220px]">
+            Pulls courses, batches and faculty from {websiteLabel}.
+          </span>
+          <button className="rounded-lg border border-gold-100 text-gold-700 hover:bg-gold-50 text-sm font-medium py-2 px-4 h-[38px] whitespace-nowrap">
+            ↻ Sync from website
+          </button>
+        </form>
       </header>
 
       {/* Create course */}
@@ -63,7 +93,7 @@ export default async function CoursesPage() {
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Price (₹, 0 = free)</span>
-            <input name="price" type="number" min={0} step={100} defaultValue={0} className={inputCls} />
+            <input name="price" type="number" min={0} step={1} defaultValue={0} className={inputCls} />
           </label>
           <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">
             Create
@@ -76,9 +106,14 @@ export default async function CoursesPage() {
         {courses.map((c) => (
           <div key={c.id} className="rounded-xl bg-white border border-slate-200 p-6">
             <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-semibold text-slate-900">{c.name}</h3>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-slate-900">
+                  <span className="mr-1.5">{c.icon}</span>{c.name}
+                </h3>
                 <p className="text-sm text-slate-500 mt-0.5">{c.description || "No description"}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {[c.slug ? `/${c.slug}` : "local only", c.category, c.duration].filter(Boolean).join(" · ")}
+                </p>
               </div>
               <span
                 className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
@@ -89,9 +124,21 @@ export default async function CoursesPage() {
               </span>
             </div>
 
-            <div className="mt-3 text-sm text-slate-600 flex items-center gap-4">
+            <div className="mt-3 text-sm text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
               <span><span className="font-semibold text-slate-900">{c.students}</span> students</span>
+              <span><span className="font-semibold text-slate-900">{c.batches}</span> batches</span>
+              <span><span className="font-semibold text-slate-900">{c.lessons}</span> lessons</span>
+              <span><span className="font-semibold text-slate-900">{c.tests}</span> tests</span>
               <span className="font-semibold text-gold-700">{c.price > 0 ? `₹${c.price.toLocaleString("en-IN")}` : "Free"}</span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+              <Link href={`/admin/courses/${c.id}/syllabus`} className="rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 py-1.5 px-3">
+                Study content (subjects · topics) →
+              </Link>
+              <Link href="/admin/batches" className="rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 py-1.5 px-3">
+                Batches →
+              </Link>
             </div>
 
             <div className="mt-4 flex flex-wrap items-end gap-2">
@@ -167,7 +214,7 @@ export default async function CoursesPage() {
                 </label>
                 <label className="block">
                   <span className="block text-xs font-medium text-slate-600 mb-1">Price (₹, 0 = free)</span>
-                  <input name="price" type="number" min={0} step={100} defaultValue={c.price} className={inputCls} />
+                  <input name="price" type="number" min={0} step={1} defaultValue={c.price} className={inputCls} />
                 </label>
                 <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">
                   Save

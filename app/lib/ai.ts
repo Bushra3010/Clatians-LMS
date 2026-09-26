@@ -10,13 +10,24 @@ declare global {
   var __genai: GoogleGenAI | undefined;
 }
 const MODEL = "gemini-flash-latest";
-const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-const client: GoogleGenAI = global.__genai ?? new GoogleGenAI({ apiKey });
-global.__genai = client;
 
 /** True only when an API key is configured, so the UI can degrade gracefully. */
 export function aiConfigured(): boolean {
   return !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+}
+
+/**
+ * Built on first use, not at import time — constructing the client without a
+ * key makes the SDK warn on every boot, and every caller already checks
+ * aiConfigured() before getting here.
+ */
+function ai(): GoogleGenAI {
+  if (!global.__genai) {
+    global.__genai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+    });
+  }
+  return global.__genai;
 }
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -46,7 +57,7 @@ Ground rules:
  */
 export async function runTutor(history: ChatMsg[], role: Role, profile?: string | null): Promise<string> {
   const system = profile ? `${tutorSystem(role)}\n\n${profile}` : tutorSystem(role);
-  const res = await client.models.generateContent({
+  const res = await ai().models.generateContent({
     model: MODEL,
     config: {
       systemInstruction: system,
@@ -119,7 +130,7 @@ Rules:
 - Keep each question self-contained and unambiguous.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:
@@ -209,7 +220,7 @@ Explain in 4–7 short sentences:
 Plain text and simple Markdown only — no LaTeX. Be encouraging and concise.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:
@@ -262,7 +273,7 @@ As their CLAT mentor, write a short, motivating study plan:
 Keep it under ~180 words. Use short "## " headings and bullets. Be specific and encouraging — no fluff.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:
@@ -296,7 +307,7 @@ Draft a reply a CLAT faculty member could send, in a warm, direct teacher's voic
 - Plain text and simple Markdown only — no LaTeX. End with a one-line encouragement.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:
@@ -348,7 +359,7 @@ Rules:
 - Keep each question self-contained and unambiguous.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:
@@ -415,7 +426,7 @@ For each word give: the word, a concise meaning (under 12 words), and one natura
 Avoid extremely obscure words — prefer words that realistically appear in CLAT reading passages and answer options.`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction: "You are a CLAT English coach building vocabulary flashcards. Be accurate and natural.",
@@ -473,7 +484,7 @@ Produce a CLAT UG–focused current-affairs digest.
 Return JSON with a concise "title" and the digest as Markdown in "body".`;
 
   try {
-    const res = await client.models.generateContent({
+    const res = await ai().models.generateContent({
       model: MODEL,
       config: {
         systemInstruction:

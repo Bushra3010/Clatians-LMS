@@ -5,9 +5,9 @@ import { askTutorAction } from "@/app/lib/ai-actions";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
-const ESPRESSO = "#3D2411";
-const GOLD = "#C8860A";
-const PAPER = "#FAF7F2";
+const ESPRESSO = "var(--blue-dark)";
+const GOLD = "var(--gold)";
+const PAPER = "var(--app-bg)";
 
 const STUDENT_CHIPS = [
   "Explain the principle–facts method in Legal Reasoning",
@@ -91,29 +91,29 @@ export default function AiTutorChat({
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: PAPER, display: "flex", flexDirection: "column", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", color: "#1F1710" }}>
+    <div style={{ minHeight: "100dvh", background: "var(--bg-primary)", display: "flex", flexDirection: "column", fontFamily: "var(--font-body)", color: "var(--ink-primary)" }}>
       {/* Header */}
-      <header style={{ position: "sticky", top: 0, zIndex: 10, background: ESPRESSO, color: "#F5ECDD", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(61,36,17,.25)" }}>
-        <a href={backHref} aria-label="Back" style={{ color: "#F5ECDD", textDecoration: "none", fontSize: 22, lineHeight: 1, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: "rgba(255,255,255,.08)" }}>‹</a>
+      <header style={{ position: "sticky", top: 0, zIndex: 10, background: ESPRESSO, color: "white", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(6,53,154,.25)" }}>
+        <a href={backHref} aria-label="Back" style={{ color: "white", textDecoration: "none", fontSize: 22, lineHeight: 1, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: "rgba(255,255,255,.08)" }}>‹</a>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 18 }}>✨</span>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 800, letterSpacing: "-.01em" }}>CLAT AI Tutor</h1>
           </div>
-          <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#D9C6A8" }}>
+          <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "rgba(255,255,255,.65)" }}>
             {role === "student" ? "Your personal CLAT mentor — ask anything" : "Ask, or generate mocks & notes for your students"}
           </p>
         </div>
         <button
           onClick={() => { setThreadId(null); setMessages([]); setInput(""); }}
-          style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.18)", color: "#F5ECDD", borderRadius: 9, padding: "7px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.18)", color: "white", borderRadius: 9, padding: "7px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
         >
           New chat
         </button>
       </header>
 
       {!configured && (
-        <div style={{ background: "#FEF3C7", color: "#92400E", padding: "10px 16px", fontSize: 13, borderBottom: "1px solid #FDE68A" }}>
+        <div style={{ background: "var(--warning)", color: "var(--warning-text)", padding: "10px 16px", fontSize: 13, borderBottom: "1px solid var(--warning-border)" }}>
           ⚠️ The AI Tutor isn't switched on. An admin needs to set <code>GEMINI_API_KEY</code> in the app environment.
         </div>
       )}
@@ -124,7 +124,7 @@ export default function AiTutorChat({
           <div style={{ textAlign: "center", padding: "36px 8px 24px" }}>
             <div style={{ fontSize: 40 }}>⚖️</div>
             <h2 style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: ESPRESSO }}>Hi {name.split(" ")[0]} — how can I help?</h2>
-            <p style={{ margin: 0, color: "#7A6A55", fontSize: 13.5, maxWidth: 460, marginInline: "auto" }}>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13.5, maxWidth: 460, marginInline: "auto" }}>
               {role === "student"
                 ? "Ask me to explain a concept, walk through a legal-reasoning question, or quiz you."
                 : "Ask a question, or have me generate CLAT-pattern MCQs, passages, and notes."}
@@ -137,15 +137,15 @@ export default function AiTutorChat({
             <div style={{
               maxWidth: "88%",
               background: m.role === "user" ? ESPRESSO : "white",
-              color: m.role === "user" ? "#F7EFE2" : "#231911",
-              border: m.role === "user" ? "none" : "1px solid #EDE3D3",
+              color: m.role === "user" ? "white" : "var(--ink-primary)",
+              border: m.role === "user" ? "none" : "1px solid var(--border)",
               borderRadius: 16,
               borderBottomRightRadius: m.role === "user" ? 4 : 16,
               borderBottomLeftRadius: m.role === "user" ? 16 : 4,
               padding: "11px 14px",
               fontSize: 14.5,
               lineHeight: 1.55,
-              boxShadow: m.role === "user" ? "0 2px 8px rgba(61,36,17,.18)" : "0 1px 6px rgba(61,36,17,.06)",
+              boxShadow: m.role === "user" ? "0 2px 8px rgba(6,53,154,.18)" : "0 1px 6px rgba(6,53,154,.06)",
             }}>
               {m.role === "assistant" ? renderContent(m.content) : <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>}
             </div>
@@ -154,7 +154,7 @@ export default function AiTutorChat({
 
         {busy && (
           <div style={{ display: "flex", justifyContent: "flex-start", margin: "10px 0" }}>
-            <div style={{ background: "white", border: "1px solid #EDE3D3", borderRadius: 16, borderBottomLeftRadius: 4, padding: "12px 16px" }}>
+            <div style={{ background: "white", border: "1px solid var(--border)", borderRadius: 16, borderBottomLeftRadius: 4, padding: "12px 16px" }}>
               <span className="typing" style={{ display: "inline-flex", gap: 4 }}>
                 <i /><i /><i />
               </span>
@@ -167,7 +167,7 @@ export default function AiTutorChat({
       {messages.length === 0 && configured && (
         <div style={{ maxWidth: 760, width: "100%", margin: "0 auto", padding: "0 16px 6px", display: "flex", flexWrap: "wrap", gap: 8 }}>
           {chips.map((c) => (
-            <button key={c} onClick={() => send(c)} style={{ textAlign: "left", background: "white", border: "1px solid #E6DAC6", color: "#4A3826", borderRadius: 12, padding: "9px 12px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", flex: "1 1 220px" }}>
+            <button key={c} onClick={() => send(c)} style={{ textAlign: "left", background: "white", border: "1px solid var(--border)", color: "var(--ink)", borderRadius: 12, padding: "9px 12px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", flex: "1 1 220px" }}>
               {c}
             </button>
           ))}
@@ -175,7 +175,7 @@ export default function AiTutorChat({
       )}
 
       {/* Composer */}
-      <div style={{ position: "sticky", bottom: 0, background: PAPER, borderTop: "1px solid #ECE0CE", padding: "10px 16px calc(10px + env(safe-area-inset-bottom))" }}>
+      <div style={{ position: "sticky", bottom: 0, background: PAPER, borderTop: "1px solid var(--border)", padding: "10px 16px calc(10px + env(safe-area-inset-bottom))" }}>
         <form
           onSubmit={(e) => { e.preventDefault(); send(input); }}
           style={{ maxWidth: 760, margin: "0 auto", display: "flex", alignItems: "flex-end", gap: 8 }}
@@ -187,24 +187,24 @@ export default function AiTutorChat({
             placeholder={configured ? "Ask the CLAT AI Tutor…" : "AI Tutor is not configured"}
             disabled={!configured || busy}
             rows={1}
-            style={{ flex: 1, resize: "none", maxHeight: 140, minHeight: 44, border: "1.5px solid #E1D3BC", borderRadius: 14, padding: "11px 14px", fontSize: 14.5, fontFamily: "inherit", background: "white", color: "#231911", outlineColor: GOLD }}
+            style={{ flex: 1, resize: "none", maxHeight: 140, minHeight: 44, border: "1.5px solid var(--border)", borderRadius: 14, padding: "11px 14px", fontSize: 14.5, fontFamily: "inherit", background: "white", color: "var(--ink-primary)", outlineColor: GOLD }}
           />
           <button
             type="submit"
             disabled={!configured || busy || !input.trim()}
-            style={{ flex: "none", width: 46, height: 46, borderRadius: 14, border: "none", background: !configured || busy || !input.trim() ? "#C9B999" : ESPRESSO, color: "#F7EFE2", fontSize: 18, cursor: !configured || busy || !input.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ flex: "none", width: 46, height: 46, borderRadius: 14, border: "none", background: !configured || busy || !input.trim() ? "var(--disabled)" : ESPRESSO, color: "white", fontSize: 18, cursor: !configured || busy || !input.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
             aria-label="Send"
           >
             ↑
           </button>
         </form>
-        <p style={{ maxWidth: 760, margin: "6px auto 0", fontSize: 10.5, color: "#9A8A73", textAlign: "center" }}>
+        <p style={{ maxWidth: 760, margin: "6px auto 0", fontSize: 10.5, color: "var(--text-disabled)", textAlign: "center" }}>
           AI can make mistakes — verify important legal facts and current affairs.
         </p>
       </div>
 
       <style>{`
-        .typing i { width:6px; height:6px; border-radius:50%; background:#C9B48A; display:inline-block; animation: blink 1.2s infinite both; }
+        .typing i { width:6px; height:6px; border-radius:50%; background:var(--text-muted); display:inline-block; animation: blink 1.2s infinite both; }
         .typing i:nth-child(2){ animation-delay:.2s } .typing i:nth-child(3){ animation-delay:.4s }
         @keyframes blink { 0%,80%,100%{ opacity:.25 } 40%{ opacity:1 } }
         @media (prefers-reduced-motion: reduce){ .typing i { animation: none } }

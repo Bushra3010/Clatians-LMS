@@ -124,7 +124,7 @@ export default async function AdminPaymentsPage() {
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Amount (₹)</span>
-            <input name="amount" type="number" min={0} step={100} defaultValue={0} className={inputCls} />
+            <input name="amount" type="number" min={0} step={1} defaultValue={0} className={inputCls} />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Method</span>

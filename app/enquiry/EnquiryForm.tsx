@@ -7,8 +7,8 @@ import { createLeadAction, type LeadState } from "../lib/lead-actions";
 
 const initial: LeadState = {};
 
-const label: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 };
-const input: React.CSSProperties = { width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 12, background: "#F9FAFB", padding: "12px 14px", fontSize: 15, outline: "none", color: "#1A1A2E" };
+const label: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 };
+const input: React.CSSProperties = { width: "100%", border: "1.5px solid var(--border)", borderRadius: 12, background: "var(--surface-input)", padding: "12px 14px", fontSize: 15, outline: "none", color: "#1A1A2E" };
 
 export default function EnquiryForm({ courses, defaultRef = "" }: { courses: string[]; defaultRef?: string }) {
   const [state, action, pending] = useActionState(createLeadAction, initial);
@@ -27,7 +27,7 @@ export default function EnquiryForm({ courses, defaultRef = "" }: { courses: str
             <div style={{ textAlign: "center", padding: "16px 0" }}>
               <div style={{ fontSize: 56, marginBottom: 10 }}>🎉</div>
               <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "#1A1A2E" }}>Thanks — we&apos;ll be in touch!</h1>
-              <p style={{ margin: "0 0 20px", fontSize: 14, color: "#6B7280" }}>Our counsellor will call you shortly about your CLAT preparation.</p>
+              <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)" }}>Our counsellor will call you shortly about your CLAT preparation.</p>
               <Link href="/login" style={{ textDecoration: "none", display: "inline-block", background: "linear-gradient(135deg,#2B1700,#5C3A00)", color: "white", borderRadius: 12, padding: "12px 24px", fontSize: 14, fontWeight: 700 }}>
                 Go to login
               </Link>
@@ -35,7 +35,7 @@ export default function EnquiryForm({ courses, defaultRef = "" }: { courses: str
           ) : (
             <>
               <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "#1A1A2E" }}>Enquire about courses</h1>
-              <p style={{ margin: "0 0 20px", fontSize: 14, color: "#6B7280" }}>Tell us a bit about you and book a free demo class.</p>
+              <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)" }}>Tell us a bit about you and book a free demo class.</p>
 
               <form action={action} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
@@ -74,15 +74,15 @@ export default function EnquiryForm({ courses, defaultRef = "" }: { courses: str
                 </div>
 
                 {state.error && (
-                  <p style={{ margin: 0, fontSize: 13, color: "#DC2626", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px" }}>{state.error}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px" }}>{state.error}</p>
                 )}
 
-                <button type="submit" disabled={pending} style={{ background: "linear-gradient(135deg,#2B1700,#5C3A00)", color: "white", border: "none", borderRadius: 14, padding: "15px", fontSize: 16, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1, boxShadow: "0 4px 14px rgba(43,23,0,0.3)" }}>
+                <button type="submit" disabled={pending} style={{ background: "linear-gradient(135deg,#2B1700,#5C3A00)", color: "white", border: "none", borderRadius: 16, padding: "15px", fontSize: 16, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1, boxShadow: "0 4px 14px rgba(43,23,0,0.3)" }}>
                   {pending ? "Submitting…" : "Book my free demo"}
                 </button>
               </form>
 
-              <p style={{ margin: "16px 0 0", textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>
+              <p style={{ margin: "16px 0 0", textAlign: "center", fontSize: 13, color: "var(--text-disabled)" }}>
                 Already a student? <Link href="/login" style={{ color: "#C8860A", fontWeight: 700, textDecoration: "none" }}>Log in</Link>
               </p>
             </>

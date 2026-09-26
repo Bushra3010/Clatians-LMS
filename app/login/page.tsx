@@ -7,11 +7,16 @@ import { loginAction, type LoginState } from "../lib/session-actions";
 
 const initial: LoginState = {};
 
-const DEMOS = [
-  { role: "Student", email: "rahul@student.in", password: "student123", emoji: "🎓" },
-  { role: "Teacher", email: "anita@clatlms.in", password: "teach123", emoji: "👩‍🏫" },
-  { role: "Admin", email: "admin@clatlms.in", password: "admin123", emoji: "🛡️" },
-];
+// One-tap logins for the seeded demo accounts. Off unless the build sets
+// NEXT_PUBLIC_DEMO_LOGIN=1 — a live site must never publish these passwords.
+// (The value is inlined at build time, so production bundles drop the list.)
+const DEMOS = process.env.NEXT_PUBLIC_DEMO_LOGIN === "1"
+  ? [
+      { role: "Student", email: "rahul@student.in", password: "student123", emoji: "🎓" },
+      { role: "Teacher", email: "anita@clatlms.in", password: "teach123", emoji: "👩‍🏫" },
+      { role: "Admin", email: "admin@clatlms.in", password: "admin123", emoji: "🛡️" },
+    ]
+  : [];
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, initial);
@@ -49,7 +54,7 @@ export default function LoginPage() {
         {/* Card */}
         <div style={{ background: "white", borderRadius: 24, padding: "28px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
           <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "#1A1A2E" }}>Sign in</h1>
-          <p style={{ margin: "0 0 22px", fontSize: 14, color: "#6B7280" }}>
+          <p style={{ margin: "0 0 22px", fontSize: 14, color: "var(--text-muted)" }}>
             One login for students, teachers &amp; admins
           </p>
 
@@ -77,7 +82,7 @@ export default function LoginPage() {
             />
 
             {state.error && (
-              <p style={{ margin: "14px 0 0", fontSize: 13, color: "#DC2626", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px" }}>
+              <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--error-text)", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px" }}>
                 {state.error}
               </p>
             )}
@@ -91,7 +96,7 @@ export default function LoginPage() {
                 background: "linear-gradient(135deg,#2B1700,#5C3A00)",
                 color: "white",
                 border: "none",
-                borderRadius: 14,
+                borderRadius: 16,
                 padding: "15px",
                 fontSize: 16,
                 fontWeight: 700,
@@ -105,10 +110,11 @@ export default function LoginPage() {
           </form>
 
           {/* Demo quick-fill */}
+          {DEMOS.length > 0 && (<>
           <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0 14px" }}>
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-            <span style={{ fontSize: 12, color: "#9CA3AF" }}>Quick demo login</span>
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-disabled)" }}>Quick demo login</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -124,13 +130,13 @@ export default function LoginPage() {
                   flexDirection: "column",
                   alignItems: "center",
                   gap: 4,
-                  background: "#F9FAFB",
-                  border: "1.5px solid #E5E7EB",
+                  background: "var(--surface-input)",
+                  border: "1.5px solid var(--border)",
                   borderRadius: 12,
                   padding: "12px 6px",
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#374151",
+                  color: "var(--text-secondary)",
                   cursor: pending ? "default" : "pointer",
                 }}
               >
@@ -139,15 +145,16 @@ export default function LoginPage() {
               </button>
             ))}
           </div>
+          </>)}
 
           <Link href="/signup" style={{
             display: "block", marginTop: 18, textAlign: "center", textDecoration: "none",
-            background: "#FBF6EC", border: "1.5px solid #F0E3C8", borderRadius: 14,
+            background: "#FBF6EC", border: "1.5px solid #F0E3C8", borderRadius: 16,
             padding: "13px", fontSize: 14, fontWeight: 800, color: "#6B4A28",
           }}>
             🎓 New student? Create a free account →
           </Link>
-          <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>
+          <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
             Prefer talking to us first?{" "}
             <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 600, textDecoration: "none" }}>
               Book a free demo
@@ -163,15 +170,15 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 13,
   fontWeight: 600,
-  color: "#374151",
+  color: "var(--text-secondary)",
   marginBottom: 6,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  border: "1.5px solid #E5E7EB",
+  border: "1.5px solid var(--border)",
   borderRadius: 12,
-  background: "#F9FAFB",
+  background: "var(--surface-input)",
   padding: "13px 14px",
   fontSize: 15,
   outline: "none",

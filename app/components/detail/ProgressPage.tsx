@@ -15,7 +15,7 @@ export type StudentProgress = {
   practice: { sessions: number; questions: number; accuracy: number | null };
 };
 
-const barColor = (p: number) => (p < 40 ? "#DC2626" : p < 70 ? "#D97706" : "#059669");
+const barColor = (p: number) => (p < 40 ? "var(--error-text)" : p < 70 ? "var(--warning-text)" : "var(--green)");
 
 // AI study coach — turns the student's test data into a personalised plan.
 // Always shown; when there's no test data yet it explains how to unlock it.
@@ -41,7 +41,7 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
 
   return (
     <div style={{ padding: "18px 14px 0" }}>
-      <div style={{ background: "linear-gradient(135deg,#3D2411,#5C3A00)", borderRadius: 18, padding: "16px", color: "#F7EFE2", boxShadow: "0 6px 20px rgba(61,36,17,0.28)" }}>
+      <div style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", borderRadius: 18, padding: "16px", color: "white", boxShadow: "0 6px 20px rgba(61,36,17,0.28)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 18 }}>✨</span>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>AI Study Coach</p>
@@ -55,18 +55,18 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
             📝 Take at least one mock test to unlock your personalised study plan. Once you&apos;ve submitted a test, come back here and I&apos;ll analyse your weak areas.
           </div>
         ) : plan ? (
-          <div style={{ marginTop: 12, background: "#FBF7EF", color: "#2E2013", borderRadius: 12, padding: "12px 14px", fontSize: 12.5, lineHeight: 1.55 }}>
+          <div style={{ marginTop: 12, background: "var(--bg-secondary)", color: "var(--ink-primary)", borderRadius: 12, padding: "12px 14px", fontSize: 12.5, lineHeight: 1.55 }}>
             <AiText text={plan} />
-            <button onClick={run} disabled={busy} style={{ marginTop: 8, background: "none", border: "none", color: "#8A5A08", fontSize: 11.5, fontWeight: 800, cursor: busy ? "default" : "pointer", padding: 0 }}>
+            <button onClick={run} disabled={busy} style={{ marginTop: 8, background: "none", border: "none", color: "var(--blue)", fontSize: 11.5, fontWeight: 800, cursor: busy ? "default" : "pointer", padding: 0 }}>
               {busy ? "Refreshing…" : "↻ Regenerate"}
             </button>
           </div>
         ) : (
-          <button onClick={run} disabled={busy} style={{ marginTop: 12, width: "100%", background: "#F5A623", color: "#3D2411", border: "none", borderRadius: 12, padding: "12px", fontSize: 13.5, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
+          <button onClick={run} disabled={busy} style={{ marginTop: 12, width: "100%", background: "var(--gold)", color: "var(--blue)", border: "none", borderRadius: 12, padding: "12px", fontSize: 13.5, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
             {busy ? "Analysing your results…" : "✨ Get my study plan"}
           </button>
         )}
-        {err && <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#FCD9A6" }}>⚠️ {err}</p>}
+        {err && <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "var(--gold-100)" }}>⚠️ {err}</p>}
       </div>
     </div>
   );
@@ -83,31 +83,31 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
     const generated = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
     const stat = (label: string, value: string) => `<div class="stat"><div class="sv">${escHtml(value)}</div><div class="sl">${escHtml(label)}</div></div>`;
     const subjectRows = progress.subjects.length
-      ? progress.subjects.map((s) => `<tr><td>${escHtml(s.subject)}</td><td>${s.correct}/${s.total}</td><td class="pct" style="color:${s.pct < 40 ? "#DC2626" : s.pct < 70 ? "#D97706" : "#059669"}">${s.pct}%</td></tr>`).join("")
+      ? progress.subjects.map((s) => `<tr><td>${escHtml(s.subject)}</td><td>${s.correct}/${s.total}</td><td class="pct" style="color:${s.pct < 40 ? "var(--error-text)" : s.pct < 70 ? "var(--warning-text)" : "var(--green)"}">${s.pct}%</td></tr>`).join("")
       : `<tr><td colspan="3" style="color:#9A8A73">Attempt a test to see subject-wise accuracy.</td></tr>`;
 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Progress Report — ${escHtml(student.name)}</title>
 <style>
-  *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#231911;margin:0;padding:40px;background:#fff}
+  *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1A1A2E;margin:0;padding:40px;background:#fff}
   .wrap{max-width:680px;margin:0 auto}
-  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #3D2411;padding-bottom:16px}
-  .brand{font-size:22px;font-weight:800;color:#3D2411}
-  .brand span{font-size:12px;font-weight:500;color:#8A6A45;display:block;margin-top:2px}
-  .doc{text-align:right;font-size:12px;color:#6B5842}
-  .doc b{display:block;font-size:15px;color:#231911}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue-dark);padding-bottom:16px}
+  .brand{font-size:22px;font-weight:800;color:var(--blue-dark)}
+  .brand span{font-size:12px;font-weight:500;color:var(--blue-dark);display:block;margin-top:2px}
+  .doc{text-align:right;font-size:12px;color:#5B7299}
+  .doc b{display:block;font-size:15px;color:#1A1A2E}
   .who{margin:20px 0}
   .who .n{font-size:18px;font-weight:800}
-  .who .b{font-size:12.5px;color:#6B5842;margin-top:2px}
-  h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#9A8A73;margin:26px 0 10px}
+  .who .b{font-size:12.5px;color:#5B7299;margin-top:2px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:26px 0 10px}
   .stats{display:flex;gap:12px}
-  .stat{flex:1;border:1px solid #E7DCC9;border-radius:10px;padding:12px;text-align:center}
-  .sv{font-size:22px;font-weight:800;color:#3D2411}
-  .sl{font-size:11px;color:#8A6A45;margin-top:3px}
+  .stat{flex:1;border:1px solid var(--info-border);border-radius:10px;padding:12px;text-align:center}
+  .sv{font-size:22px;font-weight:800;color:var(--blue-dark)}
+  .sl{font-size:11px;color:var(--blue-dark);margin-top:3px}
   table{width:100%;border-collapse:collapse}
-  th{text-align:left;font-size:11px;text-transform:uppercase;color:#9A8A73;border-bottom:1px solid #E7DCC9;padding:8px 6px}
-  td{padding:10px 6px;border-bottom:1px solid #F0EADD;font-size:13.5px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--info-border);padding:8px 6px}
+  td{padding:10px 6px;border-bottom:1px solid var(--surface-dim);font-size:13.5px}
   td.pct{text-align:right;font-weight:800} th:last-child{text-align:right}
-  .foot{margin-top:34px;font-size:11px;color:#9A8A73;border-top:1px solid #E7DCC9;padding-top:14px}
+  .foot{margin-top:34px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--info-border);padding-top:14px}
   @media print{body{padding:0}}
 </style></head><body><div class="wrap">
   <div class="head">
@@ -143,24 +143,24 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
   };
 
   return (
-    <div style={{ background: "#F7F3EA", minHeight: "100%", paddingBottom: 24 }}>
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#2B1700", fontSize: 14, fontWeight: 700 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B1700" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           My Progress
         </button>
-        <button onClick={downloadReport} style={{ background: "#F6ECD9", color: "#6B4A28", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={downloadReport} style={{ background: "var(--info-border)", color: "var(--ink-primary)", border: "1px solid var(--gold-100)", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
           📄 Download report
         </button>
       </div>
 
       {/* Overall completion */}
       <div style={{ padding: "14px 14px 0" }}>
-        <div style={{ background: "linear-gradient(135deg,#3D2411,#5C3A00)", borderRadius: 20, padding: "20px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
+        <div style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", borderRadius: 20, padding: "20px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Course completion</p>
           <p style={{ margin: "6px 0 10px", fontSize: 40, fontWeight: 900 }}>{overall}%</p>
           <div style={{ height: 8, borderRadius: 20, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${overall}%`, background: "#F5A623", borderRadius: 20 }} />
+            <div style={{ height: "100%", width: `${overall}%`, background: "var(--gold)", borderRadius: 20 }} />
           </div>
           <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.7)" }}>{progress.contentDone} of {progress.contentTotal} study items completed</p>
         </div>
@@ -169,18 +169,18 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
       {/* Per-batch progress */}
       {progress.batches.length > 0 && (
         <div style={{ padding: "18px 14px 0" }}>
-          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>By batch</h3>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>By batch</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {progress.batches.map((b) => {
               const p = b.total > 0 ? Math.round((b.done / b.total) * 100) : 0;
               return (
-                <div key={b.name} style={{ background: "white", borderRadius: 14, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                <div key={b.name} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1A1A2E" }}>{b.name}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#3D2411" }}>{b.done}/{b.total}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>{b.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>{b.done}/{b.total}</span>
                   </div>
-                  <div style={{ height: 7, borderRadius: 20, background: "#F3F4F6", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${p}%`, background: "linear-gradient(90deg,#3D2411,#8A5A08)", borderRadius: 20 }} />
+                  <div style={{ height: 7, borderRadius: 20, background: "var(--bg-secondary)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${p}%`, background: "linear-gradient(90deg,var(--blue-dark),var(--blue))", borderRadius: 20 }} />
                   </div>
                 </div>
               );
@@ -191,16 +191,16 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
 
       {/* Test performance */}
       <div style={{ padding: "18px 14px 0" }}>
-        <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>Test performance</h3>
+        <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Test performance</h3>
         <div style={{ display: "flex", gap: 8 }}>
           {[
             { v: String(progress.testsTaken), l: "Tests taken" },
             { v: progress.testAvgPct === null ? "—" : `${progress.testAvgPct}%`, l: "Average" },
             { v: progress.testBestPct === null ? "—" : `${progress.testBestPct}%`, l: "Best" },
           ].map((s, i) => (
-            <div key={i} style={{ flex: 1, background: "white", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#9CA3AF" }}>{s.l}</p>
+            <div key={i} style={{ flex: 1, background: "white", borderRadius: 16, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+              <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "var(--blue)" }}>{s.v}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>{s.l}</p>
             </div>
           ))}
         </div>
@@ -209,16 +209,16 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
       {/* AI practice activity */}
       {progress.practice.sessions > 0 && (
         <div style={{ padding: "18px 14px 0" }}>
-          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>✨ AI Practice</h3>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>✨ AI Practice</h3>
           <div style={{ display: "flex", gap: 8 }}>
             {[
               { v: String(progress.practice.sessions), l: "Sessions" },
               { v: String(progress.practice.questions), l: "Questions" },
               { v: progress.practice.accuracy === null ? "—" : `${progress.practice.accuracy}%`, l: "Accuracy" },
             ].map((s, i) => (
-              <div key={i} style={{ flex: 1, background: "white", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#3D2411" }}>{s.v}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#9CA3AF" }}>{s.l}</p>
+              <div key={i} style={{ flex: 1, background: "white", borderRadius: 16, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "var(--blue)" }}>{s.v}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>{s.l}</p>
               </div>
             ))}
           </div>
@@ -227,24 +227,24 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
 
       {/* Weak areas */}
       <div style={{ padding: "18px 14px 0" }}>
-        <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1A1A2E" }}>Subject accuracy</h3>
+        <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Subject accuracy</h3>
         {progress.subjects.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, color: "#9CA3AF" }}>Attempt a test to see your subject-wise strengths and weak areas.</p>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-disabled)" }}>Attempt a test to see your subject-wise strengths and weak areas.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {progress.subjects.map((s) => (
-              <div key={s.subject} style={{ background: "white", borderRadius: 14, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+              <div key={s.subject} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, alignItems: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1A1A2E" }}>{s.subject}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>{s.subject}</span>
                   <span style={{ fontSize: 12, fontWeight: 800, color: barColor(s.pct) }}>{s.pct}%</span>
                 </div>
-                <div style={{ height: 7, borderRadius: 20, background: "#F3F4F6", overflow: "hidden" }}>
+                <div style={{ height: 7, borderRadius: 20, background: "var(--bg-secondary)", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${s.pct}%`, background: barColor(s.pct), borderRadius: 20 }} />
                 </div>
-                <p style={{ margin: "5px 0 0", fontSize: 10.5, color: "#9CA3AF" }}>{s.correct}/{s.total} correct</p>
+                <p style={{ margin: "5px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>{s.correct}/{s.total} correct</p>
               </div>
             ))}
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9CA3AF" }}>💡 Focus on the red/amber subjects to improve fastest.</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-disabled)" }}>💡 Focus on the red/amber subjects to improve fastest.</p>
           </div>
         )}
       </div>

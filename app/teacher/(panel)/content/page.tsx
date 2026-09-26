@@ -1,3 +1,4 @@
+import FileUploadField from "@/app/components/FileUploadField";
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { createContentAction, deleteContentAction } from "../../actions";
@@ -90,16 +91,13 @@ export default async function TeacherContentPage() {
             </select>
           </label>
 
-          <label className="block">
+          <div>
             <span className="block text-xs font-medium text-slate-600 mb-1">Upload file (PDF / video) — optional</span>
-            <input
-              name="file"
-              type="file"
+            <FileUploadField
               accept=".pdf,.doc,.docx,.ppt,.pptx,video/*,image/*"
-              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gold-600 file:px-4 file:py-2 file:text-white file:text-sm file:font-medium hover:file:bg-gold-700 file:cursor-pointer"
+              hint="Uploaded here, or paste a link below (e.g. a YouTube URL for video). Max 50 MB."
             />
-            <span className="block text-xs text-slate-400 mt-1">Uploaded here, or paste a link below (e.g. a YouTube URL for video). Max 50 MB.</span>
-          </label>
+          </div>
 
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Link or description</span>

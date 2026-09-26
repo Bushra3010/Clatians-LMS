@@ -1,6 +1,6 @@
 import { db } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
-import { createTestAction, addQuestionAction, setTestStatusAction, deleteTestAction, editTestAction, deleteQuestionAction } from "@/app/lib/test-actions";
+import { createTestAction, addQuestionAction, addComprehensionAction, setTestStatusAction, deleteTestAction, editTestAction, deleteQuestionAction } from "@/app/lib/test-actions";
 import { aiConfigured } from "@/app/lib/ai";
 import AiGenerateForm from "@/app/components/AiGenerateForm";
 import ExportCsvButton from "@/app/components/ExportCsvButton";
@@ -119,15 +119,15 @@ export default async function TeacherTestsPage() {
             <input name="title" required className={inputCls} placeholder="Full Mock 2" /></label>
           <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Type</span>
             <select name="type" className={inputCls} defaultValue="mock">
-              <option value="mock">Full Mock</option><option value="sectional">Sectional</option><option value="pyq">Previous Year</option>
+              <option value="mock">Full Mock</option><option value="sectional">Sectional</option><option value="pyq">Previous Year</option><option value="practice">Practice Paper</option>
             </select></label>
           <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Batch</span>
             <select name="courseId" className={inputCls} defaultValue="">
               <option value="">All batches</option>
               {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select></label>
-          <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Duration (min)</span>
-            <input name="duration" type="number" min={5} step={5} defaultValue={30} className={inputCls} /></label>
+          <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Duration (min) · 0 = untimed</span>
+            <input name="duration" type="number" min={0} step={5} defaultValue={30} className={inputCls} /></label>
           <label className="block sm:col-span-2 lg:col-span-3"><span className="block text-xs font-medium text-slate-600 mb-1">Description</span>
             <input name="description" className={inputCls} placeholder="Optional" /></label>
           <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">Create</button>
@@ -207,7 +207,7 @@ export default async function TeacherTestsPage() {
                       <p className="text-xs font-semibold text-slate-600 mb-2">By section</p>
                       <div className="space-y-2">
                         {bd.map((s) => {
-                          const color = s.pct < 40 ? "#DC2626" : s.pct < 70 ? "#D97706" : "#059669";
+                          const color = s.pct < 40 ? "var(--error-text)" : s.pct < 70 ? "var(--warning-text)" : "var(--green)";
                           return (
                             <div key={s.subject}>
                               <div className="flex items-center justify-between text-xs mb-0.5">
@@ -232,7 +232,7 @@ export default async function TeacherTestsPage() {
                     const s = qStats.get(q.id);
                     const answered = s?.answered ?? 0;
                     const correctPct = answered > 0 ? Math.round((s!.correct / answered) * 100) : null;
-                    const barColor = correctPct === null ? "#CBD5E1" : correctPct < 40 ? "#DC2626" : correctPct < 70 ? "#D97706" : "#059669";
+                    const barColor = correctPct === null ? "#CBD5E1" : correctPct < 40 ? "var(--error-text)" : correctPct < 70 ? "var(--warning-text)" : "var(--green)";
                     return (
                       <li key={q.id} className="text-sm">
                         <div className="flex items-start justify-between gap-3">
@@ -271,16 +271,47 @@ export default async function TeacherTestsPage() {
                   <input name="title" required defaultValue={t.title} className={inputCls} /></label>
                 <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Type</span>
                   <select name="type" className={inputCls} defaultValue={t.type}>
-                    <option value="mock">Full Mock</option><option value="sectional">Sectional</option><option value="pyq">Previous Year</option>
+                    <option value="mock">Full Mock</option><option value="sectional">Sectional</option><option value="pyq">Previous Year</option><option value="practice">Practice Paper</option>
                   </select></label>
                 <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Batch</span>
                   <select name="courseId" className={inputCls} defaultValue={t.course_id ?? ""}>
                     <option value="">All batches</option>
                     {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select></label>
-                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Duration (min)</span>
-                  <input name="duration" type="number" min={5} step={5} defaultValue={t.duration_min} className={inputCls} /></label>
+                <label className="block"><span className="block text-xs font-medium text-slate-600 mb-1">Duration (min) · 0 = untimed</span>
+                  <input name="duration" type="number" min={0} step={5} defaultValue={t.duration_min} className={inputCls} /></label>
                 <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4 h-[38px]">Save</button>
+              </form>
+            </details>
+
+            {/* Add a comprehension set: one passage + its questions */}
+            <details className="mt-3 border-t border-slate-100 pt-3">
+              <summary className="text-xs font-medium text-gold-700 cursor-pointer">+ Add a comprehension (passage + 3 questions)</summary>
+              <form action={addComprehensionAction} className="mt-3 space-y-3">
+                <input type="hidden" name="testId" value={t.id} />
+                <select name="subject" className={inputCls + " sm:!w-64"} defaultValue="Legal Reasoning">
+                  <option>Legal Reasoning</option><option>English Language</option><option>Logical Reasoning</option>
+                  <option>Current Affairs & GK</option><option>Quantitative Techniques</option>
+                </select>
+                <textarea name="passage" required rows={6} className={inputCls} placeholder={"Comprehension passage — e.g.\nPRINCIPLE: …\nFACTS: …\n\nStudents read this once and answer the questions below."} />
+                {[1, 2, 3].map((k) => (
+                  <fieldset key={k} className="rounded-lg border border-slate-200 p-3 space-y-2">
+                    <legend className="px-1 text-xs font-semibold text-slate-600">Question {k}</legend>
+                    <input name={`q${k}_text`} required={k === 1} className={inputCls} placeholder={k === 1 ? "Question text" : "Question text (leave blank to skip)"} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(["a", "b", "c", "d"] as const).map((o) => (
+                        <input key={o} name={`q${k}_${o}`} required={k === 1} className={inputCls} placeholder={`Option ${o.toUpperCase()}`} />
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2">
+                      <select name={`q${k}_correct`} className={inputCls} defaultValue="a">
+                        <option value="a">Correct: A</option><option value="b">Correct: B</option><option value="c">Correct: C</option><option value="d">Correct: D</option>
+                      </select>
+                      <input name={`q${k}_explanation`} className={inputCls} placeholder="Explanation shown after the test" />
+                    </div>
+                  </fieldset>
+                ))}
+                <button className="rounded-lg bg-gold-600 hover:bg-gold-700 text-white text-sm font-medium py-2 px-4">Add comprehension</button>
               </form>
             </details>
 
@@ -293,12 +324,14 @@ export default async function TeacherTestsPage() {
                   <input name="subject" className={inputCls} placeholder="Subject (e.g. Legal Reasoning)" />
                   <input name="text" required className={inputCls} placeholder="Question text" />
                 </div>
+                <textarea name="passage" rows={2} className={inputCls} placeholder="Passage — optional. For a passage with several questions, use “Add a comprehension” above." />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input name="a" required className={inputCls} placeholder="Option A" />
                   <input name="b" required className={inputCls} placeholder="Option B" />
                   <input name="c" required className={inputCls} placeholder="Option C" />
                   <input name="d" required className={inputCls} placeholder="Option D" />
                 </div>
+                <textarea name="explanation" rows={2} className={inputCls} placeholder="Solution shown in review — why this option is right and the others are not." />
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-slate-600">Correct answer</label>
                   <select name="correct" className={inputCls + " !w-24"} defaultValue="a">

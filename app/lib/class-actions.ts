@@ -213,17 +213,26 @@ export async function sendAttendanceReminderAction(formData: FormData) {
 }
 
 /**
- * A student joins a live class: record attendance. The client then opens the
- * embedded YouTube player in-app. Callable as `joinClassAction(id)`.
+ * A student joins a class. Attendance is recorded only while the class is
+ * actually live, and only for students in the class's batch — opening a
+ * scheduled class early, or a recording later, doesn't count. The client then
+ * opens the embedded YouTube player in-app. Callable as `joinClassAction(id)`.
  */
-export async function joinClassAction(classId: string) {
+export async function joinClassAction(classId: string): Promise<{ attended: boolean }> {
   const user = await requireRole(["student", "teacher", "admin"]);
-  const exists = await db.prepare("SELECT id FROM live_classes WHERE id = ?").get(classId);
-  if (!exists) return;
+  const cls = await db.prepare("SELECT id, status, course_id FROM live_classes WHERE id = ?")
+    .get(classId) as { id: string; status: string; course_id: string | null } | undefined;
+  if (!cls || cls.status !== "live") return { attended: false };
+  if (user.role === "student" && cls.course_id) {
+    const enrolled = await db.prepare("SELECT 1 FROM enrollments WHERE user_id = ? AND course_id = ?").get(user.id, cls.course_id);
+    if (!enrolled) return { attended: false };
+  }
 
   await db.prepare(
     "INSERT INTO class_attendance (class_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
-  ).run(classId, user.id);
+  ).run(cls.id, user.id);
 
   revalidatePath("/");
+  revalidatePath("/teacher/classes");
+  return { attended: true };
 }
