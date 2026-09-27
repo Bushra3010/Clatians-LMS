@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { StartResult, SubmitResult, TakeQuestion, ReviewItem } from "../../lib/test-actions";
 import { explainAnswerAction } from "../../lib/ai-actions";
 import AiText from "../AiText";
+import { pushBack } from "../../lib/back-stack";
 
 export type TestListItem = {
   id: string;
@@ -31,18 +32,6 @@ function PassageBlock({ passage }: { passage: string }) {
       <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{passage}</p>
     </div>
   );
-}
-
-/** Consecutive questions sharing a passage form one comprehension set. */
-function groupByPassage(questions: TakeQuestion[]) {
-  const groups: { passage: string; number: number; items: { q: TakeQuestion; i: number }[] }[] = [];
-  let n = 0;
-  questions.forEach((q, i) => {
-    const prev = groups[groups.length - 1];
-    if (q.passage && prev && prev.passage === q.passage) prev.items.push({ q, i });
-    else groups.push({ passage: q.passage, number: q.passage ? ++n : 0, items: [{ q, i }] });
-  });
-  return groups;
 }
 
 const Back = ({ onBack, label }: { onBack: () => void; label: string }) => (
@@ -91,19 +80,60 @@ export function TestSeriesPage({ onBack, tests, onStart }: { onBack: () => void;
 }
 
 // ── Taking a test ──────────────────────────────────────────
+// One question per screen, CBT-style. A comprehension's passage sits in its
+// own scrollable panel above the question (expandable to full length), the
+// question and its options below, Previous / Next at the bottom, and a
+// question map showing what is answered, skipped or marked for review.
+
+type QStatus = "answered" | "marked" | "answered-marked" | "skipped" | "unseen";
+
+const STATUS_STYLE: Record<QStatus, { bg: string; fg: string; border: string; label: string }> = {
+  answered: { bg: "#16A34A", fg: "white", border: "#16A34A", label: "Answered" },
+  "answered-marked": { bg: "#7C3AED", fg: "white", border: "#16A34A", label: "Answered & marked" },
+  marked: { bg: "#7C3AED", fg: "white", border: "#7C3AED", label: "Marked for review" },
+  skipped: { bg: "#FEE2E2", fg: "#B91C1C", border: "#FCA5A5", label: "Not answered" },
+  unseen: { bg: "white", fg: "var(--text-secondary)", border: "var(--border)", label: "Not visited" },
+};
+
 export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<StartResult, { ok: true }>; onSubmit: (answers: Record<string, string>) => Promise<void>; onExit: () => void }) {
+  const questions = session.questions;
+  const total = questions.length;
   const timed = session.durationMin > 0;
+
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [marked, setMarked] = useState<Set<string>>(new Set());
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(questions[0] ? [questions[0].id] : []));
+  const [index, setIndex] = useState(0);
   const [secs, setSecs] = useState(session.durationMin * 60);
   const [submitting, setSubmitting] = useState(false);
+  const [sheet, setSheet] = useState<"none" | "map" | "confirm" | "exit">("none");
+  const [passageOpen, setPassageOpen] = useState(false);
+
+  // The timer's auto-submit must send the answers as they are *then*, not as
+  // they were when the timer started.
+  const answersRef = useRef(answers);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
   const submittedRef = useRef(false);
 
   const doSubmit = async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
-    await onSubmit(answers);
+    setSheet("none");
+    await onSubmit(answersRef.current);
   };
+
+  // A stray back swipe mustn't throw the attempt away: while the test is on
+  // screen, the back gesture asks first (and re-arms itself if they stay).
+  const leavingRef = useRef(false);
+  useEffect(() => {
+    let active = true;
+    const alive = () => active && !leavingRef.current && !submittedRef.current;
+    const guard = () => { setSheet("exit"); pushBack(guard, alive); };
+    pushBack(guard, alive);
+    return () => { active = false; };
+  }, []);
+  const leave = () => { leavingRef.current = true; onExit(); };
 
   useEffect(() => {
     if (!timed) return; // untimed practice — no clock, no auto-submit
@@ -115,83 +145,255 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timed]);
 
+  // Comprehension numbering: consecutive questions sharing a passage are one set.
+  const sets = useMemo(() => {
+    const out: { number: number; from: number; to: number }[] = [];
+    questions.forEach((q, i) => {
+      const last = out[out.length - 1];
+      if (q.passage && last && questions[last.to].passage === q.passage) last.to = i;
+      else if (q.passage) out.push({ number: out.length + 1, from: i, to: i });
+    });
+    return out;
+  }, [questions]);
+  const setOf = (i: number) => sets.find((s) => i >= s.from && i <= s.to) ?? null;
+
+  const q = questions[index];
+  const set = setOf(index);
+
+  const goTo = (i: number) => {
+    const next = Math.max(0, Math.min(total - 1, i));
+    const nq = questions[next];
+    // A new passage starts collapsed; staying on the same passage keeps its state.
+    if (nq && nq.passage !== q?.passage) setPassageOpen(false);
+    setIndex(next);
+    if (nq) setVisited((v) => (v.has(nq.id) ? v : new Set(v).add(nq.id)));
+    setSheet("none");
+    const el = document.getElementById("screen-content");
+    if (el) el.scrollTop = 0;
+  };
+
+  const choose = (opt: string) => setAnswers((a) => ({ ...a, [q.id]: opt }));
+  const clear = () => setAnswers((a) => { const n = { ...a }; delete n[q.id]; return n; });
+  const toggleMark = () => setMarked((m) => { const n = new Set(m); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); return n; });
+
+  const statusOf = (qq: TakeQuestion): QStatus => {
+    const a = !!answers[qq.id];
+    const m = marked.has(qq.id);
+    if (a && m) return "answered-marked";
+    if (a) return "answered";
+    if (m) return "marked";
+    return visited.has(qq.id) ? "skipped" : "unseen";
+  };
+
+  const answered = Object.keys(answers).length;
+  const counts = questions.reduce((c, qq) => { c[statusOf(qq)]++; return c; },
+    { answered: 0, "answered-marked": 0, marked: 0, skipped: 0, unseen: 0 } as Record<QStatus, number>);
+
   const mm = String(Math.floor(secs / 60)).padStart(2, "0");
   const ss = String(secs % 60).padStart(2, "0");
-  const answered = Object.keys(answers).length;
-  const low = secs <= 60;
+  const low = timed && secs <= 60;
+  const isLast = index === total - 1;
+
+  if (!q) return null;
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 90 }}>
-      {/* Sticky timer bar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "white", borderBottom: "1px solid var(--border)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--ink-primary)" }}>{session.title}</p>
-          <p style={{ margin: 0, fontSize: 11, color: "var(--text-disabled)" }}>{answered}/{session.questions.length} answered</p>
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Header: title, progress, timer, map */}
+      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "white", borderBottom: "1px solid var(--border)", padding: "10px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setSheet("exit")} aria-label="Exit test" style={{ background: "none", border: "none", padding: 4, cursor: "pointer", display: "flex", flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.title}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--text-disabled)" }}>{answered}/{total} answered</p>
+          </div>
+          {timed ? (
+            <div style={{ background: low ? "var(--error)" : "var(--info-border)", color: low ? "var(--error-text)" : "var(--blue)", borderRadius: 10, padding: "6px 10px", fontSize: 14, fontWeight: 900, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>⏱ {mm}:{ss}</div>
+          ) : (
+            <div style={{ background: "var(--success)", color: "var(--success-text)", borderRadius: 10, padding: "6px 10px", fontSize: 11.5, fontWeight: 800, flexShrink: 0 }}>Untimed</div>
+          )}
+          <button onClick={() => setSheet("map")} aria-label="Question map" style={{ background: "var(--bg-secondary)", border: "1px solid var(--gold-100)", borderRadius: 10, padding: "6px 9px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, fontSize: 12, fontWeight: 800, color: "var(--ink-primary)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+            Map
+          </button>
         </div>
-        {timed ? (
-          <div style={{ background: low ? "var(--error)" : "var(--info-border)", color: low ? "var(--error-text)" : "var(--blue)", borderRadius: 10, padding: "6px 12px", fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>⏱ {mm}:{ss}</div>
+        {/* Thin strip: one tick per question, coloured by status — a glanceable map */}
+        <div style={{ display: "flex", gap: 2, marginTop: 8 }}>
+          {questions.map((qq, i) => (
+            <button key={qq.id} onClick={() => goTo(i)} aria-label={`Question ${i + 1}`} style={{
+              flex: 1, height: i === index ? 6 : 4, borderRadius: 3, border: "none", padding: 0, cursor: "pointer",
+              background: i === index ? "var(--blue)" : STATUS_STYLE[statusOf(qq)].bg === "white" ? "var(--line)" : STATUS_STYLE[statusOf(qq)].bg,
+            }} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Comprehension passage — its own panel, scrollable, expandable */}
+        {q.passage && (
+          <div style={{ background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", borderTop: "4px solid var(--blue)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--gold-100)" }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                📖 Comprehension {set?.number ?? ""}{q.subject ? ` · ${q.subject}` : ""}
+              </span>
+              {set && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-disabled)", flexShrink: 0 }}>Q{set.from + 1}–{set.to + 1}</span>}
+            </div>
+            <div style={{
+              maxHeight: passageOpen ? "none" : "38vh", overflowY: passageOpen ? "visible" : "auto",
+              padding: "12px 14px", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, whiteSpace: "pre-wrap",
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {q.passage}
+            </div>
+            <button onClick={() => setPassageOpen(!passageOpen)} style={{ width: "100%", background: "var(--bg-secondary)", border: "none", borderTop: "1px solid var(--gold-100)", padding: "8px", fontSize: 12, fontWeight: 800, color: "var(--blue)", cursor: "pointer" }}>
+              {passageOpen ? "▲ Collapse passage" : "▼ Show full passage"}
+            </button>
+          </div>
+        )}
+
+        {/* The one question on screen */}
+        <div style={{ background: "white", borderRadius: 16, padding: "14px 15px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: "var(--blue)" }}>Question {index + 1} of {total}</span>
+            {!q.passage && q.subject && <span style={{ fontSize: 10.5, color: "var(--text-disabled)", fontWeight: 700 }}>{q.subject}</span>}
+          </div>
+          <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, color: "var(--ink-primary)", lineHeight: 1.55 }}>{q.text}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(["a", "b", "c", "d"] as const).map((opt) => {
+              const sel = answers[q.id] === opt;
+              return (
+                <button key={opt} onClick={() => choose(opt)} style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, textAlign: "left",
+                  border: `1.5px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--info-border)" : "white",
+                  borderRadius: 12, padding: "11px 12px", cursor: "pointer", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5,
+                }}>
+                  <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--blue)" : "white", color: sel ? "white" : "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{opt.toUpperCase()}</span>
+                  <span style={{ paddingTop: 1 }}>{q[opt]}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+            <button onClick={toggleMark} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: marked.has(q.id) ? "#7C3AED" : "var(--text-muted)" }}>
+              {marked.has(q.id) ? "★ Marked for review" : "☆ Mark for review"}
+            </button>
+            {answers[q.id] && (
+              <button onClick={clear} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--text-muted)" }}>Clear answer</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Previous / Next */}
+      <div style={{ position: "sticky", bottom: 0, zIndex: 5, background: "white", borderTop: "1px solid var(--border)", padding: "10px 14px", display: "flex", gap: 10, boxShadow: "0 -4px 16px rgba(0,0,0,0.06)" }}>
+        <button onClick={() => goTo(index - 1)} disabled={index === 0} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: index === 0 ? "default" : "pointer", opacity: index === 0 ? 0.45 : 1 }}>
+          ‹ Previous
+        </button>
+        {isLast ? (
+          <button onClick={() => setSheet("confirm")} disabled={submitting} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+            {submitting ? "Submitting…" : timed ? "Submit test" : "Check answers"}
+          </button>
         ) : (
-          <div style={{ background: "var(--success)", color: "var(--success-text)", borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 800 }}>Untimed</div>
+          <button onClick={() => goTo(index + 1)} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+            {answers[q.id] ? "Save & Next ›" : "Next ›"}
+          </button>
         )}
       </div>
 
-      <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 12 }}>
-        {groupByPassage(session.questions).map((g, gi) => {
-          const questions = g.items.map(({ q, i }) => (
-            <div key={q.id} style={g.passage ? { borderTop: "1px solid var(--gold-100)", paddingTop: 12, marginTop: 12 } : undefined}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: "var(--blue)", flexShrink: 0 }}>Q{i + 1}.</span>
-                <div>
-                  {q.subject && !g.passage && <span style={{ fontSize: 10, color: "var(--text-disabled)", fontWeight: 600 }}>{q.subject}</span>}
-                  <p style={{ margin: "2px 0 0", fontSize: 13.5, color: "var(--ink-primary)", lineHeight: 1.5 }}>{q.text}</p>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {(["a", "b", "c", "d"] as const).map((opt) => {
-                  const sel = answers[q.id] === opt;
-                  return (
-                    <button key={opt} onClick={() => setAnswers((a) => ({ ...a, [q.id]: opt }))} style={{
-                      display: "flex", alignItems: "center", gap: 10, textAlign: "left",
-                      border: `1.5px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--info-border)" : "white",
-                      borderRadius: 12, padding: "10px 12px", cursor: "pointer", fontSize: 13, color: "var(--text-secondary)",
-                    }}>
-                      <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--blue)" : "white", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{opt.toUpperCase()}</span>
-                      {q[opt]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ));
-          if (!g.passage) {
-            return <div key={gi} style={{ background: "white", borderRadius: 16, padding: "14px 15px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>{questions}</div>;
-          }
-          // A comprehension set: the passage once, then every question on it.
-          const first = g.items[0].i + 1;
-          const last = g.items[g.items.length - 1].i + 1;
-          return (
-            <div key={gi} style={{ background: "white", borderRadius: 16, padding: "14px 15px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", borderTop: "4px solid var(--blue)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Comprehension {g.number}{g.items[0].q.subject ? ` · ${g.items[0].q.subject}` : ""}
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-disabled)", flexShrink: 0 }}>Q{first}{last > first ? `–${last}` : ""}</span>
-              </div>
-              <PassageBlock passage={g.passage} />
-              <p style={{ margin: "4px 0 0", fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)" }}>Read the passage above and answer the {g.items.length} question{g.items.length > 1 ? "s" : ""} below.</p>
-              {questions}
-            </div>
-          );
-        })}
-      </div>
+      {/* Bottom sheets: question map, and the submit confirmation */}
+      {sheet !== "none" && (
+        <div onClick={() => setSheet("none")} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, maxHeight: "82vh", overflowY: "auto", background: "white", borderRadius: "20px 20px 0 0", padding: "16px 16px 20px", boxShadow: "0 -10px 30px rgba(0,0,0,0.2)" }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--line)", margin: "0 auto 12px" }} />
 
-      {/* Submit bar */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 390, background: "white", padding: "12px 16px", boxShadow: "0 -4px 20px rgba(0,0,0,0.12)", display: "flex", gap: 10, zIndex: 6 }}>
-        <button onClick={onExit} style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 16, padding: "14px 18px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Exit</button>
-        <button onClick={doSubmit} disabled={submitting} style={{ flex: 1, background: gradient, color: "white", border: "none", borderRadius: 16, padding: "14px", fontSize: 15, fontWeight: 800, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.7 : 1 }}>
-          {submitting ? "Submitting…" : timed ? "Submit Test" : "Check answers"}
-        </button>
-      </div>
+            {sheet === "exit" ? (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>Leave this test?</p>
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  Your {answered} answer{answered === 1 ? "" : "s"} won&apos;t be saved. To keep them, submit the test instead.
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={leave} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--error-text)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Leave</button>
+                  <button onClick={() => setSheet("none")} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Continue test</button>
+                </div>
+              </>
+            ) : sheet === "map" ? (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>Question map</p>
+                  <button onClick={() => setSheet("none")} style={{ background: "none", border: "none", fontSize: 13, fontWeight: 800, color: "var(--blue)", cursor: "pointer" }}>Close</button>
+                </div>
+
+                {/* Legend with counts */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 14 }}>
+                  {(["answered", "skipped", "marked", "unseen"] as QStatus[]).map((k) => (
+                    <div key={k} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--text-secondary)" }}>
+                      <span style={{ width: 16, height: 16, borderRadius: 5, background: STATUS_STYLE[k].bg, border: `1.5px solid ${STATUS_STYLE[k].border}`, flexShrink: 0 }} />
+                      {STATUS_STYLE[k].label} <b style={{ color: "var(--ink-primary)" }}>{k === "marked" ? counts.marked + counts["answered-marked"] : k === "answered" ? counts.answered + counts["answered-marked"] : counts[k]}</b>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Numbers, grouped under their comprehension */}
+                {(() => {
+                  const blocks: { label: string; items: number[] }[] = [];
+                  questions.forEach((qq, i) => {
+                    const s = setOf(i);
+                    const label = s ? `Comprehension ${s.number}` : "Questions";
+                    const last = blocks[blocks.length - 1];
+                    if (last && last.label === label) last.items.push(i);
+                    else blocks.push({ label, items: [i] });
+                  });
+                  return blocks.map((b, bi) => (
+                    <div key={bi} style={{ marginBottom: 12 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.label}</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
+                        {b.items.map((i) => {
+                          const st = STATUS_STYLE[statusOf(questions[i])];
+                          return (
+                            <button key={i} onClick={() => goTo(i)} style={{
+                              aspectRatio: "1", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 800,
+                              background: st.bg, color: st.fg, border: `2px solid ${i === index ? "var(--ink-primary)" : st.border}`,
+                            }}>{i + 1}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
+
+                <button onClick={() => setSheet("confirm")} style={{ width: "100%", marginTop: 4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+                  {timed ? "Submit test" : "Check answers"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>{timed ? "Submit the test?" : "Check your answers?"}</p>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}>You can&apos;t change answers after this.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 16 }}>
+                  {[
+                    { n: answered, label: "Answered", c: "#16A34A" },
+                    { n: total - answered, label: "Not answered", c: "#B91C1C" },
+                    { n: marked.size, label: "Marked", c: "#7C3AED" },
+                  ].map((x) => (
+                    <div key={x.label} style={{ background: "var(--bg-secondary)", borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: x.c }}>{x.n}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--text-muted)" }}>{x.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setSheet("map")} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Review</button>
+                  <button onClick={doSubmit} disabled={submitting} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+                    {submitting ? "Submitting…" : "Yes, submit"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

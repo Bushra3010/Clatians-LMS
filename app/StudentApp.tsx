@@ -332,8 +332,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           />
         )}
 
-        {/* Top Bar — always visible */}
-        <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />
+        {/* Top Bar — hidden while taking a test, which needs the whole screen */}
+        {detailPage !== "test-take" && <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />}
 
         {/* Scrollable content */}
         <div
