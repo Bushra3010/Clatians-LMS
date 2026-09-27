@@ -317,7 +317,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     router.refresh();
   };
 
-  const showNav = !detailPage;
+  // Tests is a nav tab even though it opens as a detail page, so it keeps the nav.
+  const showNav = !detailPage || detailPage === "tests";
 
   return (
     // Pinned to the viewport so the page itself never scrolls — only #screen-content does.
@@ -545,7 +546,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         {/* Bottom Nav — hidden on detail pages */}
         {showNav && (
           <BottomNav
-            active={activeScreen}
+            active={detailPage === "tests" ? "tests" : activeScreen}
             onChange={(s) => goScreen(s)}
             onOpenTests={() => openDetail("tests")}
           />

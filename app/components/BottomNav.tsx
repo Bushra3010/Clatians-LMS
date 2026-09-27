@@ -4,7 +4,7 @@ type Screen = "home" | "courses" | "study" | "doubts";
 type Tab = Screen | "tests";
 
 interface BottomNavProps {
-  active: Screen;
+  active: Tab;
   onChange: (screen: Screen) => void;
   /** Tests live on a detail page, so the tab hands off instead of switching screens. */
   onOpenTests?: () => void;
