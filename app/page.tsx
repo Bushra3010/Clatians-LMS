@@ -96,7 +96,9 @@ export default async function Home() {
   // shows the same courses and batches as clatians.com. No-op afterwards.
   await ensureCatalog();
 
-  // ── Live classes ──
+  // Every query below is independent of the others, so they all go out at
+  // once. One after another they cost ~30 database round trips per page
+  // load, which on a serverless host far from the database took ~9 seconds.
   const classSelect = (statusClause: string, order: string, limit = "") => `
     SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status,
            lc.join_url, lc.recording_url, lc.notes, u.name AS teacher,
@@ -106,19 +108,20 @@ export default async function Home() {
     WHERE lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
       AND ${statusClause}
     ORDER BY ${order} ${limit}`;
+  const nowIso = new Date().toISOString();
 
-  const upcoming = (await db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
-  const past = (await db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id) as ClassQueryRow[]).map(toClass);
-
-  const stat = await db.prepare(
+  const [
+    upcomingRows, pastRows, statRow, contentQuery, doubtMsgQuery, doubtRows, courseContentQuery, batchQuery, courseRows, hierarchyQuery, paperRows, enrolledCourseRows, attemptRows, practiceRow, savedQuery, resourceQuery, notificationRows, certQuery, prefsQuery, openSlotRows, bookingRows, taskRows, noteRows, creditQuery, referralTotalRow, referralEnrolledRow, paymentRows,
+    leaderboardRows, streakDays,
+  ] = await Promise.all([
+    db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id),
+    db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id),
+    db.prepare(
     `SELECT
        (SELECT COUNT(*) FROM live_classes lc WHERE lc.status IN ('live','ended') AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS total,
        (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status IN ('live','ended') AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
-  ).get(user.id, user.id, user.id) as { total: number; attended: number };
-  const attendancePct = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : null;
-
-  // ── Study material (approved content for the batch, incl. batch-agnostic) ──
-  const contentRows = await db.prepare(
+  ).get(user.id, user.id, user.id),
+    db.prepare(
     `SELECT ct.id, ct.title, ct.body, ct.type, ct.created_at, u.name AS author, c.name AS course,
             (EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?))::int AS done
      FROM content ct
@@ -127,59 +130,24 @@ export default async function Home() {
      WHERE ct.status = 'approved'
        AND (ct.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?) OR ct.course_id IS NULL)
      ORDER BY ct.created_at DESC`
-  ).all(user.id, user.id) as ContentRow[];
-
-  const byType = (t: string): ContentItem[] =>
-    contentRows.filter((r) => r.type === t).map((r) => ({
-      id: r.id, title: r.title, body: r.body, author: r.author, course: r.course, createdAt: r.created_at, done: r.done === 1,
-    }));
-  const content = {
-    video: byType("video"),
-    notes: byType("notes"),
-    practice: byType("practice"),
-    "current-affairs": byType("current-affairs"),
-  };
-
-  // ── Doubts (with follow-up threads) ──
-  const doubtMsgRows = await db.prepare(
+  ).all(user.id, user.id),
+    db.prepare(
     `SELECT m.id, m.doubt_id, m.sender_role, m.body, m.created_at, u.name AS sender
      FROM doubt_messages m LEFT JOIN users u ON u.id = m.sender_id
      WHERE m.doubt_id IN (SELECT id FROM doubts WHERE student_id = ?)
      ORDER BY m.created_at ASC`
-  ).all(user.id) as { id: string; doubt_id: string; sender_role: string; body: string; created_at: string; sender: string | null }[];
-  const msgsByDoubt = new Map<string, DoubtItem["messages"]>();
-  for (const m of doubtMsgRows) {
-    const list = msgsByDoubt.get(m.doubt_id) ?? [];
-    list.push({ id: m.id, role: m.sender_role === "faculty" ? "faculty" : "student", sender: m.sender, body: m.body, createdAt: m.created_at });
-    msgsByDoubt.set(m.doubt_id, list);
-  }
-
-  const doubts: DoubtItem[] = (await db.prepare(
+  ).all(user.id),
+    db.prepare(
     `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? ORDER BY d.created_at DESC`
-  ).all(user.id) as DoubtRow[]).map((d) => ({
-    id: d.id, subject: d.subject, body: d.body, status: d.status,
-    answer: d.answer, teacher: d.teacher, createdAt: d.created_at,
-    messages: msgsByDoubt.get(d.id) ?? [],
-  }));
-
-  // ── Course catalog (for enroll / buy) ──
-  // Content titles per course, for the syllabus preview on the detail page.
-  const courseContentRows = await db.prepare(
+  ).all(user.id),
+    db.prepare(
     `SELECT course_id, type, title FROM content
      WHERE status = 'approved' AND course_id IS NOT NULL
      ORDER BY created_at DESC`
-  ).all() as { course_id: string; type: string; title: string }[];
-  const contentByCourse = new Map<string, { type: string; title: string }[]>();
-  for (const r of courseContentRows) {
-    const list = contentByCourse.get(r.course_id) ?? [];
-    if (list.length < 12) list.push({ type: r.type, title: r.title }); // cap the preview
-    contentByCourse.set(r.course_id, list);
-  }
-
-  // Batches, grouped under their course — the cohort a student actually joins.
-  const batchRows = await db.prepare(
+  ).all(),
+    db.prepare(
     `SELECT b.id, b.slug, b.name, b.course_id, b.category, b.exam, b.batch_code, b.start_date, b.end_date,
             b.duration, b.schedule, b.mode, b.seats, b.filled, b.fee, b.original_fee,
             b.emi, b.offer, b.status, b.language, b.batch_type,
@@ -187,15 +155,8 @@ export default async function Home() {
             (EXISTS(SELECT 1 FROM batch_enrollments be WHERE be.user_id = ? AND be.batch_id = b.id))::int AS enrolled
      FROM batches b WHERE b.course_id IS NOT NULL
      ORDER BY b.fee ASC, b.name`
-  ).all(user.id) as BatchQueryRow[];
-  const batchesByCourse = new Map<string, CatalogBatch[]>();
-  for (const b of batchRows) {
-    const list = batchesByCourse.get(b.course_id) ?? [];
-    list.push(toBatch(b));
-    batchesByCourse.set(b.course_id, list);
-  }
-
-  const catalog: CatalogItem[] = (await db.prepare(
+  ).all(user.id),
+    db.prepare(
     `SELECT c.id, c.slug, c.name, c.description, c.price, c.category, c.icon, c.color, c.bg,
             c.tagline, c.overview, c.duration, c.batch_size, c.mode, c.fee_text, c.emi,
             c.features, c.includes, c.curriculum, c.who_for, c.testimonial,
@@ -209,7 +170,159 @@ export default async function Home() {
             (SELECT COUNT(*) FROM tests t WHERE t.course_id = c.id AND t.status = 'published') AS test_count
      FROM courses c WHERE c.status = 'active'
      ORDER BY enrolled DESC, c.sort_order, c.price ASC`
-  ).all(user.id) as CourseQueryRow[])
+  ).all(user.id),
+    db.prepare(
+    `SELECT COALESCE(s.id, 'unsorted') AS subject_id,
+            COALESCE(s.name, 'Other topics') AS subject_name,
+            COALESCE(s.slug, 'unsorted') AS subject_slug,
+            COALESCE(s.icon, '📘') AS subject_icon,
+            ch.id AS chapter_id, ch.title AS chapter_title,
+            l.id AS lesson_id, l.title AS lesson_title, l.duration_min AS lesson_duration,
+            l.is_free AS lesson_is_free,
+            (l.video_url <> '')::int AS has_video,
+            (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
+            (l.test_id IS NOT NULL)::int AS has_test,
+            COALESCE(lp.completed, 0) AS lesson_completed
+     FROM modules m
+     LEFT JOIN subjects s ON s.id = m.subject_id
+     JOIN chapters ch ON ch.module_id = m.id
+     JOIN lessons l ON l.chapter_id = ch.id
+     LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
+     WHERE m.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+     ORDER BY s.sort_order NULLS LAST, s.name, m.sort_order, ch.sort_order, l.sort_order`
+  ).all(user.id, user.id),
+    db.prepare(
+    `SELECT t.id, t.title, t.description, t.type, t.duration_min,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
+            -- A paper is "a <subject> paper" only when every question shares one.
+            (SELECT CASE WHEN COUNT(DISTINCT q.subject) = 1 THEN MIN(q.subject) ELSE '' END
+               FROM questions q WHERE q.test_id = t.id) AS subject,
+            (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
+            (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS best_score,
+            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
+     FROM tests t
+     WHERE t.status='published'
+       AND (t.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?) OR t.course_id IS NULL)
+     ORDER BY t.created_at DESC`
+  ).all(user.id, user.id, user.id, user.id),
+    db.prepare(
+    `SELECT c.name FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.user_id = ? ORDER BY c.name`
+  ).all(user.id),
+    db.prepare(
+    "SELECT id, test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status = 'submitted'"
+  ).all(user.id),
+    db.prepare(
+    `SELECT COUNT(*) AS sessions, COALESCE(SUM(total),0) AS questions, COALESCE(SUM(correct),0) AS correct
+     FROM practice_sessions WHERE user_id = ?`
+  ).get(user.id),
+    db.prepare(
+    "SELECT kind, item_key, title, subtitle FROM saved_items WHERE user_id = ? ORDER BY created_at DESC"
+  ).all(user.id),
+    db.prepare(
+    "SELECT type, title, body, data FROM resources WHERE status = 'published' ORDER BY order_idx, created_at"
+  ).all(),
+    db.prepare(
+    "SELECT id, type, title, body, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+  ).all(user.id),
+    db.prepare(
+    `SELECT c.id, c.name,
+            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS total,
+            (SELECT COUNT(*) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
+              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS done,
+            (SELECT MAX(cp.created_at) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
+              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS completed_at
+     FROM enrollments e JOIN courses c ON c.id = e.course_id
+     WHERE e.user_id = ? ORDER BY c.name`
+  ).all(user.id, user.id, user.id),
+    db.prepare("SELECT notify_prefs FROM users WHERE id = ?").get(user.id),
+    db.prepare(
+    `SELECT s.id, s.start_at, s.duration_min, t.name AS teacher
+     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
+     WHERE s.status = 'open' AND s.start_at > ?
+     ORDER BY s.start_at ASC`
+  ).all(nowIso),
+    db.prepare(
+    `SELECT s.id, s.start_at, s.duration_min, s.topic, t.name AS teacher
+     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
+     WHERE s.booked_by = ? AND s.status = 'booked' AND s.start_at > ?
+     ORDER BY s.start_at ASC`
+  ).all(user.id, nowIso),
+    db.prepare(
+    "SELECT id, title, done, due_date FROM study_tasks WHERE user_id = ? ORDER BY done ASC, (due_date = '') ASC, due_date ASC, created_at DESC"
+  ).all(user.id),
+    db.prepare(
+    "SELECT id, title, body FROM notes WHERE user_id = ? ORDER BY updated_at DESC"
+  ).all(user.id),
+    db.prepare("SELECT referral_credit FROM users WHERE id = ?").get(user.id),
+    db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ?").get(user.id),
+    db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ? AND status='enrolled'").get(user.id),
+    db.prepare(
+    `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
+     FROM payments p LEFT JOIN courses c ON c.id = p.course_id
+     WHERE p.user_id = ? ORDER BY p.created_at DESC`
+  ).all(user.id),
+    computeLeaderboard(),
+    computeStreak(user.id),
+  ]);
+
+
+  // ── Live classes ──
+
+  const upcoming = (upcomingRows as ClassQueryRow[]).map(toClass);
+  const past = (pastRows as ClassQueryRow[]).map(toClass);
+
+  const stat = statRow as { total: number; attended: number };
+  const attendancePct = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : null;
+
+  // ── Study material (approved content for the batch, incl. batch-agnostic) ──
+  const contentRows = contentQuery as ContentRow[];
+
+  const byType = (t: string): ContentItem[] =>
+    contentRows.filter((r) => r.type === t).map((r) => ({
+      id: r.id, title: r.title, body: r.body, author: r.author, course: r.course, createdAt: r.created_at, done: r.done === 1,
+    }));
+  const content = {
+    video: byType("video"),
+    notes: byType("notes"),
+    practice: byType("practice"),
+    "current-affairs": byType("current-affairs"),
+  };
+
+  // ── Doubts (with follow-up threads) ──
+  const doubtMsgRows = doubtMsgQuery as { id: string; doubt_id: string; sender_role: string; body: string; created_at: string; sender: string | null }[];
+  const msgsByDoubt = new Map<string, DoubtItem["messages"]>();
+  for (const m of doubtMsgRows) {
+    const list = msgsByDoubt.get(m.doubt_id) ?? [];
+    list.push({ id: m.id, role: m.sender_role === "faculty" ? "faculty" : "student", sender: m.sender, body: m.body, createdAt: m.created_at });
+    msgsByDoubt.set(m.doubt_id, list);
+  }
+
+  const doubts: DoubtItem[] = (doubtRows as DoubtRow[]).map((d) => ({
+    id: d.id, subject: d.subject, body: d.body, status: d.status,
+    answer: d.answer, teacher: d.teacher, createdAt: d.created_at,
+    messages: msgsByDoubt.get(d.id) ?? [],
+  }));
+
+  // ── Course catalog (for enroll / buy) ──
+  // Content titles per course, for the syllabus preview on the detail page.
+  const courseContentRows = courseContentQuery as { course_id: string; type: string; title: string }[];
+  const contentByCourse = new Map<string, { type: string; title: string }[]>();
+  for (const r of courseContentRows) {
+    const list = contentByCourse.get(r.course_id) ?? [];
+    if (list.length < 12) list.push({ type: r.type, title: r.title }); // cap the preview
+    contentByCourse.set(r.course_id, list);
+  }
+
+  // Batches, grouped under their course — the cohort a student actually joins.
+  const batchRows = batchQuery as BatchQueryRow[];
+  const batchesByCourse = new Map<string, CatalogBatch[]>();
+  for (const b of batchRows) {
+    const list = batchesByCourse.get(b.course_id) ?? [];
+    list.push(toBatch(b));
+    batchesByCourse.set(b.course_id, list);
+  }
+
+  const catalog: CatalogItem[] = (courseRows as CourseQueryRow[])
     .map((r) => ({
       id: r.id, slug: r.slug ?? r.id, name: r.name, description: r.description, price: r.price,
       category: r.category || "offline", icon: r.icon || "📚", color: r.color || "", bg: r.bg || "",
@@ -232,26 +345,7 @@ export default async function Home() {
   // hanging a subject's chapters on a course; the student just sees
   // subject → chapter → topic, so a subject's chapters are merged across its
   // modules. Modules with no subject are grouped under a catch-all.
-  const hierarchyRows = await db.prepare(
-    `SELECT COALESCE(s.id, 'unsorted') AS subject_id,
-            COALESCE(s.name, 'Other topics') AS subject_name,
-            COALESCE(s.slug, 'unsorted') AS subject_slug,
-            COALESCE(s.icon, '📘') AS subject_icon,
-            ch.id AS chapter_id, ch.title AS chapter_title,
-            l.id AS lesson_id, l.title AS lesson_title, l.duration_min AS lesson_duration,
-            l.is_free AS lesson_is_free,
-            (l.video_url <> '')::int AS has_video,
-            (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
-            (l.test_id IS NOT NULL)::int AS has_test,
-            COALESCE(lp.completed, 0) AS lesson_completed
-     FROM modules m
-     LEFT JOIN subjects s ON s.id = m.subject_id
-     JOIN chapters ch ON ch.module_id = m.id
-     JOIN lessons l ON l.chapter_id = ch.id
-     LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
-     WHERE m.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
-     ORDER BY s.sort_order NULLS LAST, s.name, m.sort_order, ch.sort_order, l.sort_order`
-  ).all(user.id, user.id) as { subject_id: string; subject_name: string; subject_slug: string; subject_icon: string; chapter_id: string; chapter_title: string; lesson_id: string; lesson_title: string; lesson_duration: number; lesson_is_free: number; has_video: number; has_notes: number; has_test: number; lesson_completed: number }[];
+  const hierarchyRows = hierarchyQuery as { subject_id: string; subject_name: string; subject_slug: string; subject_icon: string; chapter_id: string; chapter_title: string; lesson_id: string; lesson_title: string; lesson_duration: number; lesson_is_free: number; has_video: number; has_notes: number; has_test: number; lesson_completed: number }[];
 
   // Rows arrive ordered by every sort_order in the chain, so appending in
   // order preserves it.
@@ -282,20 +376,7 @@ export default async function Home() {
   // ── Tests & practice papers (published, available to the student's batches) ──
   // Both run on the same engine; `type` decides which screen they surface on —
   // 'practice' goes to Practice Questions, everything else to Test Series.
-  const allPapers: TestListItem[] = (await db.prepare(
-    `SELECT t.id, t.title, t.description, t.type, t.duration_min,
-            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
-            -- A paper is "a <subject> paper" only when every question shares one.
-            (SELECT CASE WHEN COUNT(DISTINCT q.subject) = 1 THEN MIN(q.subject) ELSE '' END
-               FROM questions q WHERE q.test_id = t.id) AS subject,
-            (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
-            (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS best_score,
-            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
-     FROM tests t
-     WHERE t.status='published'
-       AND (t.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?) OR t.course_id IS NULL)
-     ORDER BY t.created_at DESC`
-  ).all(user.id, user.id, user.id, user.id) as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null }[])
+  const allPapers: TestListItem[] = (paperRows as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null }[])
     .map((t) => ({
       id: t.id, title: t.title, description: t.description, type: t.type,
       subject: t.subject ?? "",
@@ -307,9 +388,7 @@ export default async function Home() {
   const practicePapers = allPapers.filter((t) => t.type === "practice");
 
   // ── Profile ──
-  const batches = (await db.prepare(
-    `SELECT c.name FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.user_id = ? ORDER BY c.name`
-  ).all(user.id) as { name: string }[]).map((r) => r.name);
+  const batches = (enrolledCourseRows as { name: string }[]).map((r) => r.name);
 
   // ── Progress tracking ──
   const contentDone = contentRows.filter((r) => r.done === 1).length;
@@ -321,9 +400,7 @@ export default async function Home() {
     batchMap.set(name, b);
   }
 
-  const myAttempts = await db.prepare(
-    "SELECT id, test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status = 'submitted'"
-  ).all(user.id) as { id: string; test_id: string; score: number; total: number; answers: string }[];
+  const myAttempts = attemptRows as { id: string; test_id: string; score: number; total: number; answers: string }[];
 
   const pcts = myAttempts.filter((a) => a.total > 0).map((a) => (a.score / a.total) * 100);
   const testAvgPct = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : null;
@@ -355,10 +432,7 @@ export default async function Home() {
     .sort((a, b) => a.pct - b.pct);
 
   // AI practice activity (persisted sessions).
-  const practiceAgg = (await db.prepare(
-    `SELECT COUNT(*) AS sessions, COALESCE(SUM(total),0) AS questions, COALESCE(SUM(correct),0) AS correct
-     FROM practice_sessions WHERE user_id = ?`
-  ).get(user.id)) as { sessions: number; questions: number; correct: number };
+  const practiceAgg = (practiceRow) as { sessions: number; questions: number; correct: number };
   const practice = {
     sessions: Number(practiceAgg.sessions),
     questions: Number(practiceAgg.questions),
@@ -379,9 +453,9 @@ export default async function Home() {
   };
 
   // ── Engagement (leaderboard, streak, badges) ──
-  const board = await computeLeaderboard();
+  const board = leaderboardRows;
   const meEntry = board.find((e) => e.id === user.id) ?? null;
-  const streak = await computeStreak(user.id);
+  const streak = streakDays;
   const top = board.slice(0, 10);
   if (meEntry && !top.some((e) => e.id === user.id)) top.push(meEntry);
 
@@ -406,17 +480,13 @@ export default async function Home() {
   };
 
   // ── Saved items ("My Notes") ──
-  const savedRows = await db.prepare(
-    "SELECT kind, item_key, title, subtitle FROM saved_items WHERE user_id = ? ORDER BY created_at DESC"
-  ).all(user.id) as { kind: string; item_key: string; title: string; subtitle: string }[];
+  const savedRows = savedQuery as { kind: string; item_key: string; title: string; subtitle: string }[];
   const saved: SavedItem[] = savedRows.map((r) => ({ kind: r.kind, key: r.item_key, title: r.title, subtitle: r.subtitle }));
   const savedTipKeys = savedRows.filter((r) => r.kind === "tip").map((r) => r.item_key);
   const savedVocabKeys = savedRows.filter((r) => r.kind === "vocab").map((r) => r.item_key);
 
   // ── Editorial resources (teacher/admin-managed) ──
-  const resRows = await db.prepare(
-    "SELECT type, title, body, data FROM resources WHERE status = 'published' ORDER BY order_idx, created_at"
-  ).all() as { type: string; title: string; body: string; data: string }[];
+  const resRows = resourceQuery as { type: string; title: string; body: string; data: string }[];
   const pd = (d: string): Record<string, unknown> => { try { return JSON.parse(d); } catch { return {}; } };
   const ofType = (t: string) => resRows.filter((r) => r.type === t).map((r) => ({ ...r, d: pd(r.data) }));
 
@@ -430,9 +500,7 @@ export default async function Home() {
   };
 
   // ── Notifications ──
-  const notifications: NotificationItem[] = (await db.prepare(
-    "SELECT id, type, title, body, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
-  ).all(user.id) as { id: string; type: string; title: string; body: string; is_read: number; created_at: string }[])
+  const notifications: NotificationItem[] = (notificationRows as { id: string; type: string; title: string; body: string; is_read: number; created_at: string }[])
     .map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body, read: n.is_read === 1, createdAt: n.created_at }));
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -447,16 +515,7 @@ export default async function Home() {
 
   // ── Course-completion certificates ──
   // Eligible when every approved content item of an enrolled course is marked done.
-  const certRows = await db.prepare(
-    `SELECT c.id, c.name,
-            (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS total,
-            (SELECT COUNT(*) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
-              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS done,
-            (SELECT MAX(cp.created_at) FROM content ct JOIN content_progress cp ON cp.content_id = ct.id
-              WHERE ct.course_id = c.id AND ct.status = 'approved' AND cp.user_id = ?) AS completed_at
-     FROM enrollments e JOIN courses c ON c.id = e.course_id
-     WHERE e.user_id = ? ORDER BY c.name`
-  ).all(user.id, user.id, user.id) as { id: string; name: string; total: number; done: number; completed_at: string | null }[];
+  const certRows = certQuery as { id: string; name: string; total: number; done: number; completed_at: string | null }[];
   const certificates = certRows.map((r) => ({
     courseId: r.id,
     course: r.name,
@@ -469,7 +528,7 @@ export default async function Home() {
   }));
 
   // ── Notification preferences (Settings toggles) ──
-  const prefsRow = await db.prepare("SELECT notify_prefs FROM users WHERE id = ?").get(user.id) as { notify_prefs: string } | undefined;
+  const prefsRow = prefsQuery as { notify_prefs: string } | undefined;
   let notifyPrefs = { push: true, email: true, sms: false };
   try {
     const p = JSON.parse(prefsRow?.notify_prefs ?? "{}");
@@ -477,49 +536,30 @@ export default async function Home() {
   } catch { /* keep defaults */ }
 
   // ── 1:1 booking slots ──
-  const nowIso = new Date().toISOString();
-  const openSlots = (await db.prepare(
-    `SELECT s.id, s.start_at, s.duration_min, t.name AS teacher
-     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
-     WHERE s.status = 'open' AND s.start_at > ?
-     ORDER BY s.start_at ASC`
-  ).all(nowIso) as { id: string; start_at: string; duration_min: number; teacher: string }[])
+  const openSlots = (openSlotRows as { id: string; start_at: string; duration_min: number; teacher: string }[])
     .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, teacher: s.teacher }));
-  const myBookings = (await db.prepare(
-    `SELECT s.id, s.start_at, s.duration_min, s.topic, t.name AS teacher
-     FROM booking_slots s JOIN users t ON t.id = s.teacher_id
-     WHERE s.booked_by = ? AND s.status = 'booked' AND s.start_at > ?
-     ORDER BY s.start_at ASC`
-  ).all(user.id, nowIso) as { id: string; start_at: string; duration_min: number; topic: string; teacher: string }[])
+  const myBookings = (bookingRows as { id: string; start_at: string; duration_min: number; topic: string; teacher: string }[])
     .map((s) => ({ id: s.id, startAt: s.start_at, durationMin: s.duration_min, topic: s.topic, teacher: s.teacher }));
   const slots = { open: openSlots, mine: myBookings };
 
   // ── Study planner tasks ──
-  const tasks = (await db.prepare(
-    "SELECT id, title, done, due_date FROM study_tasks WHERE user_id = ? ORDER BY done ASC, (due_date = '') ASC, due_date ASC, created_at DESC"
-  ).all(user.id) as { id: string; title: string; done: number; due_date: string }[])
+  const tasks = (taskRows as { id: string; title: string; done: number; due_date: string }[])
     .map((t) => ({ id: t.id, title: t.title, done: t.done === 1, dueDate: t.due_date }));
 
   // ── Personal notes ──
-  const notes = await db.prepare(
-    "SELECT id, title, body FROM notes WHERE user_id = ? ORDER BY updated_at DESC"
-  ).all(user.id) as { id: string; title: string; body: string }[];
+  const notes = noteRows as { id: string; title: string; body: string }[];
 
   // ── Referral program ──
-  const creditRow = await db.prepare("SELECT referral_credit FROM users WHERE id = ?").get(user.id) as { referral_credit: number } | undefined;
+  const creditRow = creditQuery as { referral_credit: number } | undefined;
   const referral = {
     code: referralCode(user.id),
-    total: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ?").get(user.id) as { n: number }).n,
-    enrolled: (await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE referred_by = ? AND status='enrolled'").get(user.id) as { n: number }).n,
+    total: (referralTotalRow as { n: number }).n,
+    enrolled: (referralEnrolledRow as { n: number }).n,
     credit: creditRow?.referral_credit ?? 0,
   };
 
   // ── Payment history (student's own invoices) ──
-  const myPayments = (await db.prepare(
-    `SELECT p.invoice_no, p.amount, p.method, p.status, p.created_at, c.name AS course
-     FROM payments p LEFT JOIN courses c ON c.id = p.course_id
-     WHERE p.user_id = ? ORDER BY p.created_at DESC`
-  ).all(user.id) as { invoice_no: string; amount: number; method: string; status: string; created_at: string; course: string | null }[])
+  const myPayments = (paymentRows as { invoice_no: string; amount: number; method: string; status: string; created_at: string; course: string | null }[])
     .map((p) => ({ invoiceNo: p.invoice_no, amount: p.amount, method: p.method, status: p.status, createdAt: p.created_at, course: p.course }));
 
   return (

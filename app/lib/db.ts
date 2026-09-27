@@ -1,6 +1,6 @@
 import "server-only";
 import { Pool, types, type PoolClient } from "pg";
-import { scryptSync, randomBytes } from "node:crypto";
+import { scryptSync, randomBytes, createHash } from "node:crypto";
 import { VOCAB, CA_QUIZ, NLUS } from "./clat-data";
 
 // ────────────────────────────────────────────────────────────
@@ -35,7 +35,9 @@ const pool: Pool =
     ssl: connectionString && !/localhost|127\.0\.0\.1/.test(connectionString)
       ? { rejectUnauthorized: false }
       : undefined,
-    max: 3,
+    // Pages fire their independent queries in parallel; the pooler (port 6543)
+    // multiplexes these onto a small set of real Postgres connections.
+    max: 8,
     idleTimeoutMillis: 10_000,
   });
 global.__lmsPool = pool;
@@ -466,7 +468,8 @@ const SCHEMA = `
   -- Supabase exposes every public table through its REST API to anyone holding
   -- the (public) anon key. The app talks to Postgres directly as the table
   -- owner, which RLS doesn't restrict, so RLS with no policies shuts the REST
-  -- door without affecting the app. Runs every boot so new tables are covered.
+  -- door without affecting the app. Re-runs with every schema change, so new
+  -- tables are covered.
   DO $$ DECLARE r record; BEGIN
     FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND NOT rowsecurity LOOP
       EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
@@ -484,7 +487,19 @@ const INIT_LOCK = 727727727;
 // statements; a transaction-scoped lock is held for the whole transaction and
 // released automatically on COMMIT/ROLLBACK). Concurrent initializers serialize
 // on the lock; the loser sees the `meta` row already claimed and skips seeding.
+// Fingerprint of SCHEMA. Recorded in `meta` once applied, so a cold start
+// whose schema is already in place costs one lookup instead of re-running
+// every CREATE/ALTER — that DDL batch was a noticeable part of first-load time.
+const SCHEMA_KEY = "schema:" + createHash("sha1").update(SCHEMA).digest("hex").slice(0, 16);
+
 async function init(): Promise<void> {
+  try {
+    const applied = await pool.query("SELECT 1 FROM meta WHERE key = $1", [SCHEMA_KEY]);
+    if (applied.rowCount) return;
+  } catch {
+    // No `meta` table yet — a brand-new database. Fall through and build it.
+  }
+
   const c = await pool.connect();
   try {
     await c.query("BEGIN");
@@ -492,6 +507,7 @@ async function init(): Promise<void> {
     await c.query(SCHEMA);
     const claim = await c.query("INSERT INTO meta (key) VALUES ('seeded') ON CONFLICT DO NOTHING");
     if (claim.rowCount === 1) await seed(c);
+    await c.query("INSERT INTO meta (key) VALUES ($1) ON CONFLICT DO NOTHING", [SCHEMA_KEY]);
     await c.query("COMMIT");
   } catch (e) {
     try { await c.query("ROLLBACK"); } catch { /* ignore */ }

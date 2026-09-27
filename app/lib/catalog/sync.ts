@@ -291,13 +291,27 @@ export async function syncCatalog(): Promise<SyncResult> {
   return result;
 }
 
+declare global {
+  var __lmsCatalogReady: Promise<void> | undefined;
+}
+
 /**
- * Run the sync once, the first time the app needs a catalog. Cheap to call on
- * every request after that — it's a single COUNT. The seed can't do this work
+ * Run the sync once, the first time the app needs a catalog. After the first
+ * success in a process it costs nothing — no database round trip at all. The seed can't do this work
  * itself: it runs inside init()'s transaction, and syncCatalog() goes through
  * db.prepare(), which waits on that same init.
  */
-export async function ensureCatalog(): Promise<void> {
+export function ensureCatalog(): Promise<void> {
+  if (!global.__lmsCatalogReady) {
+    global.__lmsCatalogReady = runEnsureCatalog().catch((e) => {
+      global.__lmsCatalogReady = undefined; // retry on the next request
+      throw e;
+    });
+  }
+  return global.__lmsCatalogReady;
+}
+
+async function runEnsureCatalog(): Promise<void> {
   // `meta` acts as the claim: whoever inserts the key does the work, and every
   // concurrent request sees the row already there and skips. Without this,
   // parallel first-loads each run the seed and the content lands many times over.
