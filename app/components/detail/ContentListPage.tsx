@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { youtubeId } from "./ClassWatchPage";
+import PdfViewer from "../PdfViewer";
 
 export type ContentItem = {
   id: string;
@@ -77,6 +78,9 @@ function ContentViewer({
               allowFullScreen
             />
           </div>
+        ) : url && isPdf(url) ? (
+          // PDF drawn inline — phones can't show a PDF inside an iframe
+          <PdfViewer url={url} title={item.title} />
         ) : url ? (
           // Embedded document (PDF / uploaded file / external page) + open fallback
           <div>

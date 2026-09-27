@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { TopicDetail } from "../../lib/topic-actions";
 import { youtubeId } from "./ClassWatchPage";
+import PdfViewer, { isPdfUrl } from "../PdfViewer";
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
@@ -126,7 +127,10 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
 
           {/* ── NOTES ── */}
           {tab === "notes" && (
-            topic.notes || topic.notesUrl ? (
+            topic.notesUrl && isLink(topic.notesUrl) && isPdfUrl(topic.notesUrl) ? (
+              // The PDF is the notes — shown inline, as the faculty formatted it.
+              <PdfViewer url={topic.notesUrl} title={topic.title} />
+            ) : topic.notes || topic.notesUrl ? (
               <div style={card}>
                 {topic.notesUrl && isLink(topic.notesUrl) && (
                   <button onClick={() => window.open(topic.notesUrl.trim(), "_blank", "noopener")} style={{ width: "100%", marginBottom: topic.notes ? 14 : 0, background: "var(--bg-secondary)", border: "1px solid var(--gold-100)", color: "var(--ink-primary)", borderRadius: 12, padding: "11px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>📎 Open notes PDF</button>

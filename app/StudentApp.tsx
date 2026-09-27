@@ -320,8 +320,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const showNav = !detailPage;
 
   return (
-    <div style={{ minHeight:"100dvh", background:"var(--app-bg)", display:"flex", alignItems:"stretch", justifyContent:"center" }}>
-      <div style={{ width:"100%", maxWidth:SHELL_MAX_W, height:"100dvh", display:"flex", flexDirection:"column", position:"relative", background:"var(--app-bg)", overflow:"hidden", boxShadow:"var(--shadow-float)" }}>
+    // Pinned to the viewport so the page itself never scrolls — only #screen-content does.
+    // A scrolling document lets mobile Chrome slide its URL bar, and the bottom nav jumps with it.
+    <div style={{ position:"fixed", inset:0, background:"var(--app-bg)", display:"flex", alignItems:"stretch", justifyContent:"center" }}>
+      <div style={{ width:"100%", maxWidth:SHELL_MAX_W, height:"100%", display:"flex", flexDirection:"column", position:"relative", background:"var(--app-bg)", overflow:"hidden", boxShadow:"var(--shadow-float)" }}>
 
         {showProfile && (
           <ProfileScreen
@@ -342,6 +344,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             flex: 1,
             minHeight: 0,
             overflowY: "auto",
+            overscrollBehavior: "contain",
             WebkitOverflowScrolling: "touch",
           }}
           className="no-scroll"
