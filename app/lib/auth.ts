@@ -38,6 +38,14 @@ export function verifyPassword(password: string, stored: string): boolean {
 // ────────────────────────────────────────────────────────────
 // Sessions
 // ────────────────────────────────────────────────────────────
+/** Where each role lands after signing in. */
+export const HOME_BY_ROLE: Record<Role, string> = {
+  admin: "/admin",
+  teacher: "/teacher",
+  student: "/",
+  parent: "/parent",
+};
+
 export async function createSession(userId: string): Promise<void> {
   const token = newId() + newId();
   await db.prepare("INSERT INTO sessions (token, user_id) VALUES (?, ?)").run(token, userId);

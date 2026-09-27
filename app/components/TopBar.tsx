@@ -2,6 +2,8 @@
 
 interface TopBarProps {
   courseName?: string;
+  /** Show the FREE tag — only for students not enrolled in any course yet. */
+  isFree?: boolean;
   onProfileClick?: () => void;
   /** Kept for the shell's "go home" affordance — the logo now lives in the hero. */
   onLogoClick?: () => void;
@@ -54,7 +56,7 @@ function Chip({ children, tone = "plain" }: { children: React.ReactNode; tone?: 
   );
 }
 
-export default function TopBar({ courseName = "CLAT 2026", onProfileClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
+export default function TopBar({ courseName = "Choose a course", isFree = false, onProfileClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
   const actions = [
     { icon: <TutorSvg />, count: 0, href: "/tutor", onClick: undefined, label: "AI Tutor" },
     { icon: <BellSvg />, count: unreadCount, href: undefined, onClick: onBellClick, label: "Notifications" },
@@ -72,7 +74,7 @@ export default function TopBar({ courseName = "CLAT 2026", onProfileClick, onBel
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <Chip>{courseName}</Chip>
-          <Chip tone="free">FREE</Chip>
+          {isFree && <Chip tone="free">FREE</Chip>}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>

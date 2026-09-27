@@ -1,0 +1,186 @@
+"use client";
+
+import { useActionState, startTransition, useState } from "react";
+import Link from "next/link";
+import ClatLogo from "../components/ClatLogo";
+import { loginAction, type LoginState } from "../lib/session-actions";
+
+const initial: LoginState = {};
+
+// One-tap logins for the seeded demo accounts. Off unless the build sets
+// NEXT_PUBLIC_DEMO_LOGIN=1 — a live site must never publish these passwords.
+// (The value is inlined at build time, so production bundles drop the list.)
+const DEMOS = process.env.NEXT_PUBLIC_DEMO_LOGIN === "1"
+  ? [
+      { role: "Student", email: "rahul@student.in", password: "student123", emoji: "🎓" },
+      { role: "Teacher", email: "anita@clatlms.in", password: "teach123", emoji: "👩‍🏫" },
+      { role: "Admin", email: "admin@clatlms.in", password: "admin123", emoji: "🛡️" },
+    ]
+  : [];
+
+export default function LoginForm() {
+  const [state, action, pending] = useActionState(loginAction, initial);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const fillAndSubmit = (e: string, p: string) => {
+    setEmail(e);
+    setPassword(p);
+    const fd = new FormData();
+    fd.set("email", e);
+    fd.set("password", p);
+    startTransition(() => action(fd));
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(160deg,#2B1700 0%,#4A2800 55%,#2B1700 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        {/* Brand */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ background: "white", borderRadius: 20, padding: "14px 28px", boxShadow: "0 8px 28px rgba(0,0,0,0.25)" }}>
+            <ClatLogo size="md" showTagline={true} />
+          </div>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: "white", borderRadius: 24, padding: "28px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "#1A1A2E" }}>Sign in</h1>
+          <p style={{ margin: "0 0 22px", fontSize: 14, color: "var(--text-muted)" }}>
+            One login for students, teachers &amp; admins
+          </p>
+
+          <form action={action}>
+            <label style={labelStyle}>Email</label>
+            <input
+              name="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={inputStyle}
+            />
+
+            <label style={{ ...labelStyle, marginTop: 14 }}>Password</label>
+            <input
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              style={inputStyle}
+            />
+
+            {state.error && (
+              <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--error-text)", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px" }}>
+                {state.error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={pending}
+              style={{
+                width: "100%",
+                marginTop: 18,
+                background: "linear-gradient(135deg,#2B1700,#5C3A00)",
+                color: "white",
+                border: "none",
+                borderRadius: 16,
+                padding: "15px",
+                fontSize: 16,
+                fontWeight: 700,
+                cursor: pending ? "default" : "pointer",
+                opacity: pending ? 0.7 : 1,
+                boxShadow: "0 4px 14px rgba(43,23,0,0.3)",
+              }}
+            >
+              {pending ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+
+          {/* Demo quick-fill */}
+          {DEMOS.length > 0 && (<>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0 14px" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-disabled)" }}>Quick demo login</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            {DEMOS.map((d) => (
+              <button
+                key={d.role}
+                type="button"
+                disabled={pending}
+                onClick={() => fillAndSubmit(d.email, d.password)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "var(--surface-input)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 12,
+                  padding: "12px 6px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "var(--text-secondary)",
+                  cursor: pending ? "default" : "pointer",
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{d.emoji}</span>
+                {d.role}
+              </button>
+            ))}
+          </div>
+          </>)}
+
+          <Link href="/signup" style={{
+            display: "block", marginTop: 18, textAlign: "center", textDecoration: "none",
+            background: "#FBF6EC", border: "1.5px solid #F0E3C8", borderRadius: 16,
+            padding: "13px", fontSize: 14, fontWeight: 800, color: "#6B4A28",
+          }}>
+            🎓 New student? Create a free account →
+          </Link>
+          <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
+            Prefer talking to us first?{" "}
+            <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 600, textDecoration: "none" }}>
+              Book a free demo
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  marginBottom: 6,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1.5px solid var(--border)",
+  borderRadius: 12,
+  background: "var(--surface-input)",
+  padding: "13px 14px",
+  fontSize: 15,
+  outline: "none",
+  color: "#1A1A2E",
+};

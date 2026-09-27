@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { pushBack, goBack } from "../lib/back-stack";
 import type { ContentItem } from "./detail/ContentListPage";
 import type { TestListItem } from "./detail/TestPages";
 import type { StudentProgress } from "./detail/ProgressPage";
@@ -31,6 +32,9 @@ interface StudyScreenProps {
   onWatchRecording: (cls: LiveClassItem) => void;
   subjects?: SyllabusSubject[];
   onOpenTopic?: (topicId: string) => void;
+  /** Open subject/chapter live in the parent, so they survive opening a topic. */
+  syllabusNav?: { subjectId: string | null; chapterId: string | null };
+  onSyllabusNav?: (nav: { subjectId: string | null; chapterId: string | null }) => void;
 }
 
 function EmptyCard({ emoji, text }: { emoji: string; text: string }) {
@@ -98,14 +102,21 @@ function LiveClassesBlock({ upcoming, past, onJoin, onWatch }: { upcoming: LiveC
   );
 }
 
-export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic }: StudyScreenProps) {
+export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic, syllabusNav = { subjectId: null, chapterId: null }, onSyllabusNav }: StudyScreenProps) {
   // The syllabus tab leads whenever the student's course actually has one.
   const hasSyllabus = subjects.length > 0;
   const studyTabs: Tab[] = hasSyllabus ? ["Syllabus", ...baseTabs] : [...baseTabs];
   const [activeTab, setActiveTab] = useState<Tab>(hasSyllabus ? "Syllabus" : "Videos");
-  const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [openChapter, setOpenChapter] = useState<string | null>(null);
+  const { subjectId, chapterId: openChapter } = syllabusNav;
+  const setOpenChapter = (chapterId: string | null) => onSyllabusNav?.({ subjectId, chapterId });
   const subject = subjects.find((s) => s.id === subjectId) ?? null;
+
+  // Opening a subject is a step the phone's back gesture should undo.
+  const closeSubject = () => onSyllabusNav?.({ subjectId: null, chapterId: null });
+  const openSubject = (id: string, firstChapter: string | null) => {
+    pushBack(closeSubject);
+    onSyllabusNav?.({ subjectId: id, chapterId: firstChapter });
+  };
 
   const pct = progress.contentTotal > 0 ? Math.round((progress.contentDone / progress.contentTotal) * 100) : 0;
   const open = (url: string) => { if (url && /^(https?:\/\/|\/uploads\/)/i.test(url.trim())) window.open(url.trim(), "_blank", "noopener"); };
@@ -134,7 +145,7 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
 
         <div style={{ display: "flex", gap: 8, paddingBottom: 14, overflowX: "auto" }} className="no-scroll">
           {studyTabs.map((tab) => (
-            <button key={tab} onClick={() => { setActiveTab(tab); setSubjectId(null); }} style={{
+            <button key={tab} onClick={() => { if (tab !== activeTab && subjectId) goBack(closeSubject); setActiveTab(tab); }} style={{
               padding: "9px 16px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap",
               background: activeTab === tab ? "var(--blue)" : "transparent",
               color: activeTab === tab ? "white" : "var(--text-secondary)",
@@ -151,7 +162,7 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
               const all = subj.chapters.flatMap((c) => c.topics);
               const pctDone = all.length ? Math.round((doneCount(all) / all.length) * 100) : 0;
               return (
-                <button key={subj.id} onClick={() => { setSubjectId(subj.id); setOpenChapter(subj.chapters[0]?.id ?? null); }} className="press" style={{ textAlign: "left", background: "white", borderRadius: 18, border: "1px solid var(--border)", padding: "14px", cursor: "pointer", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 8 }}>
+                <button key={subj.id} onClick={() => openSubject(subj.id, subj.chapters[0]?.id ?? null)} className="press" style={{ textAlign: "left", background: "white", borderRadius: 18, border: "1px solid var(--border)", padding: "14px", cursor: "pointer", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 8 }}>
                   <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{subj.icon}</span>
                   <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.3 }}>{subj.name}</span>
                   <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{subj.chapters.length} chapter{subj.chapters.length === 1 ? "" : "s"} · {topicCount(subj)} topics</span>
@@ -166,7 +177,7 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
 
         {activeTab === "Syllabus" && subject && (
           <div>
-            <button onClick={() => setSubjectId(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--ink-primary)", fontSize: 13, fontWeight: 700, padding: "0 0 10px" }}>
+            <button onClick={() => goBack(closeSubject)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--ink-primary)", fontSize: 13, fontWeight: 700, padding: "0 0 10px" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               All subjects
             </button>

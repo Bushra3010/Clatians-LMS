@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import {
   createSession,
   destroySession,
@@ -8,19 +8,12 @@ import {
   verifyPassword,
   hashPassword,
   auth,
+  HOME_BY_ROLE,
 } from "./auth";
 import { db, newId } from "./db";
 import { notify, notifyMany } from "./notify";
 
 export type LoginState = { error?: string };
-
-// Where each role lands after signing in.
-const HOME_BY_ROLE: Record<string, string> = {
-  admin: "/admin",
-  teacher: "/teacher",
-  student: "/",
-  parent: "/parent",
-};
 
 /**
  * Common login for every role. Authenticates against the shared users table,
@@ -42,12 +35,14 @@ export async function loginAction(
   }
 
   await createSession(user.id);
-  redirect(HOME_BY_ROLE[user.role] ?? "/");
+  // Replace, not push: a /login entry left in history is where the phone's
+  // back gesture would take the user — it looks like being logged out.
+  redirect(HOME_BY_ROLE[user.role as keyof typeof HOME_BY_ROLE] ?? "/", RedirectType.replace);
 }
 
 export async function logoutAction() {
   await destroySession();
-  redirect("/login");
+  redirect("/login", RedirectType.replace);
 }
 
 export type SignupState = { error?: string };
@@ -88,7 +83,7 @@ export async function signupAction(
   await notifyMany(admins, "info", "New student signup", `${name} (${email}) just created an account.`);
 
   await createSession(id);
-  redirect("/");
+  redirect("/", RedirectType.replace);
 }
 
 /** Self-service password change for the signed-in user (any role). */

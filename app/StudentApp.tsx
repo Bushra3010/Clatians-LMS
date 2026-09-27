@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "./components/TopBar";
 import BottomNav from "./components/BottomNav";
@@ -46,6 +46,7 @@ import { payForCourseAction, payForBatchAction } from "./lib/payment-actions";
 import { startTestAction, submitAttemptAction, type StartResult, type SubmitResult } from "./lib/test-actions";
 import { getTopicAction, setTopicDoneAction, askTopicDoubtAction, type TopicDetail } from "./lib/topic-actions";
 import type { StudentResources } from "./lib/resource-types";
+import { pushBack, goBack } from "./lib/back-stack";
 
 export type DoubtItem = {
   id: string;
@@ -118,6 +119,9 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const [testResult, setTestResult] = useState<{ title: string; result: Extract<SubmitResult, { ok: true }> } | null>(null);
   const [coursesTab, setCoursesTab] = useState<"all" | "mine">("all");
   const [topic, setTopic] = useState<TopicDetail | null>(null);
+  // The Study tab's open subject/chapter, kept here so a student returning
+  // from a topic lands back on the same chapter.
+  const [syllabusNav, setSyllabusNav] = useState<{ subjectId: string | null; chapterId: string | null }>({ subjectId: null, chapterId: null });
   // Where a test was opened from, so Exit / Back return there instead of the test list.
   const [testOrigin, setTestOrigin] = useState<"tests" | "topic">("tests");
 
@@ -126,8 +130,31 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     if (el) el.scrollTop = 0;
   }, [activeScreen, detailPage]);
 
-  const openDetail = (page: DetailPage) => setDetailPage(page);
-  const closeDetail = () => setDetailPage(null);
+  // ── Navigation ──
+  // Every screen change goes through navigate(), which records how to undo it
+  // (see back-stack.ts). That keeps the phone's back gesture inside the app
+  // instead of dropping the student back on the login page.
+  type Nav = { screen: Screen; detail: DetailPage; profile: boolean };
+  const navRef = useRef<Nav>({ screen: activeScreen, detail: detailPage, profile: showProfile });
+  const restore = (n: Nav) => {
+    navRef.current = n;
+    setActiveScreen(n.screen);
+    setDetailPage(n.detail);
+    setShowProfile(n.profile);
+  };
+  /** Go somewhere new. "replace" swaps the current step instead of adding one. */
+  const navigate = (next: Partial<Nav>, mode: "push" | "replace" = "push") => {
+    const prev = navRef.current;
+    const target = { ...prev, ...next };
+    if (target.screen === prev.screen && target.detail === prev.detail && target.profile === prev.profile) return;
+    if (mode === "push") pushBack(() => restore(prev));
+    restore(target);
+  };
+  const back = () => goBack(() => restore({ ...navRef.current, detail: null, profile: false }));
+
+  const openDetail = (page: DetailPage) => navigate({ detail: page, profile: false });
+  const closeDetail = back;
+  const goScreen = (screen: Screen) => navigate({ screen, detail: null, profile: false });
 
   const handleToolClick = (tool: string) => {
     const map: Record<string, DetailPage> = {
@@ -230,13 +257,11 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     }
   };
 
+  // The result screen replaced the test-taking step, so one step back lands
+  // wherever the test was started from — the Test Series list or the topic.
   const leaveTest = () => {
-    if (testOrigin === "topic" && topic) {
-      reloadTopic(topic.id);
-      openDetail("topic");
-    } else {
-      openDetail("tests");
-    }
+    if (testOrigin === "topic" && topic) reloadTopic(topic.id);
+    back();
   };
 
   const handleSubmitTest = async (answers: Record<string, string>) => {
@@ -244,7 +269,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     const res = await submitAttemptAction(testSession.attemptId, answers);
     if (res.ok) {
       setTestResult({ title: testSession.title, result: res });
-      openDetail("test-result");
+      navigate({ detail: "test-result" }, "replace");
       router.refresh();
     }
   };
@@ -255,23 +280,28 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   };
 
   const handleProfileMenu = (key: ProfileMenuKey) => {
-    setShowProfile(false);
+    // Leaving the profile sheet for a page replaces the sheet's step, so Back
+    // from that page returns to the screen underneath, not to the sheet.
+    const openFromProfile = (page: DetailPage) => navigate({ detail: page, profile: false }, "replace");
     switch (key) {
-      case "progress": openDetail("progress"); break;
-      case "planner": openDetail("planner"); break;
-      case "notes": openDetail("my-notes"); break;
+      case "progress": openFromProfile("progress"); break;
+      case "planner": openFromProfile("planner"); break;
+      case "notes": openFromProfile("my-notes"); break;
       case "ai-tutor": router.push("/tutor"); break;
-      case "refer": openDetail("refer"); break;
-      case "courses": setDetailPage(null); setCoursesTab("mine"); setActiveScreen("courses"); break;
-      case "browse-courses": setDetailPage(null); setCoursesTab("all"); setActiveScreen("courses"); break;
-      case "tests": openDetail("tests"); break;
-      case "saved": openDetail("saved"); break;
-      case "payments": openDetail("payments"); break;
-      case "certificates": openDetail("certificates"); break;
-      case "achievements": openDetail("leaderboard"); break;
-      case "notifications": openNotifications(); break;
-      case "help": openDetail("help"); break;
-      case "settings": openDetail("settings"); break;
+      case "refer": openFromProfile("refer"); break;
+      case "courses": setCoursesTab("mine"); navigate({ screen: "courses", detail: null, profile: false }, "replace"); break;
+      case "browse-courses": setCoursesTab("all"); navigate({ screen: "courses", detail: null, profile: false }, "replace"); break;
+      case "tests": openFromProfile("tests"); break;
+      case "saved": openFromProfile("saved"); break;
+      case "payments": openFromProfile("payments"); break;
+      case "certificates": openFromProfile("certificates"); break;
+      case "achievements": openFromProfile("leaderboard"); break;
+      case "notifications":
+        navigate({ detail: "notifications", profile: false }, "replace");
+        if (unreadCount > 0) markNotificationsReadAction().then(() => router.refresh());
+        break;
+      case "help": openFromProfile("help"); break;
+      case "settings": openFromProfile("settings"); break;
     }
   };
 
@@ -295,13 +325,13 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           <ProfileScreen
             profile={profile}
             onLogout={() => { logoutAction(); }}
-            onClose={() => setShowProfile(false)}
+            onClose={back}
             onMenu={handleProfileMenu}
           />
         )}
 
         {/* Top Bar — always visible */}
-        <TopBar courseName={profile.batches[0] ?? "CLAT 2026"} onProfileClick={() => setShowProfile(true)} onLogoClick={() => { setDetailPage(null); setActiveScreen("home"); }} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setDetailPage(null); setCoursesTab("all"); setActiveScreen("courses"); }} />
+        <TopBar courseName={profile.batches[0] ?? "Choose a course"} isFree={profile.batches.length === 0} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />
 
         {/* Scrollable content */}
         <div
@@ -327,7 +357,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onGenerate={() => openDetail("ai-practice")}
             />
           )}
-          {detailPage === "practice-material" && <ContentListPage onBack={() => openDetail("practice")} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
+          {detailPage === "practice-material" && <ContentListPage onBack={back} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
           {detailPage === "slots"           && <SlotsPage onBack={closeDetail} openSlots={slots.open} myBookings={slots.mine} />}
           {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} studentName={profile.name} studentEmail={profile.email} />}
@@ -403,7 +433,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           )}
           {(detailPage === "clat-tools" || detailPage === "ca-quiz") && (
             <ClatToolsPage
-              onBack={() => (detailPage === "ca-quiz" ? openDetail("current-affairs") : closeDetail())}
+              onBack={back}
               initialTab={detailPage === "ca-quiz" ? "quiz" : "predictor"}
               vocab={resources.vocab}
               caq={resources.caq}
@@ -449,8 +479,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {/* ── Main screens ── */}
           {!detailPage && activeScreen === "home" && (
             <HomeScreen
-              onNavigate={(s) => setActiveScreen(s as Screen)}
-              onLogoClick={() => { setDetailPage(null); setActiveScreen("home"); }}
+              onNavigate={(s) => goScreen(s as Screen)}
+              onLogoClick={() => goScreen("home")}
               onToolClick={handleToolClick}
               onKnowMoreClick={handleKnowMoreClick}
               nextBooking={slots.mine[0] ? { teacher: slots.mine[0].teacher, startAt: slots.mine[0].startAt } : null}
@@ -467,7 +497,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onEnrollBatch={handleEnrollBatch}
               onOpenContent={(key) => openDetail(key)}
               onOpenTests={() => openDetail("tests")}
-              onOpenStudy={() => setActiveScreen("study")}
+              onOpenStudy={() => goScreen("study")}
               initialTab={coursesTab}
             />
           )}
@@ -485,6 +515,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onWatchRecording={handleWatchRecording}
               subjects={syllabus}
               onOpenTopic={handleOpenTopic}
+              syllabusNav={syllabusNav}
+              onSyllabusNav={setSyllabusNav}
             />
           )}
           {!detailPage && activeScreen === "doubts"  && (
@@ -496,7 +528,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         {showNav && (
           <BottomNav
             active={activeScreen}
-            onChange={(s) => { setDetailPage(null); setActiveScreen(s); }}
+            onChange={(s) => goScreen(s)}
             onOpenTests={() => openDetail("tests")}
           />
         )}

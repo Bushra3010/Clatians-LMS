@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { pushBack, goBack } from "../lib/back-stack";
 import type { BatchDetails } from "../lib/catalog/batches";
 
 /** A cohort of a course — what a student actually joins and pays for. */
@@ -177,18 +178,35 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   const fresh = (c: CatalogItem) => catalog.find((x) => x.id === c.id) ?? c;
   const freshBatch = (c: CatalogItem, b: CatalogBatch) => fresh(c).batches.find((x) => x.id === b.id) ?? b;
 
+  // Course → batch → checkout are steps the phone's back gesture should undo
+  // one at a time (see back-stack.ts). Steps left behind when this screen
+  // unmounts are skipped by the stack.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const viewRef = useRef<View>(view);
+  const show = (v: View) => { viewRef.current = v; setView(v); };
+  const go = (v: View) => {
+    const prev = viewRef.current;
+    pushBack(() => show(prev), () => mounted.current);
+    show(v);
+  };
+  const back = () => goBack(() => show({ name: "list" }));
+
   const openCourse = (course: CatalogItem) => {
     setShowAbout(false);
-    setView({ name: "course", course });
+    go({ name: "course", course });
   };
   const openBatch = (course: CatalogItem, batch: CatalogBatch) => {
     setOpenFaq(null);
-    setView({ name: "batch", course, batch });
+    go({ name: "batch", course, batch });
   };
   const startCheckout = (target: Target) => {
     setError("");
     setMethod("upi");
-    setView({ name: "checkout", target });
+    go({ name: "checkout", target });
   };
 
   const pay = async (target: Target) => {
@@ -199,7 +217,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
       : await onEnroll(target.course.id, method);
     setPaying(false);
     if (res.ok) {
-      setView({ name: "success", target, invoiceNo: res.invoiceNo ?? "", amount: res.amount ?? targetPrice(target) });
+      show({ name: "success", target, invoiceNo: res.invoiceNo ?? "", amount: res.amount ?? targetPrice(target) });
     } else {
       setError(res.error ?? "Payment failed. Please try again.");
     }
@@ -229,7 +247,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
         <p style={{ margin: "0 0 18px", fontSize: 12.5, color: "var(--text-muted)", maxWidth: 300 }}>
           Your batch&apos;s subjects, topic videos, notes, tests and live classes are now unlocked in the Study tab.
         </p>
-        <button onClick={() => { setView({ name: "list" }); setMode("mine"); }} style={{
+        <button onClick={() => { show({ name: "list" }); setMode("mine"); }} style={{
           background: gradient, color: "white", border: "none", borderRadius: 16,
           padding: "15px 28px", fontSize: 15, fontWeight: 800, cursor: "pointer",
           boxShadow: "0 6px 16px rgba(61,36,17,0.35)",
@@ -257,7 +275,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
     return (
       <div style={{ background: "var(--app-bg)", minHeight: "100vh" }}>
-        <BackBar label={c.name} onClick={() => setView({ name: "course", course: c })} />
+        <BackBar label={c.name} onClick={back} />
 
         <div style={{ padding: "0 16px 16px" }}>
           {/* Hero */}
@@ -480,7 +498,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
     return (
       <div style={{ background: "var(--app-bg)", minHeight: "100vh", paddingBottom: 28 }}>
-        <BackBar label="Courses" onClick={() => setView({ name: "list" })} />
+        <BackBar label="Courses" onClick={back} />
 
         <div style={{ padding: "0 16px" }}>
           <div style={{ background: "white", borderRadius: 18, padding: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
@@ -587,7 +605,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
       : `${t.course.contentCount} study items · ${t.course.classCount} classes`;
     return (
       <div style={{ background: "var(--app-bg)", paddingBottom: 30, minHeight: "100vh" }}>
-        <BackBar label="Checkout" onClick={() => setView(t.kind === "batch" ? { name: "batch", course: t.course, batch: t.batch } : { name: "course", course: t.course })} />
+        <BackBar label="Checkout" onClick={back} />
 
         <div style={{ padding: "0 16px" }}>
           <div style={{ background: "white", borderRadius: 18, padding: "16px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
