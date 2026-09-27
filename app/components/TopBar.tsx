@@ -1,7 +1,5 @@
 "use client";
 
-import ClatLogo from "./ClatLogo";
-
 interface TopBarProps {
   /**
    * The student's chosen or purchased course. Null hides the course chips —
@@ -89,7 +87,9 @@ export default function TopBar({ course = null, onProfileClick, onLogoClick, onB
               display: "flex", alignItems: "center",
               background: "none", border: "none", cursor: "pointer", padding: 0,
             }}>
-              <ClatLogo size="sm" />
+              {/* Tightly cropped copy — the full logo file is mostly empty margin. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/clatians-logo-tight.png" alt="CLATians" style={{ height: 40, width: "auto", display: "block" }} />
             </button>
           )}
         </div>
