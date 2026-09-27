@@ -167,3 +167,11 @@ h1, h2, h3, h4 { letter-spacing: -0.02em; }
   0% { background-position: -200px 0; }
   100% { background-position: calc(200px + 100%) 0; }
 }
+
+/* Netlify injects a "Powered by Netlify" badge (and an owner toolbar) into
+   every page as an iframe. Netlify lets a project switch it off; this keeps
+   it off regardless of the dashboard setting. */
+#nl-badge-frame,
+#nl-hud-frame {
+  display: none !important;
+}
