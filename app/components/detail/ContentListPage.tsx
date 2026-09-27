@@ -80,7 +80,7 @@ function ContentViewer({
           </div>
         ) : url && isPdf(url) ? (
           // PDF drawn inline — phones can't show a PDF inside an iframe
-          <PdfViewer url={url} title={item.title} />
+          <PdfViewer key={url} url={url} title={item.title} />
         ) : url ? (
           // Embedded document (PDF / uploaded file / external page) + open fallback
           <div>

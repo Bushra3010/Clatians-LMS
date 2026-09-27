@@ -4,8 +4,11 @@ import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { logAudit } from "./audit";
+import { isOurFileUrl } from "./storage";
 
-const TYPES = ["tip", "story", "update", "vocab", "caq", "nlu"];
+const TYPES = ["tip", "story", "update", "vocab", "caq", "nlu", "banner"];
+/** Home banners are the app's shop window — only admins change them. */
+const ADMIN_ONLY = ["banner"];
 
 /** Assemble the type-specific `data` JSON from a submitted form. */
 function buildData(type: string, title: string, formData: FormData): Record<string, unknown> {
@@ -29,6 +32,15 @@ function buildData(type: string, title: string, formData: FormData): Record<stri
     more: String(formData.get("more") ?? "").trim(),
     hot: formData.get("hot") ? 1 : 0,
   };
+  if (type === "banner") {
+    // A freshly uploaded image wins over a pasted link.
+    const uploaded = String(formData.get("imageFileUrl") ?? "").trim();
+    const link = String(formData.get("link") ?? "").trim();
+    return {
+      image: uploaded && isOurFileUrl(uploaded) ? uploaded : String(formData.get("image") ?? "").trim(),
+      link: link === "url" ? String(formData.get("linkUrl") ?? "").trim() : link,
+    };
+  }
   if (type === "vocab") return { example: String(formData.get("example") ?? "").trim() };
   if (type === "nlu") {
     const num = (k: string) => Math.max(0, Math.round(Number(formData.get(k) ?? 0) || 0));
@@ -54,8 +66,10 @@ export async function createResourceAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   if (!TYPES.includes(type) || !title) return;
+  if (ADMIN_ONLY.includes(type) && user.role !== "admin") return;
 
   const data = buildData(type, title, formData);
+  if (type === "banner" && !data.image) return;
   const n = (await db.prepare("SELECT COUNT(*) AS n FROM resources WHERE type = ?").get(type) as { n: number }).n;
   await db.prepare(
     "INSERT INTO resources (id, type, title, body, data, status, created_by, order_idx) VALUES (?, ?, ?, ?, ?, 'published', ?, ?)"
@@ -75,8 +89,14 @@ export async function updateResourceAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   if (!id || !TYPES.includes(type) || !title) return;
+  if (ADMIN_ONLY.includes(type) && user.role !== "admin") return;
 
   const data = buildData(type, title, formData);
+  // Editing without a new image keeps the current one.
+  if (type === "banner" && !data.image) {
+    const cur = await db.prepare("SELECT data FROM resources WHERE id = ?").get(id) as { data: string } | undefined;
+    try { data.image = JSON.parse(cur?.data ?? "{}").image ?? ""; } catch { data.image = ""; }
+  }
   await db.prepare("UPDATE resources SET title = ?, body = ?, data = ? WHERE id = ?")
     .run(title, body, JSON.stringify(data), id);
 

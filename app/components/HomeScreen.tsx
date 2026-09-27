@@ -2,8 +2,9 @@
 
 import { ChevronRight, CalendarIcon } from "./icons";
 import ClatLogo from "./ClatLogo";
+import { HeroCarousel, RecommenderStack } from "./HomeHero";
 import { fmtIST } from "../lib/dates";
-import type { Story } from "../lib/resource-types";
+import type { Banner, Story } from "../lib/resource-types";
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -15,6 +16,10 @@ interface HomeScreenProps {
   onOpenStories?: () => void;
   onOpenTutor?: () => void;
   stories?: Story[];
+  /** Admin-uploaded image slides that follow the scholarship card. */
+  banners?: Banner[];
+  /** Where a tapped banner leads: "tests", "courses" or a web link. */
+  onOpenBanner?: (link: string) => void;
 }
 
 /* ─── Tool icons — flat two-tone illustrations that sit directly on the
@@ -111,14 +116,19 @@ const knowMore = [
 const fmtBooking = (iso: string) =>
   fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
 
-export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKnowMoreClick, onOpenTests, onOpenStories, onOpenTutor, stories = [], nextBooking = null }: HomeScreenProps) {
+/** Stand-ins so the avatar stack keeps moving before many stories are added. */
+const EXTRA_RECOMMENDERS = ["PS", "KV", "NA", "SJ", "AK", "DT"];
+
+export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKnowMoreClick, onOpenTests, onOpenStories, onOpenTutor, stories = [], banners = [], onOpenBanner, nextBooking = null }: HomeScreenProps) {
+  const recommenders = [...new Set([...toppers.map((t) => t.initials), ...stories.map((s) => s.initials), ...EXTRA_RECOMMENDERS])];
+
   return (
     <div style={{ background: "var(--app-bg)", paddingBottom: 32 }}>
 
-      {/* ── Hero Scholarship Banner — carries the brand logo now that the
-           top bar is a plain chip row. ── */}
-      <div style={{ padding: "4px 16px 0" }}>
+      {/* ── Hero carousel — the scholarship card, then the admin's image banners ── */}
+      <HeroCarousel banners={banners} onOpen={(link) => onOpenBanner?.(link)} first={
         <div style={{
+          flex: 1,
           background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 55%,var(--blue) 100%)",
           borderRadius: 24,
           padding: "20px 20px 22px",
@@ -189,7 +199,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
             boxShadow: "0 6px 16px rgba(245,166,35,0.40)",
           }}>Register Now →</button>
         </div>
-      </div>
+      } />
 
       {/* ── Tools Grid ── */}
       <div style={{ padding: "20px 14px 0" }}>
@@ -198,19 +208,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
             <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>Tools recommended</p>
             <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>by Toppers</p>
           </div>
-          <div style={{ display: "flex" }}>
-            {["AG", "RM"].map((init, i) => (
-              <div key={i} style={{
-                width: 36, height: 36, borderRadius: "50%",
-                background: i === 0 ? "linear-gradient(135deg,var(--blue),var(--blue-dark))" : "linear-gradient(135deg,var(--gold),var(--gold-dark))",
-                border: "2.5px solid white",
-                marginLeft: i === 0 ? 0 : -10,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 800, color: "white",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-              }}>{init}</div>
-            ))}
-          </div>
+          <RecommenderStack initials={recommenders} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
@@ -421,7 +419,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
       <div style={{ padding: "26px 16px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--ink-primary)", letterSpacing: "-0.2px" }}>AI-Powered Prep</h3>
-          <span style={{ background: "linear-gradient(135deg,var(--blue),var(--blue))", color: "#FFD489", fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.04em" }}>✨ SMART</span>
+          <span style={{ background: "linear-gradient(135deg,var(--blue),var(--blue))", color: "#FFD489", fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.04em" }}>⚡ SMART</span>
         </div>
         <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--text-disabled)" }}>Your personal AI toolkit — practice, doubts & more</p>
         <button onClick={() => onToolClick?.("ai-practice")} className="press" style={{
@@ -444,7 +442,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22,
               boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
-            }}>✨</div>
+            }}>⚡</div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--surface)" }}>AI Practice</p>

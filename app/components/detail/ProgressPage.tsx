@@ -43,7 +43,7 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
     <div style={{ padding: "18px 14px 0" }}>
       <div style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", borderRadius: 18, padding: "16px", color: "white", boxShadow: "0 6px 20px rgba(61,36,17,0.28)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18 }}>✨</span>
+          <span style={{ fontSize: 18 }}>⚡</span>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>AI Study Coach</p>
         </div>
         <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>
@@ -63,7 +63,7 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
           </div>
         ) : (
           <button onClick={run} disabled={busy} style={{ marginTop: 12, width: "100%", background: "var(--gold)", color: "var(--blue)", border: "none", borderRadius: 12, padding: "12px", fontSize: 13.5, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
-            {busy ? "Analysing your results…" : "✨ Get my study plan"}
+            {busy ? "Analysing your results…" : "⚡ Get my study plan"}
           </button>
         )}
         {err && <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "var(--gold-100)" }}>⚠️ {err}</p>}
@@ -209,7 +209,7 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
       {/* AI practice activity */}
       {progress.practice.sessions > 0 && (
         <div style={{ padding: "18px 14px 0" }}>
-          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>✨ AI Practice</h3>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>⚡ AI Practice</h3>
           <div style={{ display: "flex", gap: 8 }}>
             {[
               { v: String(progress.practice.sessions), l: "Sessions" },

@@ -136,7 +136,7 @@ export default function PracticePage({
             borderRadius: 16, padding: "14px", cursor: "pointer", display: "flex",
             alignItems: "center", gap: 12, textAlign: "left",
           }}>
-            <span style={{ fontSize: 22 }}>✨</span>
+            <span style={{ fontSize: 22 }}>⚡</span>
             <span style={{ flex: 1 }}>
               <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>Generate your own practice set</span>
               <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Pick any topic and difficulty — AI writes the questions.</span>

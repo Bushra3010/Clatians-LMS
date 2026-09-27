@@ -43,7 +43,7 @@ export default function CurrentAffairsGenerator({ courses }: { courses: Course[]
   return (
     <section className="rounded-xl bg-white border border-slate-200 p-6 mb-6">
       <div className="flex items-center gap-2 mb-1">
-        <span>✨</span>
+        <span>⚡</span>
         <h2 className="text-sm font-semibold text-slate-900">Generate a Current Affairs digest with AI</h2>
       </div>
       <p className="text-xs text-slate-500 mb-4">
@@ -66,7 +66,7 @@ export default function CurrentAffairsGenerator({ courses }: { courses: Course[]
           className="shrink-0 rounded-lg text-white text-sm font-medium py-2 px-4 disabled:opacity-60 self-start"
           style={{ background: "#3D2411" }}
         >
-          {busy ? "Drafting…" : "✨ Generate digest"}
+          {busy ? "Drafting…" : "⚡ Generate digest"}
         </button>
       </div>
       {err && <p className="mt-2 text-xs text-amber-700">⚠️ {err}</p>}

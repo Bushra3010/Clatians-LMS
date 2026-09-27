@@ -344,7 +344,7 @@ export default async function TeacherTestsPage() {
 
             {/* Generate questions with AI */}
             <details className="mt-2 border-t border-slate-100 pt-3">
-              <summary className="text-xs font-semibold cursor-pointer" style={{ color: "#6B4A28" }}>✨ Generate questions with AI</summary>
+              <summary className="text-xs font-semibold cursor-pointer" style={{ color: "#6B4A28" }}>⚡ Generate questions with AI</summary>
               {aiOn ? (
                 <AiGenerateForm testId={t.id} />
               ) : (

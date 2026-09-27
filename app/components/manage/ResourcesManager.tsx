@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FileUploadField from "@/app/components/FileUploadField";
 import { db } from "@/app/lib/db";
 import { createResourceAction, updateResourceAction, setResourceStatusAction, deleteResourceAction } from "@/app/lib/resource-actions";
 
@@ -9,6 +10,17 @@ const TABS: { type: string; label: string; one: string }[] = [
   { type: "vocab", label: "Vocabulary", one: "word" },
   { type: "caq", label: "CA Quiz", one: "quiz question" },
   { type: "nlu", label: "NLU Cut-offs", one: "college" },
+  { type: "banner", label: "Home Banners", one: "banner" },
+];
+
+/** Tabs only admins see — home banners are the app's shop window. */
+const ADMIN_ONLY = ["banner"];
+
+const BANNER_LINKS: { value: string; label: string }[] = [
+  { value: "", label: "Nothing (image only)" },
+  { value: "tests", label: "Tests" },
+  { value: "courses", label: "Courses" },
+  { value: "url", label: "A web link…" },
 ];
 
 const input = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none";
@@ -18,9 +30,10 @@ type Row = { id: string; type: string; title: string; body: string; data: string
 function parse(d: string): Record<string, unknown> { try { return JSON.parse(d); } catch { return {}; } }
 
 export default async function ResourcesManager({ type, basePath, editId }: { type: string; basePath: string; editId?: string }) {
-  const active = TABS.some((t) => t.type === type) ? type : "tip";
+  const tabs = basePath.startsWith("/admin") ? TABS : TABS.filter((t) => !ADMIN_ONLY.includes(t.type));
+  const active = tabs.some((t) => t.type === type) ? type : "tip";
   const rows = await db.prepare("SELECT id, type, title, body, data, status, order_idx FROM resources WHERE type = ? ORDER BY order_idx, created_at").all(active) as Row[];
-  const tab = TABS.find((t) => t.type === active)!;
+  const tab = tabs.find((t) => t.type === active)!;
   const { label, one } = tab;
 
   const editing = editId ? rows.find((r) => r.id === editId) : undefined;
@@ -37,7 +50,7 @@ export default async function ResourcesManager({ type, basePath, editId }: { typ
       </header>
 
       <div className="flex flex-wrap gap-2 mb-6">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Link key={t.type} href={`${basePath}?type=${t.type}`}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${t.type === active ? "bg-brand-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
             {t.label}
@@ -85,6 +98,32 @@ export default async function ResourcesManager({ type, basePath, editId }: { typ
             <label className="block"><span className={lbl}>“Learn more” detail</span><input name="more" defaultValue={D(ed.more)} className={input} placeholder="How to access this" /></label>
             <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="hot" defaultChecked={editing ? !!ed.hot : false} /> Mark as 🔥 Hot</label>
           </>)}
+
+          {active === "banner" && (() => {
+            const link = String(ed.link ?? "");
+            const preset = BANNER_LINKS.some((o) => o.value === link) ? link : "url";
+            return (<>
+              <p className="text-xs text-slate-500">Shown as a swipeable slide at the top of the student home screen. Use a square image (1080 × 1080, like an Instagram post) — keep text away from the left and right edges, which can be trimmed slightly.</p>
+              <label className="block"><span className={lbl}>Banner name (for your reference)</span><input name="title" required defaultValue={D(editing?.title)} className={input} placeholder="Scholarship test — May" /></label>
+              {editing && typeof ed.image === "string" && ed.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ed.image} alt="" className="w-full max-w-sm rounded-lg border border-slate-200" />
+              )}
+              <div className="block">
+                <span className={lbl}>Image — upload{editing ? " a new one to replace it" : ""}, or paste a link</span>
+                <FileUploadField name="imageFileUrl" accept="image/*" hint="An uploaded image replaces the link below." />
+                <input name="image" defaultValue={D(ed.image)} className={input + " mt-2"} placeholder="https://…/banner.jpg" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-3">
+                <label className="block"><span className={lbl}>Tapping it opens</span>
+                  <select name="link" defaultValue={editing ? preset : ""} className={input}>
+                    {BANNER_LINKS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </label>
+                <label className="block"><span className={lbl}>Web link (only for “A web link…”)</span><input name="linkUrl" defaultValue={editing && preset === "url" ? link : undefined} className={input} placeholder="https://…" /></label>
+              </div>
+            </>);
+          })()}
 
           {active === "vocab" && (<>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -138,6 +177,7 @@ export default async function ResourcesManager({ type, basePath, editId }: { typ
             active === "vocab" ? String(r.body) :
             active === "caq" ? `Ans: ${["A", "B", "C", "D"][Number(d.correct) || 0]}` :
             active === "nlu" ? `${d.city ?? ""} · Gen ${d.general ?? 0}` :
+            active === "banner" ? (d.link ? `Opens: ${d.link}` : "No link") :
             String(d.tag ?? r.body ?? "");
           const isEditing = editing?.id === r.id;
           return (
@@ -148,6 +188,10 @@ export default async function ResourcesManager({ type, basePath, editId }: { typ
                   {sub && <span className="text-xs text-slate-400 truncate">{sub}</span>}
                 </div>
                 <p className="text-sm font-medium text-slate-900 mt-1">{r.title}</p>
+                {active === "banner" && typeof d.image === "string" && d.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={d.image} alt="" className="mt-2 w-56 rounded-md border border-slate-200" />
+                )}
               </div>
               <div className="shrink-0 flex flex-col gap-2">
                 <Link href={`${basePath}?type=${active}&edit=${r.id}`} className="w-24 text-center text-xs rounded-md px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50">Edit</Link>

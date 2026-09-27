@@ -450,12 +450,12 @@ function ReviewCard({ r, index, showPassage }: { r: ReviewItem; index: number; s
 
       {explanation ? (
         <div style={{ marginTop: 10, background: "var(--bg-secondary)", border: "1px solid #EFE2CC", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#3A2A17", lineHeight: 1.55 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "var(--ink-primary)", fontSize: 11.5 }}>✨ AI explanation</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "var(--ink-primary)", fontSize: 11.5 }}>⚡ AI explanation</div>
           <AiText text={explanation} />
         </div>
       ) : (
         <button onClick={explain} disabled={busy} style={{ marginTop: 10, background: busy ? "var(--info-border)" : "var(--info-border)", color: "var(--ink-primary)", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: busy ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {busy ? "Thinking…" : r.explanation ? "✨ Explain further with AI" : "✨ Explain with AI"}
+          {busy ? "Thinking…" : r.explanation ? "⚡ Explain further with AI" : "⚡ Explain with AI"}
         </button>
       )}
       {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#B45309" }}>⚠️ {err}</p>}

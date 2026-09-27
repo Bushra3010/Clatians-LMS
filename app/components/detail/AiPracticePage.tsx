@@ -74,7 +74,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
         <div style={{ padding: "14px 14px 0" }}>
           <div style={{ background: gradient, borderRadius: 20, padding: "18px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 20 }}>✨</span>
+              <span style={{ fontSize: 20 }}>⚡</span>
               <p style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>AI Practice</p>
             </div>
             <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "rgba(255,255,255,0.78)" }}>Pick any topic and get an instant CLAT-style quiz with explanations.</p>
@@ -106,7 +106,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
               </label>
             </div>
             <button onClick={generate} disabled={busy || !topic.trim()} style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", color: "white", border: "none", borderRadius: 16, padding: "14px", fontSize: 14.5, fontWeight: 800, cursor: busy || !topic.trim() ? "default" : "pointer", opacity: busy || !topic.trim() ? 0.7 : 1, boxShadow: "0 6px 20px rgba(61,36,17,0.28)" }}>
-              {busy ? "Generating your quiz…" : "✨ Start practice"}
+              {busy ? "Generating your quiz…" : "⚡ Start practice"}
             </button>
             {err && <p style={{ margin: 0, fontSize: 12, color: "var(--warning-text)" }}>⚠️ {err}</p>}
             <p style={{ margin: 0, fontSize: 10.5, color: "var(--text-disabled)" }}>AI can make mistakes — treat this as practice, not a final source of truth.</p>
@@ -178,7 +178,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
             </button>
           ) : (
             <button onClick={reset} style={{ marginTop: 14, width: "100%", background: "white", color: ESPRESSO, border: `1.5px solid ${ESPRESSO}`, borderRadius: 16, padding: "13px", fontSize: 14.5, fontWeight: 800, cursor: "pointer" }}>
-              ✨ Practise another topic
+              ⚡ Practise another topic
             </button>
           )}
         </div>

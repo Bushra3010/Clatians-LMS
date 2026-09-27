@@ -9,6 +9,7 @@ export const isPdfUrl = (s: string) => /\.pdf($|[?#])/i.test((s || "").trim());
  * Renders a PDF inline, page by page, with pdf.js. Phones can't show a PDF in
  * an <iframe> (Android Chrome just offers a download), so notes are drawn onto
  * canvases instead — the same on every device. Pages paint as they scroll near.
+ * Give it `key={url}` so a new file starts from a clean slate.
  */
 export default function PdfViewer({ url, title }: { url: string; title?: string }) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -19,8 +20,6 @@ export default function PdfViewer({ url, title }: { url: string; title?: string 
   useEffect(() => {
     let cancelled = false;
     let task: { destroy: () => Promise<void> } | null = null;
-    setDoc(null);
-    setError(false);
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");

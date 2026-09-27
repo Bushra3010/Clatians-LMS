@@ -75,7 +75,7 @@ export default function AiGenerateForm({ testId }: { testId: string }) {
           className="rounded-lg text-white text-sm font-medium py-2 px-4 disabled:opacity-60"
           style={{ background: "var(--blue)" }}
         >
-          {busy ? "Generating…" : "✨ Generate & add"}
+          {busy ? "Generating…" : "⚡ Generate & add"}
         </button>
         {busy && <span className="text-xs text-slate-500">This can take up to ~40s — hang tight.</span>}
       </div>

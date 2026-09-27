@@ -97,7 +97,7 @@ export default function AiTutorChat({
         <a href={backHref} aria-label="Back" style={{ color: "white", textDecoration: "none", fontSize: 22, lineHeight: 1, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: "rgba(255,255,255,.08)" }}>‹</a>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>✨</span>
+            <span style={{ fontSize: 18 }}>⚡</span>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 800, letterSpacing: "-.01em" }}>CLAT AI Tutor</h1>
           </div>
           <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "rgba(255,255,255,.65)" }}>

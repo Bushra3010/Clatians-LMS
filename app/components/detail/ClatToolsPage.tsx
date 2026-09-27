@@ -211,7 +211,7 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
   const generator = (
     <div style={{ background: gradient, borderRadius: 18, padding: "14px", color: "white", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 17 }}>✨</span>
+        <span style={{ fontSize: 17 }}>⚡</span>
         <p style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>AI Vocabulary Builder</p>
       </div>
       <p style={{ margin: "3px 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.78)" }}>Generate fresh CLAT word cards — leave the theme blank for a mix.</p>
@@ -224,7 +224,7 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
           style={{ flex: 1, border: "none", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--ink-primary)", outline: "none" }}
         />
         <button onClick={generate} disabled={busy} style={{ flexShrink: 0, background: "var(--gold)", color: "var(--blue)", border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
-          {busy ? "Generating…" : "✨ Generate"}
+          {busy ? "Generating…" : "⚡ Generate"}
         </button>
       </div>
       {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#FFD489" }}>⚠️ {err}</p>}

@@ -5,6 +5,8 @@ export type Story = { name: string; quote: string; college: string; rank: string
 export type Update = { title: string; desc: string; tag: string; icon: string; color: string; dateLabel: string; more: string; hot: boolean };
 export type VocabItem = { word: string; meaning: string; example: string };
 export type CAItem = { q: string; options: string[]; correct: number; explain: string };
+/** Home carousel slide: an image, and where a tap takes the student ("tests", "courses", a URL, or nowhere). */
+export type Banner = { title: string; image: string; link: string };
 export type NLUItem = { name: string; city: string; closing: { general: number; obc: number; ews: number; sc: number; st: number } };
 
 export type StudentResources = {
@@ -14,4 +16,5 @@ export type StudentResources = {
   vocab: VocabItem[];
   caq: CAItem[];
   nlus: NLUItem[];
+  banners: Banner[];
 };

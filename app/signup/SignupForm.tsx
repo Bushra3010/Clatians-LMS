@@ -9,7 +9,7 @@ const initial: SignupState = {};
 
 const PERKS = [
   { icon: "🎁", text: "Free study material & scholarship mock test" },
-  { icon: "✨", text: "AI Tutor — ask any CLAT doubt, 24×7" },
+  { icon: "⚡", text: "AI Tutor — ask any CLAT doubt, 24×7" },
   { icon: "🎓", text: "Buy a batch to unlock live classes & full course" },
 ];
 

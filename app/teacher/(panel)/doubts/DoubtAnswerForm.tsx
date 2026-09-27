@@ -4,7 +4,7 @@ import { useState } from "react";
 import { answerDoubtAction } from "@/app/lib/doubt-actions";
 import { draftDoubtAnswerAction } from "@/app/lib/ai-actions";
 
-/** Answer form for one open doubt, with an "✨ Draft with AI" helper that fills
+/** Answer form for one open doubt, with an "⚡ Draft with AI" helper that fills
  * the textarea with a suggested reply the teacher can edit before sending. */
 export default function DoubtAnswerForm({ doubtId }: { doubtId: string }) {
   const [answer, setAnswer] = useState("");
@@ -38,7 +38,7 @@ export default function DoubtAnswerForm({ doubtId }: { doubtId: string }) {
           className="text-xs font-semibold rounded-md px-2.5 py-1 border disabled:opacity-60"
           style={{ color: "#6B4A28", borderColor: "#E7D6BA", background: "#F6ECD9" }}
         >
-          {drafting ? "Drafting…" : "✨ Draft with AI"}
+          {drafting ? "Drafting…" : "⚡ Draft with AI"}
         </button>
       </div>
       <textarea

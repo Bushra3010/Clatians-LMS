@@ -1,5 +1,7 @@
 "use client";
 
+import ClatLogo from "./ClatLogo";
+
 interface TopBarProps {
   /**
    * The student's chosen or purchased course. Null hides the course chips —
@@ -8,7 +10,7 @@ interface TopBarProps {
    */
   course?: { name: string; purchased: boolean } | null;
   onProfileClick?: () => void;
-  /** Kept for the shell's "go home" affordance — the logo now lives in the hero. */
+  /** Tapping the CLATians logo (shown until a course is picked) goes home. */
   onLogoClick?: () => void;
   onBellClick?: () => void;
   unreadCount?: number;
@@ -19,8 +21,8 @@ const ICON = "var(--text-secondary)";
 
 const TutorSvg = () => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ICON} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z" />
-    <path d="M18 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8.8-1.9z" />
+    {/* A bolt, not the four-point sparkle every AI product uses. */}
+    <path d="M13 2.5L4.5 13.5h6.5l-1 8 8.5-11h-6.5l1-8z" />
   </svg>
 );
 
@@ -59,7 +61,7 @@ function Chip({ children, tone = "plain" }: { children: React.ReactNode; tone?: 
   );
 }
 
-export default function TopBar({ course = null, onProfileClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
+export default function TopBar({ course = null, onProfileClick, onLogoClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
   const actions = [
     { icon: <TutorSvg />, count: 0, href: "/tutor", onClick: undefined, label: "AI Tutor" },
     { icon: <BellSvg />, count: unreadCount, href: undefined, onClick: onBellClick, label: "Notifications" },
@@ -82,15 +84,12 @@ export default function TopBar({ course = null, onProfileClick, onBellClick, unr
               {!course.purchased && <Chip tone="free">FREE</Chip>}
             </>
           ) : (
-            <button onClick={() => onChangeCourse?.()} className="press" style={{
-              display: "flex", alignItems: "center", gap: 7,
-              background: "none", border: "none", cursor: "pointer", padding: "7px 0",
-              color: "var(--blue)", fontSize: 15, fontWeight: 700,
+            // No course yet — show the brand. Courses are picked from the Courses tab.
+            <button onClick={() => onLogoClick?.()} aria-label="CLATians home" className="press" style={{
+              display: "flex", alignItems: "center",
+              background: "none", border: "none", cursor: "pointer", padding: 0,
             }}>
-              Choose your course
-              <svg width="13" height="13" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
-                <polygon points="2,1 11,6 2,11" />
-              </svg>
+              <ClatLogo size="sm" />
             </button>
           )}
         </div>

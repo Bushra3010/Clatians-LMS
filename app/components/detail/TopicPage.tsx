@@ -129,7 +129,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
           {tab === "notes" && (
             topic.notesUrl && isLink(topic.notesUrl) && isPdfUrl(topic.notesUrl) ? (
               // The PDF is the notes — shown inline, as the faculty formatted it.
-              <PdfViewer url={topic.notesUrl} title={topic.title} />
+              <PdfViewer key={topic.notesUrl} url={topic.notesUrl} title={topic.title} />
             ) : topic.notes || topic.notesUrl ? (
               <div style={card}>
                 {topic.notesUrl && isLink(topic.notesUrl) && (

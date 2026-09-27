@@ -493,6 +493,12 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTutor={() => router.push("/tutor")}
               onOpenStories={() => openDetail("toppers")}
               stories={resources.stories}
+              banners={resources.banners}
+              onOpenBanner={(link) => {
+                if (link === "tests") openDetail("tests");
+                else if (link === "courses") goScreen("courses");
+                else if (/^https?:\/\//i.test(link)) window.open(link, "_blank", "noopener");
+              }}
             />
           )}
           {!detailPage && activeScreen === "courses" && (
