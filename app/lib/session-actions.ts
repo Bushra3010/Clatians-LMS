@@ -111,3 +111,16 @@ export async function updateNotifyPrefsAction(prefs: NotifyPrefs): Promise<{ ok:
   await db.prepare("UPDATE users SET notify_prefs = ? WHERE id = ?").run(JSON.stringify(clean), user.id);
   return { ok: true };
 }
+
+/** A student picks the course that heads their home screen (null clears it). */
+export async function selectCourseAction(courseId: string | null): Promise<{ ok: boolean }> {
+  const user = await auth();
+  if (!user || user.role !== "student") return { ok: false };
+  const id = courseId ? String(courseId) : null;
+  if (id) {
+    const exists = await db.prepare("SELECT 1 FROM courses WHERE id = ? AND status = 'active'").get(id);
+    if (!exists) return { ok: false };
+  }
+  await db.prepare("UPDATE users SET selected_course_id = ? WHERE id = ?").run(id, user.id);
+  return { ok: true };
+}

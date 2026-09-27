@@ -158,6 +158,9 @@ const SCHEMA = `
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS testimonial TEXT NOT NULL DEFAULT '{}';
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
   CREATE UNIQUE INDEX IF NOT EXISTS courses_slug_key ON courses (slug) WHERE slug IS NOT NULL;
+  -- The course a student has picked in the app (before or without buying it);
+  -- it heads their home screen. Enrolled courses take precedence.
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_course_id TEXT REFERENCES courses(id) ON DELETE SET NULL;
   CREATE TABLE IF NOT EXISTS payments (
     id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, amount INTEGER NOT NULL DEFAULT 0,

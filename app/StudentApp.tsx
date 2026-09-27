@@ -36,7 +36,7 @@ import HelpSupportPage from "./components/detail/HelpSupportPage";
 import SettingsPage from "./components/detail/SettingsPage";
 import TopicPage from "./components/detail/TopicPage";
 
-import { logoutAction, type NotifyPrefs } from "./lib/session-actions";
+import { logoutAction, selectCourseAction, type NotifyPrefs } from "./lib/session-actions";
 import { markNotificationsReadAction } from "./lib/notification-actions";
 import { toggleContentDoneAction } from "./lib/progress-actions";
 import { toggleSavedAction } from "./lib/saved-actions";
@@ -107,9 +107,11 @@ interface StudentAppProps {
   notifyPrefs: NotifyPrefs;
   certificates: CertificateItem[];
   syllabus: SyllabusSubject[];
+  /** The course heading the home screen — null until one is chosen or bought. */
+  currentCourse: { id: string; name: string; purchased: boolean } | null;
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, currentCourse }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
@@ -331,7 +333,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         )}
 
         {/* Top Bar — always visible */}
-        <TopBar courseName={profile.batches[0] ?? "Choose a course"} isFree={profile.batches.length === 0} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />
+        <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />
 
         {/* Scrollable content */}
         <div
@@ -498,6 +500,11 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenContent={(key) => openDetail(key)}
               onOpenTests={() => openDetail("tests")}
               onOpenStudy={() => goScreen("study")}
+              selectedCourseId={currentCourse?.id ?? null}
+              onSelectCourse={async (id) => {
+                await selectCourseAction(id);
+                router.refresh();
+              }}
               initialTab={coursesTab}
             />
           )}

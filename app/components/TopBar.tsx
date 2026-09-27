@@ -1,9 +1,12 @@
 "use client";
 
 interface TopBarProps {
-  courseName?: string;
-  /** Show the FREE tag — only for students not enrolled in any course yet. */
-  isFree?: boolean;
+  /**
+   * The student's chosen or purchased course. Null hides the course chips —
+   * the bar then only invites them to pick one. FREE marks a course that is
+   * chosen but not bought.
+   */
+  course?: { name: string; purchased: boolean } | null;
   onProfileClick?: () => void;
   /** Kept for the shell's "go home" affordance — the logo now lives in the hero. */
   onLogoClick?: () => void;
@@ -56,7 +59,7 @@ function Chip({ children, tone = "plain" }: { children: React.ReactNode; tone?: 
   );
 }
 
-export default function TopBar({ courseName = "Choose a course", isFree = false, onProfileClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
+export default function TopBar({ course = null, onProfileClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
   const actions = [
     { icon: <TutorSvg />, count: 0, href: "/tutor", onClick: undefined, label: "AI Tutor" },
     { icon: <BellSvg />, count: unreadCount, href: undefined, onClick: onBellClick, label: "Notifications" },
@@ -73,8 +76,23 @@ export default function TopBar({ courseName = "Choose a course", isFree = false,
       {/* Row 1 — course chips + actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <Chip>{courseName}</Chip>
-          {isFree && <Chip tone="free">FREE</Chip>}
+          {course ? (
+            <>
+              <Chip>{course.name}</Chip>
+              {!course.purchased && <Chip tone="free">FREE</Chip>}
+            </>
+          ) : (
+            <button onClick={() => onChangeCourse?.()} className="press" style={{
+              display: "flex", alignItems: "center", gap: 7,
+              background: "none", border: "none", cursor: "pointer", padding: "7px 0",
+              color: "var(--blue)", fontSize: 15, fontWeight: 700,
+            }}>
+              Choose your course
+              <svg width="13" height="13" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
+                <polygon points="2,1 11,6 2,11" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
@@ -104,8 +122,8 @@ export default function TopBar({ courseName = "Choose a course", isFree = false,
         </div>
       </div>
 
-      {/* Row 2 — course switcher */}
-      <button onClick={() => onChangeCourse?.()} className="press" style={{
+      {/* Row 2 — course switcher (only once a course is shown above) */}
+      {course && <button onClick={() => onChangeCourse?.()} className="press" style={{
         display: "flex", alignItems: "center", gap: 7,
         background: "none", border: "none", cursor: "pointer",
         color: "var(--blue)", fontSize: 15, fontWeight: 600,
@@ -115,7 +133,7 @@ export default function TopBar({ courseName = "Choose a course", isFree = false,
         <svg width="13" height="13" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
           <polygon points="2,1 11,6 2,11" />
         </svg>
-      </button>
+      </button>}
     </div>
   );
 }

@@ -112,7 +112,7 @@ export default async function Home() {
 
   const [
     upcomingRows, pastRows, statRow, contentQuery, doubtMsgQuery, doubtRows, courseContentQuery, batchQuery, courseRows, hierarchyQuery, paperRows, enrolledCourseRows, attemptRows, practiceRow, savedQuery, resourceQuery, notificationRows, certQuery, prefsQuery, openSlotRows, bookingRows, taskRows, noteRows, creditQuery, referralTotalRow, referralEnrolledRow, paymentRows,
-    leaderboardRows, streakDays,
+    selectedCourseRow, leaderboardRows, streakDays,
   ] = await Promise.all([
     db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id),
     db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id),
@@ -206,7 +206,7 @@ export default async function Home() {
      ORDER BY t.created_at DESC`
   ).all(user.id, user.id, user.id, user.id),
     db.prepare(
-    `SELECT c.name FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.user_id = ? ORDER BY c.name`
+    `SELECT c.id, c.name FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.user_id = ? ORDER BY c.name`
   ).all(user.id),
     db.prepare(
     "SELECT id, test_id, score, total, answers FROM test_attempts WHERE user_id = ? AND status = 'submitted'"
@@ -261,6 +261,10 @@ export default async function Home() {
      FROM payments p LEFT JOIN courses c ON c.id = p.course_id
      WHERE p.user_id = ? ORDER BY p.created_at DESC`
   ).all(user.id),
+    db.prepare(
+      `SELECT c.id, c.name FROM users u JOIN courses c ON c.id = u.selected_course_id
+       WHERE u.id = ? AND c.status = 'active'`
+    ).get(user.id),
     computeLeaderboard(),
     computeStreak(user.id),
   ]);
@@ -388,7 +392,17 @@ export default async function Home() {
   const practicePapers = allPapers.filter((t) => t.type === "practice");
 
   // ── Profile ──
-  const batches = (enrolledCourseRows as { name: string }[]).map((r) => r.name);
+  const enrolledCourses = enrolledCourseRows as { id: string; name: string }[];
+  const batches = enrolledCourses.map((r) => r.name);
+
+  // The course heading the home screen: the one the student picked, else the
+  // first one they're enrolled in. None until they choose or buy a course.
+  const picked = selectedCourseRow as { id: string; name: string } | undefined;
+  const currentCourse = picked
+    ? { id: picked.id, name: picked.name, purchased: enrolledCourses.some((c) => c.id === picked.id) }
+    : enrolledCourses[0]
+      ? { id: enrolledCourses[0].id, name: enrolledCourses[0].name, purchased: true }
+      : null;
 
   // ── Progress tracking ──
   const contentDone = contentRows.filter((r) => r.done === 1).length;
@@ -589,6 +603,7 @@ export default async function Home() {
       notifyPrefs={notifyPrefs}
       certificates={certificates}
       syllabus={syllabus}
+      currentCourse={currentCourse}
     />
   );
 }

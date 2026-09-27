@@ -51,6 +51,8 @@ export async function payForCourseAction(courseId: string, method = "upi") {
   await db.prepare(
     "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(user.id, courseId);
+  // A just-bought course becomes the one heading the student's home screen.
+  await db.prepare("UPDATE users SET selected_course_id = ? WHERE id = ?").run(courseId, user.id);
 
   await notify(
     user.id,
@@ -119,6 +121,7 @@ export async function payForBatchAction(batchId: string, method = "upi") {
   await db.prepare(
     "INSERT INTO enrollments (user_id, course_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
   ).run(user.id, batch.course_id);
+  await db.prepare("UPDATE users SET selected_course_id = ? WHERE id = ?").run(batch.course_id, user.id);
 
   await notify(
     user.id,

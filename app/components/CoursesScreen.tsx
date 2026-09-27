@@ -150,6 +150,9 @@ interface CoursesScreenProps {
   onOpenTests?: () => void;
   onOpenStudy?: () => void;
   initialTab?: "all" | "mine";
+  /** The course the student picked to head their home screen. */
+  selectedCourseId?: string | null;
+  onSelectCourse?: (courseId: string) => Promise<void>;
 }
 
 type View =
@@ -159,7 +162,8 @@ type View =
   | { name: "checkout"; target: Target }
   | { name: "success"; target: Target; invoiceNo: string; amount: number };
 
-export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, initialTab = "all" }: CoursesScreenProps) {
+export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, initialTab = "all", selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
+  const [choosing, setChoosing] = useState(false);
   const mine = useMemo(() => catalog.filter((c) => c.enrolled || c.batches.some((b) => b.enrolled)), [catalog]);
   // Only offer the modes that actually have courses behind them.
   const modes = useMemo(() => MODES.filter((m) => catalog.some((c) => c.category === m.key)), [catalog]);
@@ -514,6 +518,22 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 10, fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>
                 {facts.map((f) => <span key={f.label}>{f.label}: <b style={{ color: "var(--ink-primary)" }}>{f.value}</b></span>)}
               </div>
+            )}
+            {/* Make this the course that heads the home screen */}
+            {onSelectCourse && (
+              selectedCourseId === c.id ? (
+                <p style={{ margin: "12px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--success-text)", background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "8px 12px", display: "inline-block" }}>
+                  ✓ This is your course
+                </p>
+              ) : (
+                <button
+                  onClick={async () => { setChoosing(true); await onSelectCourse(c.id); setChoosing(false); }}
+                  disabled={choosing}
+                  style={{ display: "block", marginTop: 12, width: "100%", background: "var(--info-border)", color: "var(--blue)", border: "1.5px solid var(--blue)", borderRadius: 12, padding: "11px", fontSize: 13.5, fontWeight: 800, cursor: "pointer", opacity: choosing ? 0.6 : 1 }}
+                >
+                  {choosing ? "Saving…" : "Choose this course"}
+                </button>
+              )
             )}
             {(c.overview || c.curriculum.length > 0 || c.features.length > 0) && (
               <button onClick={() => setShowAbout(!showAbout)} style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "var(--blue)" }}>
