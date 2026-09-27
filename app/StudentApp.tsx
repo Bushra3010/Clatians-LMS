@@ -346,6 +346,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             overflowY: "auto",
             overscrollBehavior: "contain",
             WebkitOverflowScrolling: "touch",
+            // Clear the floating bottom nav so the last card can scroll above it.
+            paddingBottom: showNav ? "calc(76px + env(safe-area-inset-bottom))" : undefined,
           }}
           className="no-scroll"
         >
