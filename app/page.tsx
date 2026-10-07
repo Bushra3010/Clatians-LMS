@@ -172,7 +172,24 @@ export default async function Home() {
      ORDER BY enrolled DESC, c.sort_order, c.price ASC`
   ).all(user.id),
     db.prepare(
-    `SELECT COALESCE(s.id, 'unsorted') AS subject_id,
+    // Whose syllabus to show — always one course, since courses share subjects
+    // and merging them repeats every chapter: the course the student picked;
+    // else the first one they're enrolled in; else (a brand-new student) the
+    // first course with a syllabus. So everyone sees the subject → chapter →
+    // topic tree, with paid topics locked until they enrol.
+    `WITH shown AS (
+       SELECT id FROM (
+         SELECT c.id,
+                CASE WHEN c.id = (SELECT selected_course_id FROM users WHERE id = ?) THEN 0
+                     WHEN EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id) THEN 1
+                     ELSE 2 END AS rank
+         FROM courses c
+         WHERE c.status = 'active' AND EXISTS (SELECT 1 FROM modules WHERE course_id = c.id)
+         ORDER BY rank, c.sort_order, c.price ASC
+         LIMIT 1
+       ) best
+     )
+     SELECT COALESCE(s.id, 'unsorted') AS subject_id,
             COALESCE(s.name, 'Other topics') AS subject_name,
             COALESCE(s.slug, 'unsorted') AS subject_slug,
             COALESCE(s.icon, '📘') AS subject_icon,
@@ -182,15 +199,16 @@ export default async function Home() {
             (l.video_url <> '')::int AS has_video,
             (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
             (l.test_id IS NOT NULL)::int AS has_test,
-            COALESCE(lp.completed, 0) AS lesson_completed
+            COALESCE(lp.completed, 0) AS lesson_completed,
+            (l.is_free = 0 AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = m.course_id))::int AS lesson_locked
      FROM modules m
      LEFT JOIN subjects s ON s.id = m.subject_id
      JOIN chapters ch ON ch.module_id = m.id
      JOIN lessons l ON l.chapter_id = ch.id
      LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
-     WHERE m.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+     WHERE m.course_id IN (SELECT id FROM shown)
      ORDER BY s.sort_order NULLS LAST, s.name, m.sort_order, ch.sort_order, l.sort_order`
-  ).all(user.id, user.id),
+  ).all(user.id, user.id, user.id, user.id),
     db.prepare(
     `SELECT t.id, t.title, t.description, t.type, t.duration_min,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
@@ -349,7 +367,7 @@ export default async function Home() {
   // hanging a subject's chapters on a course; the student just sees
   // subject → chapter → topic, so a subject's chapters are merged across its
   // modules. Modules with no subject are grouped under a catch-all.
-  const hierarchyRows = hierarchyQuery as { subject_id: string; subject_name: string; subject_slug: string; subject_icon: string; chapter_id: string; chapter_title: string; lesson_id: string; lesson_title: string; lesson_duration: number; lesson_is_free: number; has_video: number; has_notes: number; has_test: number; lesson_completed: number }[];
+  const hierarchyRows = hierarchyQuery as { subject_id: string; subject_name: string; subject_slug: string; subject_icon: string; chapter_id: string; chapter_title: string; lesson_id: string; lesson_title: string; lesson_duration: number; lesson_is_free: number; has_video: number; has_notes: number; has_test: number; lesson_completed: number; lesson_locked: number }[];
 
   // Rows arrive ordered by every sort_order in the chain, so appending in
   // order preserves it.
@@ -374,6 +392,7 @@ export default async function Home() {
       hasNotes: row.has_notes === 1,
       hasTest: row.has_test === 1,
       completed: row.lesson_completed === 1,
+      locked: row.lesson_locked === 1,
     });
   }
 

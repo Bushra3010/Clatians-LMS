@@ -24,7 +24,7 @@ export type TopicDetail = {
   doubts: TopicDoubt[];
 };
 
-export type TopicResult = { ok: true; topic: TopicDetail } | { ok: false; error: string };
+export type TopicResult = { ok: true; topic: TopicDetail } | { ok: false; error: string; /** Paid topic, student not enrolled. */ locked?: boolean };
 
 type TopicRow = {
   id: string; title: string; body: string; video_url: string; notes_url: string;
@@ -55,7 +55,7 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
   const user = await requireRole(["student"]);
   const t = await loadTopic(String(lessonId ?? ""));
   if (!t) return { ok: false, error: "This topic no longer exists." };
-  if (!(await canOpen(user.id, t))) return { ok: false, error: "Enrol in this course to unlock this topic." };
+  if (!(await canOpen(user.id, t))) return { ok: false, locked: true, error: "Enrol in a batch to unlock this topic." };
 
   const test = t.test_id
     ? await db.prepare(

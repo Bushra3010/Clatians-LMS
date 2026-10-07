@@ -15,7 +15,7 @@ type Tab = "Syllabus" | typeof baseTabs[number];
 const blueGradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
 /** A course's syllabus tree: subject → chapter → topic. */
-export type SyllabusTopic = { id: string; title: string; durationMin: number; isFree: boolean; hasVideo: boolean; hasNotes: boolean; hasTest: boolean; completed: boolean };
+export type SyllabusTopic = { id: string; title: string; durationMin: number; isFree: boolean; hasVideo: boolean; hasNotes: boolean; hasTest: boolean; completed: boolean; /** Paid topic in a course the student hasn't enrolled in. */ locked: boolean };
 export type SyllabusChapter = { id: string; title: string; topics: SyllabusTopic[] };
 export type SyllabusSubject = { id: string; name: string; slug: string; icon: string; chapters: SyllabusChapter[] };
 
@@ -32,6 +32,8 @@ interface StudyScreenProps {
   onWatchRecording: (cls: LiveClassItem) => void;
   subjects?: SyllabusSubject[];
   onOpenTopic?: (topicId: string) => void;
+  /** Sends a student with locked topics to the batches they can enrol in. */
+  onBrowseCourses?: () => void;
   /** Open subject/chapter live in the parent, so they survive opening a topic. */
   syllabusNav?: { subjectId: string | null; chapterId: string | null };
   onSyllabusNav?: (nav: { subjectId: string | null; chapterId: string | null }) => void;
@@ -102,9 +104,12 @@ function LiveClassesBlock({ upcoming, past, onJoin, onWatch }: { upcoming: LiveC
   );
 }
 
-export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic, syllabusNav = { subjectId: null, chapterId: null }, onSyllabusNav }: StudyScreenProps) {
+export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic, onBrowseCourses, syllabusNav = { subjectId: null, chapterId: null }, onSyllabusNav }: StudyScreenProps) {
   // The syllabus tab leads whenever the student's course actually has one.
   const hasSyllabus = subjects.length > 0;
+  const allTopics = subjects.flatMap((s) => s.chapters.flatMap((c) => c.topics));
+  const lockedCount = allTopics.filter((t) => t.locked).length;
+  const freeCount = allTopics.length - lockedCount;
   const studyTabs: Tab[] = hasSyllabus ? ["Syllabus", ...baseTabs] : [...baseTabs];
   const [activeTab, setActiveTab] = useState<Tab>(hasSyllabus ? "Syllabus" : "Videos");
   const { subjectId, chapterId: openChapter } = syllabusNav;
@@ -156,6 +161,20 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
 
       <div style={{ padding: "16px 16px 0" }}>
         {/* ── Syllabus: subject → chapter → topic ── */}
+        {/* Not enrolled yet — the tree is a preview with the free topics open. */}
+        {activeTab === "Syllabus" && lockedCount > 0 && (
+          <div style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", borderRadius: 16, padding: "14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 22 }}>🔓</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "white" }}>Free preview</span>
+              <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
+                {freeCount} free topic{freeCount === 1 ? "" : "s"} open · enrol in a batch to unlock all {allTopics.length}
+              </span>
+            </span>
+            <button onClick={() => onBrowseCourses?.()} className="press" style={{ background: "var(--gold)", color: "var(--blue-dark)", border: "none", borderRadius: 10, padding: "9px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>See batches</button>
+          </div>
+        )}
+
         {activeTab === "Syllabus" && !subject && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             {subjects.map((subj) => {
@@ -200,11 +219,16 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
                       <div style={{ padding: "0 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                         {ch.topics.map((t) => (
                           <button key={t.id} onClick={() => onOpenTopic?.(t.id)} className="press" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px", cursor: "pointer", textAlign: "left" }}>
-                            {t.completed
+                            {t.locked
+                              ? <span aria-label="Locked" style={{ width: 18, fontSize: 14, lineHeight: "18px", textAlign: "center", flexShrink: 0 }}>🔒</span>
+                              : t.completed
                               ? <CheckCircle2 size={18} style={{ color: "var(--success-text)", flexShrink: 0 }} />
                               : <span style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--line)", flexShrink: 0 }} />}
                             <span style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{t.title}</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
+                                {t.title}
+                                {t.isFree && <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--success-text)", background: "var(--success)", borderRadius: 6, padding: "1px 6px" }}>FREE</span>}
+                              </span>
                               <span style={{ display: "flex", gap: 8, marginTop: 3, fontSize: 10.5, color: "var(--ink-mute)" }}>
                                 <span style={{ opacity: t.hasVideo ? 1 : 0.35 }}>🎥 Video</span>
                                 <span style={{ opacity: t.hasNotes ? 1 : 0.35 }}>📄 Notes</span>

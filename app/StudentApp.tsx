@@ -254,6 +254,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     if (res.ok) {
       setTopic(res.topic);
       openDetail("topic");
+    } else if (res.locked) {
+      if (confirm(`${res.error}\n\nSee the batches you can join?`)) goScreen("courses");
     } else {
       alert(res.error);
     }
@@ -534,6 +536,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onWatchRecording={handleWatchRecording}
               subjects={syllabus}
               onOpenTopic={handleOpenTopic}
+              onBrowseCourses={() => goScreen("courses")}
               syllabusNav={syllabusNav}
               onSyllabusNav={setSyllabusNav}
             />
