@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, HOME_BY_ROLE } from "../lib/auth";
 import SignupForm from "./SignupForm";
+import { isStudentApp } from "../lib/student-app";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,5 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const user = await auth();
   if (user) redirect(HOME_BY_ROLE[user.role] ?? "/");
-  return <SignupForm />;
+  return <SignupForm studentApp={await isStudentApp()} />;
 }

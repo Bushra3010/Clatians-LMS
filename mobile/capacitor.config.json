@@ -1,0 +1,27 @@
+{
+  "appId": "com.clatians.student",
+  "appName": "CLATians",
+  "webDir": "www",
+  "server": {
+    "url": "https://lmsclat.netlify.app",
+    "cleartext": false,
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "appendUserAgent": "CLATiansStudentApp",
+    "backgroundColor": "#EEF1FB",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#EEF1FB",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#EEF1FB",
+      "overlaysWebView": false
+    }
+  }
+}

@@ -13,7 +13,8 @@ const PERKS = [
   { icon: "🎓", text: "Buy a batch to unlock live classes & full course" },
 ];
 
-export default function SignupForm() {
+/** `studentApp`: opened inside the Android student app — no "book a demo" detour. */
+export default function SignupForm({ studentApp = false }: { studentApp?: boolean }) {
   const [state, action, pending] = useActionState(signupAction, initial);
 
   return (
@@ -96,12 +97,12 @@ export default function SignupForm() {
               Sign in
             </Link>
           </p>
-          <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
+          {!studentApp && <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
             Prefer talking to us first?{" "}
             <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 600, textDecoration: "none" }}>
               Book a free demo
             </Link>
-          </p>
+          </p>}
         </div>
       </div>
     </div>

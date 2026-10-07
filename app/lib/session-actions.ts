@@ -12,6 +12,7 @@ import {
 } from "./auth";
 import { db, newId } from "./db";
 import { notify, notifyMany } from "./notify";
+import { isStudentApp } from "./student-app";
 
 export type LoginState = { error?: string };
 
@@ -32,6 +33,9 @@ export async function loginAction(
   }
   if (user.status === "suspended") {
     return { error: "This account is suspended. Contact your administrator." };
+  }
+  if (user.role !== "student" && await isStudentApp()) {
+    return { error: "This app is for students. Teachers and admins, please sign in on the website." };
   }
 
   await createSession(user.id);

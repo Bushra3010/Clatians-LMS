@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CLATians</string>
+    <string name="title_activity_main">CLATians</string>
+    <string name="package_name">com.clatians.student</string>
+    <string name="custom_url_scheme">com.clatians.student</string>
+</resources>

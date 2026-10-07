@@ -8,6 +8,18 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has("lms_session");
 
+  // The Android student app never opens staff areas. A staff session found
+  // there is dropped, so the app lands on a clean student sign-in.
+  // Matches STUDENT_APP_UA in app/lib/student-app.ts.
+  if ((request.headers.get("user-agent") ?? "").includes("CLATiansStudentApp")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    const res = NextResponse.redirect(url);
+    res.cookies.delete("lms_session");
+    return res;
+  }
+
   const isProtected =
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||

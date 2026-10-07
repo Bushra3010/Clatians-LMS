@@ -18,7 +18,9 @@ const DEMOS = process.env.NEXT_PUBLIC_DEMO_LOGIN === "1"
     ]
   : [];
 
-export default function LoginForm() {
+/** `studentApp`: opened inside the Android student app — students only, no demo shortcuts. */
+export default function LoginForm({ studentApp = false }: { studentApp?: boolean }) {
+  const demos = studentApp ? [] : DEMOS;
   const [state, action, pending] = useActionState(loginAction, initial);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +57,7 @@ export default function LoginForm() {
         <div style={{ background: "white", borderRadius: 24, padding: "28px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
           <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "#1A1A2E" }}>Sign in</h1>
           <p style={{ margin: "0 0 22px", fontSize: 14, color: "var(--text-muted)" }}>
-            One login for students, teachers &amp; admins
+            {studentApp ? "Welcome back — continue your CLAT prep" : "One login for students, teachers & admins"}
           </p>
 
           <form action={action}>
@@ -110,7 +112,7 @@ export default function LoginForm() {
           </form>
 
           {/* Demo quick-fill */}
-          {DEMOS.length > 0 && (<>
+          {demos.length > 0 && (<>
           <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0 14px" }}>
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
             <span style={{ fontSize: 12, color: "var(--text-disabled)" }}>Quick demo login</span>
@@ -118,7 +120,7 @@ export default function LoginForm() {
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
-            {DEMOS.map((d) => (
+            {demos.map((d) => (
               <button
                 key={d.role}
                 type="button"
@@ -154,12 +156,12 @@ export default function LoginForm() {
           }}>
             🎓 New student? Create a free account →
           </Link>
-          <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
+          {!studentApp && <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-disabled)" }}>
             Prefer talking to us first?{" "}
             <Link href="/enquiry" style={{ color: "#C8860A", fontWeight: 600, textDecoration: "none" }}>
               Book a free demo
             </Link>
-          </p>
+          </p>}
         </div>
       </div>
     </div>
