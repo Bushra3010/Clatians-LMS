@@ -149,6 +149,9 @@ interface CoursesScreenProps {
   onOpenContent?: (key: ContentKey) => void;
   onOpenTests?: () => void;
   onOpenStudy?: () => void;
+  /** After a purchase: open the course in My Learning. */
+  onOpenCourseLearning?: (courseId: string) => void;
+  onViewOrder?: () => void;
   initialTab?: "all" | "mine";
   /** The course the student picked to head their home screen. */
   selectedCourseId?: string | null;
@@ -162,7 +165,7 @@ type View =
   | { name: "checkout"; target: Target }
   | { name: "success"; target: Target; invoiceNo: string; amount: number };
 
-export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, initialTab = "all", selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
+export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, onOpenCourseLearning, onViewOrder, initialTab = "all", selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
   const [choosing, setChoosing] = useState(false);
   const mine = useMemo(() => catalog.filter((c) => c.enrolled || c.batches.some((b) => b.enrolled)), [catalog]);
   // Only offer the modes that actually have courses behind them.
@@ -229,33 +232,45 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
   // ── SUCCESS ──
   if (view.name === "success") {
+    const t = view.target;
+    const instructor = t.kind === "batch" ? t.batch.faculty[0] : undefined;
+    const sub = [t.kind === "batch" ? t.batch.name : "", t.kind === "batch" ? t.batch.duration : t.course.duration].filter(Boolean).join(" • ");
+    const confetti = ["#F5A623", "#0B5CFF", "#2F9E76", "#E03131", "#7C3AED", "#0891B2"];
     return (
-      <div style={{ background: "var(--app-bg)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 72, marginBottom: 12 }}>🎉</div>
-        <div style={{ background: gradient, borderRadius: 24, padding: "26px 22px", width: "100%", maxWidth: 340, marginBottom: 20, boxShadow: "0 12px 36px rgba(61,36,17,0.35)" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 14px" }}>✅</div>
-          <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 900, color: "white" }}>You&apos;re enrolled!</p>
-          <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(255,255,255,0.75)" }}>{targetName(view.target)}</p>
-          <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 16, padding: "12px 16px" }}>
-            {[
-              { label: "Amount paid", value: view.amount > 0 ? inr(view.amount) : "FREE" },
-              { label: "Invoice", value: view.invoiceNo || "—" },
-            ].map((r, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: i === 0 ? 8 : 0, paddingBottom: i === 0 ? 8 : 0, borderBottom: i === 0 ? "1px solid rgba(255,255,255,0.12)" : "none" }}>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{r.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "white" }}>{r.value}</span>
-              </div>
-            ))}
+      <div style={{ background: "white", minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center", padding: "36px 20px 28px", textAlign: "center" }}>
+        <div style={{ position: "relative", width: 180, height: 150, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {confetti.flatMap((c, i) => [0, 1].map((j) => {
+            const a = ((i * 2 + j) / 12) * Math.PI * 2;
+            return <span key={`${i}-${j}`} style={{ position: "absolute", left: 90 + Math.cos(a) * 78 - 4, top: 75 + Math.sin(a) * 66 - 2, width: 9, height: 4, borderRadius: 2, background: c, transform: `rotate(${(a * 180) / Math.PI + 45}deg)` }} />;
+          }))}
+          <div style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#34C759,#1E9E4A)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(30,158,74,0.35)" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
         </div>
-        <p style={{ margin: "0 0 18px", fontSize: 12.5, color: "var(--text-muted)", maxWidth: 300 }}>
-          Your batch&apos;s subjects, topic videos, notes, tests and live classes are now unlocked in the Study tab.
-        </p>
-        <button onClick={() => { show({ name: "list" }); setMode("mine"); }} style={{
-          background: gradient, color: "white", border: "none", borderRadius: 16,
-          padding: "15px 28px", fontSize: 15, fontWeight: 800, cursor: "pointer",
-          boxShadow: "0 6px 16px rgba(61,36,17,0.35)",
-        }}>Go to My Courses</button>
+        <h2 style={{ margin: "10px 0 6px", fontSize: 24, fontWeight: 900, color: "var(--ink-primary)" }}>Payment Successful!</h2>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>Welcome to your learning journey 🎉</p>
+        <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--text-muted)" }}>You now have access to the course.</p>
+
+        <div style={{ width: "100%", maxWidth: 360, marginTop: 22, background: "white", border: "1px solid var(--line)", borderRadius: 16, padding: 12, display: "flex", gap: 12, alignItems: "center", textAlign: "left", boxShadow: "0 2px 10px rgba(15,23,41,0.06)" }}>
+          <div style={{ width: 72, height: 72, borderRadius: 12, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>{t.course.icon}</div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{t.course.name}</p>
+            {instructor && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>Instructor: {instructor}</p>}
+            {sub && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{sub}</p>}
+            <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--text-disabled)" }}>{view.amount > 0 ? inr(view.amount) : "Free"}{view.invoiceNo ? ` · ${view.invoiceNo}` : ""}</p>
+          </div>
+        </div>
+
+        <div style={{ width: "100%", maxWidth: 360, marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={() => { show({ name: "list" }); if (onOpenCourseLearning) onOpenCourseLearning(t.course.id); else onOpenStudy?.(); }} style={{ ...primaryBtn, width: "100%", padding: "15px", fontSize: 15 }}>
+            Go to My Learning →
+          </button>
+          {onViewOrder && (
+            <button onClick={() => { show({ name: "list" }); onViewOrder(); }} style={{ width: "100%", background: "var(--blue-tint)", color: "var(--blue)", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+              View Order Details
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -294,7 +309,13 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
             <p style={{ margin: "5px 0 0", fontSize: 12.5, color: "rgba(255,255,255,0.8)" }}>{c.icon} {c.name}{b.batchCode ? ` · ${b.batchCode}` : ""}</p>
           </div>
 
-          {/* Fee */}
+          {/* Fee — or, once bought, a note that it's theirs */}
+          {b.enrolled ? (
+            <div style={{ ...cardStyle, background: "var(--success)", border: "1px solid var(--success-border)", boxShadow: "none" }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--success-text)" }}>✓ You&apos;re enrolled in this batch</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--success-text)" }}>All chapters, topics, notes and live classes are unlocked in My Learning.</p>
+            </div>
+          ) : (
           <div style={cardStyle}>
             <p style={cardTitle}>Batch fee</p>
             <Price b={b} size={26} />
@@ -315,6 +336,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
               </div>
             )}
           </div>
+          )}
 
           {/* Key facts */}
           {facts.length > 0 && (
@@ -477,9 +499,11 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
         {/* Sticky buy bar — the batch's price lives here */}
         <div style={stickyBar}>
-          <Price b={b} size={20} />
+          {b.enrolled
+            ? <span style={{ fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}>✓ Enrolled</span>
+            : <Price b={b} size={20} />}
           {b.enrolled ? (
-            <button onClick={() => onOpenStudy?.()} style={{ ...primaryBtn, background: "var(--success)", color: "var(--success-text)", boxShadow: "none", border: "1px solid var(--success-border)" }}>Start learning →</button>
+            <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(c.id) : onOpenStudy?.()} style={primaryBtn}>Start learning →</button>
           ) : (
             <button onClick={() => startCheckout({ kind: "batch", course: c, batch: b })} disabled={full} style={{ ...primaryBtn, opacity: full ? 0.5 : 1, cursor: full ? "not-allowed" : "pointer" }}>
               {full ? "Batch full" : b.fee === 0 ? "Join free" : "Enroll now →"}
@@ -493,7 +517,10 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   // ── COURSE — pick a batch ──
   if (view.name === "course") {
     const c = fresh(view.course);
-    const batches = liveBatches(c);
+    const myBatches = c.batches.filter((b) => b.enrolled);
+    // Once the course is bought it's theirs: show only their batch, never prices.
+    const owned = c.enrolled || myBatches.length > 0;
+    const batches = owned ? myBatches : liveBatches(c);
     const facts = [
       { label: "Duration", value: c.duration },
       { label: "Batch size", value: c.batchSize },
@@ -555,23 +582,20 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
           </div>
 
           <p style={{ margin: "20px 2px 10px", fontSize: 12, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {batches.length > 0 ? `Choose your batch (${batches.length})` : "Batches"}
+            {owned
+              ? (myBatches.length > 1 ? `Your batches (${myBatches.length})` : "Your batch")
+              : batches.length > 0 ? `Choose your batch (${batches.length})` : "Batches"}
           </p>
 
+          {/* Students always buy a batch — a course has no price of its own. */}
           {batches.length === 0 && (
             <div style={{ ...cardStyle, marginTop: 0 }}>
-              <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.6 }}>No batch is scheduled for this course right now.{c.price > 0 || c.enrolled ? " You can still take the full course:" : " Contact us for the next batch."}</p>
-              {(c.price > 0 || c.enrolled) && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-                  <div>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: "var(--ink-primary)" }}>{inr(c.price)}</span>
-                    {c.emi && <p style={{ margin: 0, fontSize: 11, color: "var(--text-disabled)" }}>or {c.emi}</p>}
-                  </div>
-                  {c.enrolled
-                    ? <button onClick={() => onOpenStudy?.()} style={{ ...primaryBtn, background: "var(--success)", color: "var(--success-text)", boxShadow: "none" }}>Start learning →</button>
-                    : <button onClick={() => startCheckout({ kind: "course", course: c })} style={primaryBtn}>Enroll now →</button>}
-                </div>
-              )}
+              <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                {c.enrolled ? "You have access to this course." : "No batch is open for this course right now. Ask us when the next batch starts."}
+              </p>
+              {c.enrolled
+                ? <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(c.id) : onOpenStudy?.()} style={{ ...primaryBtn, marginTop: 12 }}>Start learning →</button>
+                : <a href="/enquiry" style={{ ...primaryBtn, display: "inline-block", marginTop: 12, textDecoration: "none" }}>Enquire about next batch →</a>}
             </div>
           )}
 
@@ -593,6 +617,12 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
                       <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.78)" }}>📅 {[b.startDate, b.endDate].filter(Boolean).join(" · ")}</p>
                     )}
                   </div>
+                  {b.enrolled ? (
+                    <div style={{ padding: "13px 16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--success-text)" }}>✓ You have full access</span>
+                      <span style={{ ...primaryBtn, padding: "10px 16px", fontSize: 13 }}>Open →</span>
+                    </div>
+                  ) : (
                   <div style={{ padding: "13px 16px 15px" }}>
                     {left !== null && (
                       <p style={{ margin: "0 0 10px", fontSize: 11.5, fontWeight: 700, color: left <= 5 ? "var(--error-text)" : "var(--success-text)" }}>
@@ -602,13 +632,15 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
                     {b.offer && <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "var(--success-text)" }}>🎁 {b.offer}</p>}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--gold-100)", paddingTop: 12 }}>
                       <Price b={b} />
-                      <span style={{ ...primaryBtn, padding: "10px 16px", fontSize: 13 }}>{b.enrolled ? "Open →" : "View details →"}</span>
+                      <span style={{ ...primaryBtn, padding: "10px 16px", fontSize: 13 }}>View details →</span>
                     </div>
                   </div>
+                  )}
                 </div>
               );
             })}
           </div>
+
         </div>
       </div>
     );

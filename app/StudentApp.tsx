@@ -35,6 +35,7 @@ import CertificatePage, { type CertificateItem } from "./components/detail/Certi
 import HelpSupportPage from "./components/detail/HelpSupportPage";
 import SettingsPage from "./components/detail/SettingsPage";
 import TopicPage from "./components/detail/TopicPage";
+import LearningFlow, { type LearningNav, type LearningProgress } from "./components/learning/LearningFlow";
 
 import { logoutAction, selectCourseAction, type NotifyPrefs } from "./lib/session-actions";
 import { markNotificationsReadAction } from "./lib/notification-actions";
@@ -76,7 +77,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | null;
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -109,9 +110,11 @@ interface StudentAppProps {
   syllabus: SyllabusSubject[];
   /** The course heading the home screen — null until one is chosen or bought. */
   currentCourse: { id: string; name: string; purchased: boolean } | null;
+  /** My Learning progress per enrolled course. */
+  learning: LearningProgress[];
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, currentCourse }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, currentCourse, learning }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
@@ -124,6 +127,16 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   // The Study tab's open subject/chapter, kept here so a student returning
   // from a topic lands back on the same chapter.
   const [syllabusNav, setSyllabusNav] = useState<{ subjectId: string | null; chapterId: string | null }>({ subjectId: null, chapterId: null });
+  // My Learning's course → batch → chapter position, kept here (like
+  // syllabusNav) so closing a topic returns to the chapter it came from.
+  const [learningNav, setLearningNav] = useState<LearningNav>({ view: "list" });
+  const learningRef = useRef<LearningNav>(learningNav);
+  const showLearning = (n: LearningNav) => { learningRef.current = n; setLearningNav(n); };
+  const navLearning = (next: LearningNav) => {
+    const prev = learningRef.current;
+    pushBack(() => showLearning(prev));
+    showLearning(next);
+  };
   // Where a test was opened from, so Exit / Back return there instead of the test list.
   const [testOrigin, setTestOrigin] = useState<"tests" | "topic">("tests");
 
@@ -479,6 +492,28 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                 await reloadTopic(topic.id);
                 router.refresh();
               }}
+              onOpenTopic={handleOpenTopic}
+              onJoinClass={handleJoinClass}
+              onWatchRecording={handleWatchRecording}
+            />
+          )}
+          {detailPage === "study-library" && (
+            <StudyScreen
+              videos={content.video}
+              notes={content.notes}
+              currentAffairs={content["current-affairs"]}
+              tests={tests}
+              progress={progress}
+              onStartTest={handleStartTest}
+              upcomingClasses={upcomingClasses}
+              pastClasses={pastClasses}
+              onJoinClass={handleJoinClass}
+              onWatchRecording={handleWatchRecording}
+              subjects={syllabus}
+              onOpenTopic={handleOpenTopic}
+              onBrowseCourses={() => goScreen("courses")}
+              syllabusNav={syllabusNav}
+              onSyllabusNav={setSyllabusNav}
             />
           )}
           {detailPage === "help" && <HelpSupportPage onBack={closeDetail} />}
@@ -513,7 +548,14 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onEnrollBatch={handleEnrollBatch}
               onOpenContent={(key) => openDetail(key)}
               onOpenTests={() => openDetail("tests")}
-              onOpenStudy={() => goScreen("study")}
+              onOpenStudy={() => { showLearning({ view: "list" }); goScreen("study"); }}
+              onOpenCourseLearning={(courseId) => {
+                // Land on the course, with My Learning's list one Back away.
+                showLearning({ view: "list" });
+                goScreen("study");
+                navLearning({ view: "course", courseId });
+              }}
+              onViewOrder={() => openDetail("payments")}
               selectedCourseId={currentCourse?.id ?? null}
               onSelectCourse={async (id) => {
                 await selectCourseAction(id);
@@ -523,22 +565,15 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             />
           )}
           {!detailPage && activeScreen === "study"   && (
-            <StudyScreen
-              videos={content.video}
-              notes={content.notes}
-              currentAffairs={content["current-affairs"]}
-              tests={tests}
-              progress={progress}
-              onStartTest={handleStartTest}
-              upcomingClasses={upcomingClasses}
-              pastClasses={pastClasses}
-              onJoinClass={handleJoinClass}
-              onWatchRecording={handleWatchRecording}
-              subjects={syllabus}
+            <LearningFlow
+              catalog={catalog}
+              progress={learning}
+              nav={learningNav}
+              onNav={navLearning}
+              onBack={back}
               onOpenTopic={handleOpenTopic}
-              onBrowseCourses={() => goScreen("courses")}
-              syllabusNav={syllabusNav}
-              onSyllabusNav={setSyllabusNav}
+              onBrowseCourses={() => { setCoursesTab("all"); goScreen("courses"); }}
+              onOpenLibrary={() => openDetail("study-library")}
             />
           )}
           {!detailPage && activeScreen === "doubts"  && (

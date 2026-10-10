@@ -63,7 +63,7 @@ const TestsIcon = ({ c }: { c: string }) => (
 const tabs: { id: Tab; label: string; Icon: ({ c }: { c: string }) => React.ReactElement }[] = [
   { id: "home", label: "Home", Icon: HomeIcon },
   { id: "courses", label: "Courses", Icon: CoursesIcon },
-  { id: "study", label: "Study", Icon: StudyIcon },
+  { id: "study", label: "My Learning", Icon: StudyIcon },
   { id: "doubts", label: "Doubts", Icon: DoubtsIcon },
   { id: "tests", label: "Tests", Icon: TestsIcon },
 ];

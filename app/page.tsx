@@ -15,6 +15,7 @@ import type { SavedItem } from "./components/detail/SavedItemsPage";
 import { computeLeaderboard, computeStreak } from "./lib/engagement";
 import type { StudentResources } from "./lib/resource-types";
 import type { SyllabusSubject } from "./components/StudyScreen";
+import type { LearningProgress } from "./components/learning/LearningFlow";
 import { ensureCatalog } from "./lib/catalog/sync";
 
 export const dynamic = "force-dynamic";
@@ -112,7 +113,7 @@ export default async function Home() {
 
   const [
     upcomingRows, pastRows, statRow, contentQuery, doubtMsgQuery, doubtRows, courseContentQuery, batchQuery, courseRows, hierarchyQuery, paperRows, enrolledCourseRows, attemptRows, practiceRow, savedQuery, resourceQuery, notificationRows, certQuery, prefsQuery, openSlotRows, bookingRows, taskRows, noteRows, creditQuery, referralTotalRow, referralEnrolledRow, paymentRows,
-    selectedCourseRow, leaderboardRows, streakDays,
+    selectedCourseRow, learningRows, leaderboardRows, streakDays,
   ] = await Promise.all([
     db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id),
     db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id),
@@ -283,6 +284,17 @@ export default async function Home() {
       `SELECT c.id, c.name FROM users u JOIN courses c ON c.id = u.selected_course_id
        WHERE u.id = ? AND c.status = 'active'`
     ).get(user.id),
+    db.prepare(
+      // My Learning: topic count, topics finished and total lecture time per enrolled course.
+      `SELECT m.course_id, COUNT(l.id) AS lessons, COALESCE(SUM(l.duration_min), 0) AS minutes,
+              COUNT(lp.lesson_id) FILTER (WHERE lp.completed = 1) AS done
+       FROM modules m
+       JOIN chapters ch ON ch.module_id = m.id
+       JOIN lessons l ON l.chapter_id = ch.id
+       LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
+       WHERE m.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+       GROUP BY m.course_id`
+    ).all(user.id, user.id),
     computeLeaderboard(),
     computeStreak(user.id),
   ]);
@@ -592,6 +604,10 @@ export default async function Home() {
     credit: creditRow?.referral_credit ?? 0,
   };
 
+  // ── My Learning progress, keyed by course ──
+  const learning: LearningProgress[] = (learningRows as { course_id: string; lessons: number; minutes: number; done: number }[])
+    .map((r) => ({ courseId: r.course_id, lessons: r.lessons, done: r.done, minutes: r.minutes }));
+
   // ── Payment history (student's own invoices) ──
   const myPayments = (paymentRows as { invoice_no: string; amount: number; method: string; status: string; created_at: string; course: string | null }[])
     .map((p) => ({ invoiceNo: p.invoice_no, amount: p.amount, method: p.method, status: p.status, createdAt: p.created_at, course: p.course }));
@@ -624,6 +640,7 @@ export default async function Home() {
       certificates={certificates}
       syllabus={syllabus}
       currentCourse={currentCourse}
+      learning={learning}
     />
   );
 }
