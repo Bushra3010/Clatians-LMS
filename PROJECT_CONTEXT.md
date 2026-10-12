@@ -150,7 +150,6 @@ No known compile/type errors — `tsc --noEmit` passes clean as of last commit.
 | Vercel Blob | File storage | Optional; token auto-added when a Blob store exists. |
 | Vercel | Hosting/CI | Project `clatians-lms`; auto-deploy on push to `main`. |
 | GitHub | Repo | `github.com/Bushra3010/Clatians-LMS` (**verify owner**). |
-| Netlify | `netlify.toml` present | **Needs verification** — Vercel is the active target per this project's history. |
 
 ---
 
