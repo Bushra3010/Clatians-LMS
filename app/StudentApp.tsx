@@ -549,11 +549,13 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenContent={(key) => openDetail(key)}
               onOpenTests={() => openDetail("tests")}
               onOpenStudy={() => { showLearning({ view: "list" }); goScreen("study"); }}
-              onOpenCourseLearning={(courseId) => {
-                // Land on the course, with My Learning's list one Back away.
+              onOpenCourseLearning={(courseId, batchId) => {
+                // Land on the purchased batch, with My Learning's list one Back away.
+                const course = catalog.find((c) => c.id === courseId);
+                const bid = batchId ?? course?.batches.find((b) => b.enrolled)?.id ?? null;
                 showLearning({ view: "list" });
                 goScreen("study");
-                navLearning({ view: "course", courseId });
+                navLearning({ view: "batch", courseId, batchId: bid });
               }}
               onViewOrder={() => openDetail("payments")}
               selectedCourseId={currentCourse?.id ?? null}
