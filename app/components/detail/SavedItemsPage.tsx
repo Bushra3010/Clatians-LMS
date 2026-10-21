@@ -1,11 +1,15 @@
 "use client";
 
+import { AppIcon, type IconName } from "../AppIcon";
+
 export type SavedItem = { kind: string; key: string; title: string; subtitle: string };
 
-const kindMeta: Record<string, { emoji: string; label: string }> = {
-  tip: { emoji: "💡", label: "Tip" },
-  vocab: { emoji: "📖", label: "Word" },
-  content: { emoji: "📚", label: "Material" },
+const kindMeta: Record<string, { icon: IconName; label: string }> = {
+  tip: { icon: "sparkle", label: "Tip" },
+  vocab: { icon: "book", label: "Word" },
+  content: { icon: "library", label: "Material" },
+  batch: { icon: "graduation", label: "Batch" },
+  topic: { icon: "play", label: "Topic" },
 };
 
 export default function SavedItemsPage({
@@ -31,19 +35,19 @@ export default function SavedItemsPage({
 
         {items.length === 0 && (
           <div style={{ background: "white", borderRadius: 16, padding: "26px 18px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>🔖</div>
+            <span style={{ width: 56, height: 56, borderRadius: 18, background: "var(--blue-tint)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}><AppIcon name="heart" size={26} color="var(--blue)" /></span>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>Nothing saved yet</p>
-            <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)" }}>Tap “Save to My Notes” on any tip to keep it here.</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)" }}>Tap the heart on a batch or topic, or “Save to My Notes” on a tip, to keep it here.</p>
           </div>
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((it) => {
-            const m = kindMeta[it.kind] ?? { emoji: "🔖", label: "Saved" };
+            const m = kindMeta[it.kind] ?? { icon: "heart" as IconName, label: "Saved" };
             return (
               <div key={`${it.kind}:${it.key}`} style={{ background: "white", borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: 8, padding: "0 8px 0 0" }}>
                 <button onClick={() => onOpen(it.kind, it.key)} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "13px 6px 13px 14px" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--info-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{m.emoji}</div>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--info-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={m.icon} size={19} color="var(--blue)" /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{it.title}</p>
                     {it.subtitle && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-disabled)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label} · {it.subtitle}</p>}

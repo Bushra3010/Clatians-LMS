@@ -342,6 +342,8 @@ const SCHEMA = `
   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS notes_url TEXT NOT NULL DEFAULT '';
   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS test_id TEXT REFERENCES tests(id) ON DELETE SET NULL;
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL;
+  -- Optional solution video a teacher attaches when answering (the topic's "Doubt solving videos").
+  ALTER TABLE doubts ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';
   CREATE TABLE IF NOT EXISTS lesson_progress (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,

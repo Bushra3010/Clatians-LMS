@@ -470,7 +470,17 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onBack={closeDetail}
               items={saved}
               onRemove={(kind, key) => handleToggleSave(kind, key)}
-              onOpen={(kind) => openDetail(kind === "vocab" ? "clat-tools" : "tips")}
+              onOpen={(kind, key) => {
+                if (kind === "topic") { handleOpenTopic(key); return; }
+                if (kind === "batch") {
+                  const [courseId, batchId] = key.split(":");
+                  showLearning({ view: "list" });
+                  goScreen("study");
+                  navLearning({ view: "batch", courseId, batchId: batchId || null });
+                  return;
+                }
+                openDetail(kind === "vocab" ? "clat-tools" : "tips");
+              }}
             />
           )}
           {detailPage === "certificates" && (
@@ -480,6 +490,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             <TopicPage
               key={topic.id}
               topic={topic}
+              saved={saved.some((it) => it.kind === "topic" && it.key === topic.id)}
+              onToggleSave={() => handleToggleSave("topic", topic.id, topic.title, `${topic.chapter} · ${topic.subject}`)}
               onBack={closeDetail}
               onStartTest={(testId) => handleStartTest(testId, "topic")}
               onAskDoubt={async (body) => {
@@ -550,12 +562,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTests={() => openDetail("tests")}
               onOpenStudy={() => { showLearning({ view: "list" }); goScreen("study"); }}
               onOpenCourseLearning={(courseId, batchId) => {
-                // Land on the purchased batch, with My Learning's list one Back away.
-                const course = catalog.find((c) => c.id === courseId);
-                const bid = batchId ?? course?.batches.find((b) => b.enrolled)?.id ?? null;
+                // Land on their batch, with My Learning's list one Back away.
                 showLearning({ view: "list" });
                 goScreen("study");
-                navLearning({ view: "batch", courseId, batchId: bid });
+                navLearning({ view: "batch", courseId, batchId: batchId ?? null });
               }}
               onViewOrder={() => openDetail("payments")}
               selectedCourseId={currentCourse?.id ?? null}
@@ -576,6 +586,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTopic={handleOpenTopic}
               onBrowseCourses={() => { setCoursesTab("all"); goScreen("courses"); }}
               onOpenLibrary={() => openDetail("study-library")}
+              onOpenNotifications={() => openDetail("notifications")}
+              unreadCount={unreadCount}
+              savedBatchKeys={saved.filter((it) => it.kind === "batch").map((it) => it.key)}
+              onToggleSaveBatch={(key, title, subtitle) => handleToggleSave("batch", key, title, subtitle)}
             />
           )}
           {!detailPage && activeScreen === "doubts"  && (

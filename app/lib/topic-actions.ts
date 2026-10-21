@@ -10,7 +10,9 @@ import type { LiveClassItem } from "../components/detail/LiveClassesPage";
  * One syllabus topic (a `lessons` row) as the student sees it: the video,
  * the notes, the topic's practice test and the student's own doubts on it.
  */
-export type TopicDoubt = { id: string; body: string; status: string; answer: string; teacher: string | null; createdAt: string };
+export type TopicDoubt = { id: string; body: string; status: string; answer: string; teacher: string | null; createdAt: string; videoUrl: string };
+/** An answered doubt on this topic that came with a solution video (any student's, shown without their name). */
+export type SolutionVideo = { id: string; question: string; videoUrl: string; teacher: string | null; createdAt: string };
 
 export type TopicDetail = {
   id: string;
@@ -31,6 +33,8 @@ export type TopicDetail = {
   /** The course's next live class (or the one live now) and recent recordings. */
   nextClass: LiveClassItem | null;
   pastClasses: LiveClassItem[];
+  /** "Doubt solving videos" for this topic. */
+  solutionVideos: SolutionVideo[];
 };
 
 export type TopicResult = { ok: true; topic: TopicDetail } | { ok: false; error: string; /** Paid topic, student not enrolled. */ locked?: boolean };
@@ -101,10 +105,19 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
   ).get(user.id, t.id) as { completed: number } | undefined;
 
   const doubts = await db.prepare(
-    `SELECT d.id, d.body, d.status, d.answer, d.created_at, u.name AS teacher
+    `SELECT d.id, d.body, d.status, d.answer, d.video_url, d.created_at, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? AND d.lesson_id = ? ORDER BY d.created_at DESC`
-  ).all(user.id, t.id) as { id: string; body: string; status: string; answer: string; created_at: string; teacher: string | null }[];
+  ).all(user.id, t.id) as { id: string; body: string; status: string; answer: string; video_url: string; created_at: string; teacher: string | null }[];
+
+  const solutionVideos = access.enrolled
+    ? await db.prepare(
+        `SELECT d.id, d.body, d.video_url, d.created_at, u.name AS teacher
+         FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
+         WHERE d.lesson_id = ? AND d.status = 'answered' AND d.video_url <> ''
+         ORDER BY d.created_at DESC LIMIT 10`
+      ).all(t.id) as { id: string; body: string; video_url: string; created_at: string; teacher: string | null }[]
+    : [];
 
   const classSelect = (where: string, order: string) =>
     `SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status, lc.join_url,
@@ -134,7 +147,8 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
         ? { id: test.id, title: test.title, questionCount: test.qcount, durationMin: test.duration_min, myAttempts: test.my_attempts, bestScore: test.best_score, bestTotal: test.best_total }
         : null,
       completed: progress?.completed === 1,
-      doubts: doubts.map((d) => ({ id: d.id, body: d.body, status: d.status, answer: d.answer, teacher: d.teacher, createdAt: d.created_at })),
+      doubts: doubts.map((d) => ({ id: d.id, body: d.body, status: d.status, answer: d.answer, teacher: d.teacher, createdAt: d.created_at, videoUrl: d.video_url || "" })),
+      solutionVideos: solutionVideos.map((v) => ({ id: v.id, question: v.body, videoUrl: v.video_url, teacher: v.teacher, createdAt: v.created_at })),
       courseId: t.course_id,
       chapterId: t.chapter_id,
       siblings: access.siblings,

@@ -264,8 +264,8 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
         </div>
 
         <div style={{ width: "100%", maxWidth: 360, marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={() => { show({ name: "list" }); if (onOpenCourseLearning) onOpenCourseLearning(t.course.id, t.kind === "batch" ? t.batch.id : undefined); else onOpenStudy?.(); }} style={{ ...primaryBtn, width: "100%", padding: "15px", fontSize: 15 }}>
-            Go to My Learning
+          <button onClick={() => { show({ name: "list" }); onOpenStudy?.(); }} style={{ ...primaryBtn, width: "100%", padding: "15px", fontSize: 15 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>Go to My Learning<AppIcon name="arrowRight" size={17} /></span>
           </button>
           {onViewOrder && (
             <button onClick={() => { show({ name: "list" }); onViewOrder(); }} style={{ width: "100%", background: "var(--blue-tint)", color: "var(--blue)", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>

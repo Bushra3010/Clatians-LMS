@@ -30,13 +30,16 @@ export async function answerDoubtAction(formData: FormData) {
   const user = await requireRole(["teacher", "admin"]);
   const doubtId = String(formData.get("doubtId") ?? "");
   const answer = String(formData.get("answer") ?? "").trim();
+  // Optional solution video; only web links are kept.
+  const rawVideo = String(formData.get("videoUrl") ?? "").trim();
+  const videoUrl = /^https?:\/\/\S+$/i.test(rawVideo) ? rawVideo : "";
   if (!doubtId || !answer) return;
 
   const doubt = await db.prepare("SELECT student_id, subject FROM doubts WHERE id = ?").get(doubtId) as { student_id: string; subject: string } | undefined;
 
   await db.prepare(
-    "UPDATE doubts SET answer = ?, status = 'answered', answered_by = ? WHERE id = ?"
-  ).run(answer, user.id, doubtId);
+    "UPDATE doubts SET answer = ?, video_url = ?, status = 'answered', answered_by = ? WHERE id = ?"
+  ).run(answer, videoUrl, user.id, doubtId);
 
   if (doubt) {
     await notify(doubt.student_id, "doubt", "Your doubt was answered", `${user.name} replied to your ${doubt.subject || "doubt"}.`);
