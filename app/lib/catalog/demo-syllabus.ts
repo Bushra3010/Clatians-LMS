@@ -325,7 +325,156 @@ Traps
       },
     ],
   },
+  {
+    slug: "current-affairs",
+    chapters: [
+      {
+        title: "Current Affairs & GK",
+        topics: [
+          {
+            title: "How CLAT Tests Current Affairs",
+            notes: `CLAT's current affairs section is a short passage (news report, editorial or government notice) followed by 4-5 questions — it tests whether you understood and remember the event, not whether you can recall a date in isolation.
+
+What to focus on
+• The "what happened" — the core fact of the event.
+• The "who" — which court, ministry, company or country it involves.
+• The "why it matters" — the legal, constitutional or economic angle, since CLAT leans legal.
+
+What not to chase
+Obscure one-line facts that appear in no other source. If three different weekly digests all cover a story, it is CLAT-relevant; if only one obscure source mentions it, it probably is not.`,
+          },
+          {
+            title: "Building a Daily Current Affairs Habit",
+            notes: `Current affairs is a habit subject, not a cramming subject — a year's worth of headlines cannot be memorised in the last week.
+
+A simple routine
+1. Read one trusted daily digest for 15-20 minutes, every day, at the same time.
+2. Note Supreme Court and High Court judgments separately — CLAT weights legal current affairs heavily.
+3. Revise the week's notes every Sunday in 10 minutes, out loud or by writing one line per story.
+4. Re-read the last three months' notes once a month, so nothing from earlier in the year is forgotten.
+
+This batch's monthly current affairs magazine and the Current Affairs tool under Free Resources follow the same routine — use them as your daily digest.`,
+          },
+        ],
+      },
+    ],
+  },
 ];
+
+// ── Demo depth (v3) ───────────────────────────────────────────
+// More chapters and topics per subject, with durations, so every subject in a
+// batch has a real chapter list to open. Merged into SYLLABUS by title: a
+// chapter that already exists gets the extra topics appended.
+
+/** Minutes per topic, for the starter topics above that had none. */
+const DURATIONS: Record<string, number> = {
+  "Negligence": 22, "Nuisance": 18, "Defamation": 20,
+  "Free Consent": 20, "Minor's Agreement": 16, "Right of Private Defence": 22,
+  "Finding the Main Idea": 18, "Tone and Inference": 20,
+  "Assumptions": 18, "Strengthen and Weaken": 20,
+  "How CLAT Tests Current Affairs": 15, "Building a Daily Current Affairs Habit": 12,
+};
+
+const EXTRA: SeedSubject[] = [
+  {
+    slug: "english",
+    chapters: [
+      { title: "Reading Comprehension", topics: [
+        { title: "Author's Purpose", durationMin: 15, notes: `Ask why the author wrote the passage: to inform, to argue, to criticise or to describe.\n\nClues\n• Opinion words (should, must, unfortunately) point to an argument.\n• Neutral, data-heavy writing points to informing.\n\nCLAT options often swap "criticise" for "describe" — check the tone before you pick.` },
+      ] },
+      { title: "Vocabulary in Context", topics: [
+        { title: "Using Context Clues", durationMin: 15, notes: `You rarely need the dictionary meaning — you need the meaning in this sentence.\n\nLook at\n• Definitions or examples right after the word.\n• Contrast words (but, however) that flip the meaning.\n• The overall tone of the paragraph.` },
+        { title: "Commonly Confused Words", durationMin: 12, notes: `Pairs CLAT likes to test:\n• affect (verb) / effect (noun)\n• principle (rule) / principal (main, or head of a school)\n• complement (complete) / compliment (praise)\n• stationary (not moving) / stationery (paper, pens)\n\nSay the sentence with each option — the right one usually sounds natural.` },
+        { title: "Idioms and Phrases", durationMin: 14, notes: `Idioms mean something different from their words.\n\nExamples\n• "Bite the bullet" — face something unpleasant bravely.\n• "At the eleventh hour" — at the last moment.\n• "Turn a blind eye" — deliberately ignore.\n\nIn a passage, read the sentences around the idiom; the context usually gives the meaning away.` },
+      ] },
+      { title: "Grammar for CLAT", topics: [
+        { title: "Subject-Verb Agreement", durationMin: 16, notes: `A singular subject takes a singular verb; a plural subject takes a plural verb.\n\nTraps\n• Words between subject and verb don't change it: "The list of items is long."\n• "Each", "every", "either", "neither" are singular.\n• "The number of" is singular; "a number of" is plural.` },
+        { title: "Tenses and Sequence", durationMin: 18, notes: `Keep tenses consistent unless the time actually changes.\n\n• Past perfect (had done) shows the earlier of two past actions.\n• After "if" in a future condition, use present: "If it rains, we will stay."\n• Reported speech usually shifts one tense back.` },
+        { title: "Sentence Correction Strategy", durationMin: 20, notes: `1. Read the whole sentence and find the subject and main verb.\n2. Check agreement, tense, pronoun reference and parallelism.\n3. Eliminate options that change the meaning.\n4. Between two correct options, prefer the shorter, clearer one.` },
+      ] },
+    ],
+  },
+  {
+    slug: "legal-reasoning",
+    chapters: [
+      { title: "Law of Contract", topics: [
+        { title: "Consideration", durationMin: 18, notes: `Consideration is "something in return" — a promise, act or forbearance given for the other side's promise.\n\nKey points\n• It must move at the desire of the promisor.\n• It need not be adequate, only real.\n• Past consideration is valid in Indian law (Section 2(d), Indian Contract Act).` },
+      ] },
+      { title: "Criminal Law", topics: [
+        { title: "General Exceptions", durationMin: 20, notes: `The IPC's general exceptions remove criminal liability in set situations.\n\nCommon ones\n• Mistake of fact in good faith.\n• Accident in doing a lawful act.\n• Acts of a child below seven.\n• Insanity that prevents knowing the nature of the act.\n\nIn a CLAT passage, apply only the exception the principle gives you.` },
+        { title: "Abetment", durationMin: 15, notes: `Abetment is helping or encouraging someone else to commit an offence.\n\nThree ways\n• Instigating the person.\n• Joining a conspiracy for it.\n• Intentionally aiding it.\n\nThe abettor can be liable even if the main offence is not completed.` },
+      ] },
+      { title: "Constitutional Law", topics: [
+        { title: "Fundamental Rights", durationMin: 25, notes: `Part III of the Constitution (Articles 12–35) guarantees fundamental rights against the State.\n\nThe six groups\n• Equality (14–18) • Freedom (19–22) • Against exploitation (23–24)\n• Religion (25–28) • Cultural and educational (29–30) • Constitutional remedies (32)\n\nArticle 32 lets a citizen go straight to the Supreme Court when these are violated.` },
+        { title: "Directive Principles", durationMin: 18, notes: `Part IV (Articles 36–51) lists goals the State should follow when making laws — for example equal pay, free legal aid and a uniform civil code.\n\nThey are not enforceable in court, but courts read them together with fundamental rights to interpret laws.` },
+        { title: "Writs", durationMin: 20, notes: `Courts issue writs to enforce rights.\n\n• Habeas corpus — produce the detained person.\n• Mandamus — perform a public duty.\n• Prohibition — a lower court must stop a case beyond its power.\n• Certiorari — quash a lower court's order.\n• Quo warranto — by what authority a person holds a public office.` },
+      ] },
+    ],
+  },
+  {
+    slug: "logical-reasoning",
+    chapters: [
+      { title: "Critical Reasoning", topics: [
+        { title: "Inference", durationMin: 16, notes: `An inference must be true based only on the passage — not probably true, not true in real life.\n\nEliminate options that\n• Go beyond what is stated.\n• Use extreme words (always, never) the passage doesn't support.\n• Repeat a fact without drawing anything from it.` },
+      ] },
+      { title: "Analytical Reasoning", topics: [
+        { title: "Seating Arrangement", durationMin: 25, notes: `Draw the arrangement first; don't solve in your head.\n\n1. Fix the most definite clue (a named seat or an end position).\n2. Add clues that link to people already placed.\n3. Keep two diagrams when a clue allows two cases, and drop one when a later clue breaks it.` },
+        { title: "Blood Relations", durationMin: 18, notes: `Draw a family tree with symbols: + for male, – for female, a horizontal line for a married couple and a vertical line for parent to child.\n\nRead the relation from the last person named back to the first.` },
+        { title: "Direction Sense", durationMin: 15, notes: `Mark North at the top and track every turn on paper.\n\n• Right turn when facing North means facing East.\n• Shortest distance between start and end uses Pythagoras: √(x² + y²).` },
+      ] },
+      { title: "Syllogisms", topics: [
+        { title: "Basics of Syllogism", durationMin: 16, notes: `Two statements, one conclusion. Treat statements as true even if they sound absurd.\n\nUse Venn diagrams: draw the least overlap the statements allow. A conclusion follows only if it is true in every possible diagram.` },
+        { title: "Possibility Cases", durationMin: 18, notes: `"Some A can be B" is a possibility conclusion. It follows if at least one valid diagram allows it and no statement rules it out.\n\nDon't confuse "can be" (possible) with "is" (definite).` },
+      ] },
+    ],
+  },
+  {
+    slug: "current-affairs",
+    chapters: [
+      { title: "Legal Current Affairs", topics: [
+        { title: "Reading a Supreme Court Judgment", durationMin: 20, notes: `For CLAT, note four things about a judgment: the parties, the question of law, the decision and the reason.\n\nThe bench size matters too — a larger bench's ruling binds a smaller one.` },
+        { title: "Bills and Acts", durationMin: 15, notes: `A bill becomes an Act after both Houses pass it and the President gives assent.\n\nFor each new law, note: what it replaces, the key change it makes, and which ministry pushed it.` },
+      ] },
+      { title: "Static GK", topics: [
+        { title: "Indian Polity Basics", durationMin: 18, notes: `Know the structure: President, Parliament (Lok Sabha and Rajya Sabha), Council of Ministers, Supreme Court and High Courts, Election Commission and the CAG.\n\nCLAT asks who appoints whom and which article creates each office.` },
+        { title: "International Organisations", durationMin: 16, notes: `For each body, learn headquarters, head and purpose: UN (New York), WHO (Geneva), WTO (Geneva), IMF and World Bank (Washington DC), ICJ (The Hague).\n\nPair this with any recent news involving the body.` },
+      ] },
+    ],
+  },
+  {
+    slug: "quantitative",
+    chapters: [
+      { title: "Arithmetic Basics", topics: [
+        { title: "Percentages", durationMin: 20, notes: `x% of y = (x × y) / 100.\n\nShortcuts\n• Increase by r% then decrease by r% gives a net loss of r²/100 %.\n• Percentage change = (new − old) / old × 100.` },
+        { title: "Ratio and Proportion", durationMin: 18, notes: `A ratio a : b compares two quantities of the same kind.\n\nIf a total T is split in a : b, the shares are T × a/(a+b) and T × b/(a+b).\nFour numbers are in proportion when a/b = c/d.` },
+        { title: "Averages", durationMin: 15, notes: `Average = sum of values ÷ number of values.\n\nIf one value is replaced, the new average changes by (new value − old value) ÷ count.` },
+      ] },
+      { title: "Data Interpretation", topics: [
+        { title: "Reading Tables", durationMin: 18, notes: `Read the title, the units and the row and column labels before any question.\n\nApproximate first; calculate exactly only when two options are close.` },
+        { title: "Bar and Pie Charts", durationMin: 20, notes: `In a pie chart, each slice is a share of 360°: share % = angle ÷ 360 × 100.\n\nFor bar charts, compare heights first and read exact values only when the question needs them.` },
+      ] },
+    ],
+  },
+];
+
+/** SYLLABUS with the v3 depth merged in, in the exam's section order. */
+function fullSyllabus(): SeedSubject[] {
+  const order = ["english", "current-affairs", "legal-reasoning", "logical-reasoning", "quantitative"];
+  const merged: SeedSubject[] = SYLLABUS.map((s) => ({
+    slug: s.slug,
+    chapters: s.chapters.map((c) => ({ title: c.title, topics: c.topics.map((t) => ({ ...t, durationMin: t.durationMin ?? DURATIONS[t.title] })) })),
+  }));
+  for (const extra of EXTRA) {
+    let subj = merged.find((s) => s.slug === extra.slug);
+    if (!subj) { subj = { slug: extra.slug, chapters: [] }; merged.push(subj); }
+    for (const ch of extra.chapters) {
+      const existing = subj.chapters.find((c) => c.title === ch.title);
+      if (existing) existing.topics.push(...ch.topics);
+      else subj.chapters.push(ch);
+    }
+  }
+  return merged.sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug));
+}
 
 /** A paper keyed on its title, created once and reused on later runs. */
 async function ensureTest(title: string, description: string, type: string, durationMin: number, questions: SeedQuestion[], authorId: string | null): Promise<string> {
@@ -373,33 +522,46 @@ export async function seedDemoSyllabus(authorId: string | null): Promise<void> {
     "SELECT id FROM courses WHERE slug IN ('clat', 'clat-ailet', 'clat-online')"
   ).all() as { id: string }[];
 
+  // Find-or-create at every level (module → chapter → topic), so later runs
+  // only add what is missing and never duplicate or overwrite admins' work.
+  // The one update: a starter topic with no duration gets the demo duration.
+  const syllabus = fullSyllabus();
   for (const course of courses) {
-    // Only for courses nobody has built a syllabus for yet — admins' work wins.
-    const has = await db.prepare("SELECT 1 FROM modules WHERE course_id = ?").get(course.id);
-    if (has) continue;
-
-    for (let si = 0; si < SYLLABUS.length; si++) {
-      const subj = SYLLABUS[si];
+    for (let si = 0; si < syllabus.length; si++) {
+      const subj = syllabus[si];
       const subject = subjects.find((s) => s.slug === subj.slug);
       if (!subject) continue;
-      const moduleId = newId();
-      await db.prepare(
-        "INSERT INTO modules (id, course_id, subject_id, title, description, sort_order) VALUES (?, ?, ?, ?, '', ?)"
-      ).run(moduleId, course.id, subject.id, subject.name, si);
+      let mod = await db.prepare("SELECT id FROM modules WHERE course_id = ? AND subject_id = ? ORDER BY sort_order LIMIT 1").get(course.id, subject.id) as { id: string } | undefined;
+      if (!mod) {
+        mod = { id: newId() };
+        await db.prepare(
+          "INSERT INTO modules (id, course_id, subject_id, title, description, sort_order) VALUES (?, ?, ?, ?, '', ?)"
+        ).run(mod.id, course.id, subject.id, subject.name, si);
+      }
 
       for (let ci = 0; ci < subj.chapters.length; ci++) {
         const ch = subj.chapters[ci];
-        const chapterId = newId();
-        await db.prepare(
-          "INSERT INTO chapters (id, module_id, title, description, sort_order) VALUES (?, ?, ?, '', ?)"
-        ).run(chapterId, moduleId, ch.title, ci);
+        let chapter = await db.prepare("SELECT id FROM chapters WHERE module_id = ? AND title = ?").get(mod.id, ch.title) as { id: string } | undefined;
+        if (!chapter) {
+          chapter = { id: newId() };
+          await db.prepare(
+            "INSERT INTO chapters (id, module_id, title, description, sort_order) VALUES (?, ?, ?, '', ?)"
+          ).run(chapter.id, mod.id, ch.title, ci);
+        }
 
         for (let ti = 0; ti < ch.topics.length; ti++) {
           const t = ch.topics[ti];
+          const lesson = await db.prepare("SELECT id, duration_min FROM lessons WHERE chapter_id = ? AND title = ?").get(chapter.id, t.title) as { id: string; duration_min: number } | undefined;
+          if (lesson) {
+            if (!lesson.duration_min && t.durationMin) {
+              await db.prepare("UPDATE lessons SET duration_min = ? WHERE id = ?").run(t.durationMin, lesson.id);
+            }
+            continue;
+          }
           await db.prepare(
             `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, test_id, duration_min, is_free, sort_order)
              VALUES (?, ?, ?, 'topic', ?, '', '', ?, ?, ?, ?)`
-          ).run(newId(), chapterId, t.title, t.notes, t.test ? topicTests.get(t.test) ?? null : null, t.durationMin ?? 0, t.free ? 1 : 0, ti);
+          ).run(newId(), chapter.id, t.title, t.notes, t.test ? topicTests.get(t.test) ?? null : null, t.durationMin ?? 0, t.free ? 1 : 0, ti);
         }
       }
     }

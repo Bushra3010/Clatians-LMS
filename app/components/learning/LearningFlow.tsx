@@ -16,6 +16,7 @@ export type LearningProgress = { courseId: string; lessons: number; done: number
 export type LearningNav =
   | { view: "list" }
   | { view: "batch"; courseId: string; batchId: string | null }
+  | { view: "subject"; courseId: string; batchId: string | null; subject: string }
   | { view: "chapter"; courseId: string; chapterId: string; from: string };
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
@@ -27,18 +28,6 @@ export const fmtDuration = (min: number) => {
   return h > 0 ? `${h} hr${m ? ` ${m} min` : ""}` : `${m} min`;
 };
 const pctOf = (done: number, total: number) => (total > 0 ? Math.round((done / total) * 100) : 0);
-
-/** Batch status as the student reads it: Active, Upcoming or Closed. */
-function batchState(b: CatalogBatch): { label: "Active" | "Upcoming" | "Closed"; bg: string; color: string } {
-  const s = b.status.toLowerCase();
-  if (["archived", "closed", "completed", "ended"].includes(s)) return { label: "Closed", bg: "var(--surface-dim)", color: "var(--text-muted)" };
-  if (["ongoing", "active", "live"].includes(s)) return { label: "Active", bg: "var(--success)", color: "var(--success-text)" };
-  return { label: "Upcoming", bg: "var(--blue-tint)", color: "var(--blue)" };
-}
-const batchDateLine = (b: CatalogBatch) => {
-  if (!b.startDate) return "";
-  return `${batchState(b).label === "Upcoming" ? "Starts" : "Started"} on ${b.startDate}`;
-};
 
 // ── Shared bits ──
 
@@ -161,15 +150,19 @@ interface LearningFlowProps {
   onToggleSaveBatch?: (key: string, title: string, subtitle: string) => void;
 }
 
-/** My Learning: purchased batches → batch → chapter → topic (topic opens in TopicPage). */
+/**
+ * My Learning, laid out like the mockup with subjects where it shows batches:
+ * purchased batches → batch (Subjects tab) → subject (Chapters) → chapter (topics) → topic.
+ */
 export default function LearningFlow(props: LearningFlowProps) {
   const { catalog, nav } = props;
   const course = nav.view === "list" ? undefined : catalog.find((c) => c.id === nav.courseId);
   if (nav.view === "list" || !course) return <MyLearningList {...props} />;
   if (nav.view === "chapter") return <ChapterView key={nav.chapterId} {...props} course={course} chapterId={nav.chapterId} />;
-  // Right after a purchase the batch may not be in the catalog yet; show the course until it is.
-  const batch = nav.batchId ? course.batches.find((b) => b.id === nav.batchId) ?? null : course.batches.find((b) => b.enrolled) ?? null;
-  return <BatchView key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
+  // Right after a purchase the batch may not be in the catalog yet; fall back to the course's own enrolled batch.
+  const batch = (nav.batchId ? course.batches.find((b) => b.id === nav.batchId) : undefined) ?? course.batches.find((b) => b.enrolled) ?? null;
+  if (nav.view === "subject") return <SubjectView key={`${batch?.id ?? course.id}-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
+  return <BatchHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
 }
 
 /** What the student bought: each purchased batch, or the course itself when it was bought without one. */
@@ -182,6 +175,31 @@ function ownedItems(catalog: CatalogItem[]): Owned[] {
   });
 }
 
+/** Chapters grouped by subject, in syllabus order. */
+type SubjectGroup = { name: string; chapters: LearningChapter[] };
+function bySubject(s: CourseSyllabus): SubjectGroup[] {
+  const out: SubjectGroup[] = [];
+  for (const ch of s.chapters) {
+    const name = ch.subject || "General";
+    let g = out.find((x) => x.name === name);
+    if (!g) { g = { name, chapters: [] }; out.push(g); }
+    g.chapters.push(ch);
+  }
+  return out;
+}
+
+/** A chapter's number inside its own subject (1-based). */
+function localChapterNumber(s: CourseSyllabus, ch: LearningChapter): number {
+  return s.chapters.filter((x) => (x.subject || "General") === (ch.subject || "General")).findIndex((x) => x.id === ch.id) + 1;
+}
+
+/** A subject's status pill, in the spirit of the mockup's Active / Upcoming / Closed. */
+function subjectState(done: number, total: number): { label: string; bg: string; color: string } {
+  if (total > 0 && done >= total) return { label: "Completed", bg: "var(--success)", color: "var(--success-text)" };
+  if (done > 0) return { label: "In progress", bg: "var(--blue-tint)", color: "var(--blue)" };
+  return { label: "Not started", bg: "var(--surface-dim)", color: "var(--text-muted)" };
+}
+
 function Meta({ icon, children }: { icon: IconName; children: React.ReactNode }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -192,15 +210,12 @@ function Meta({ icon, children }: { icon: IconName; children: React.ReactNode })
 
 // ── 2 · My Learning — the batches they bought ──
 
-type ListTab = "enrolled" | "not-started" | "completed";
+type ListTab = "enrolled" | "resources";
 
 function MyLearningList({ catalog, progress, onNav, onBrowseCourses, onOpenLibrary, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
   const [tab, setTab] = useState<ListTab>("enrolled");
   const prog = (id: string) => progress.find((p) => p.courseId === id) ?? { courseId: id, lessons: 0, done: 0, minutes: 0 };
   const owned = ownedItems(catalog);
-  const notStarted = owned.filter((o) => prog(o.course.id).done === 0);
-  const completed = owned.filter((o) => { const p = prog(o.course.id); return p.lessons > 0 && p.done >= p.lessons; });
-  const shown = tab === "enrolled" ? owned : tab === "not-started" ? notStarted : completed;
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
@@ -218,8 +233,7 @@ function MyLearningList({ catalog, progress, onNav, onBrowseCourses, onOpenLibra
         <Tabs<ListTab>
           tabs={[
             { key: "enrolled", label: `Enrolled (${owned.length})` },
-            { key: "not-started", label: "Not Started" },
-            { key: "completed", label: "Completed" },
+            { key: "resources", label: "Free Resources" },
           ]}
           active={tab}
           onChange={setTab}
@@ -227,57 +241,71 @@ function MyLearningList({ catalog, progress, onNav, onBrowseCourses, onOpenLibra
       </div>
 
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
-        {shown.length === 0 && (
-          tab === "enrolled" ? (
-            <Empty icon="graduation" title="No batch yet" text="Buy a batch and it shows up here with your progress."
-              action={<button onClick={onBrowseCourses} style={{ ...primaryBtn, marginTop: 14 }}>Browse courses</button>} />
-          ) : (
-            <Empty icon={tab === "completed" ? "flag" : "check"} title={tab === "completed" ? "Nothing completed yet" : "You've started everything"}
-              text={tab === "completed" ? "Finish every topic of a batch to see it here." : "Every batch you're in has some progress."} />
-          )
-        )}
+        {tab === "enrolled" ? (
+          <>
+            {owned.length === 0 && (
+              <Empty icon="graduation" title="No batch yet" text="Buy a batch and it shows up here with your progress."
+                action={<button onClick={onBrowseCourses} style={{ ...primaryBtn, marginTop: 14 }}>Browse courses</button>} />
+            )}
 
-        {shown.map(({ key, course: c, batch: b }) => {
-          const p = prog(c.id);
-          const pct = pctOf(p.done, p.lessons);
-          const label = p.lessons > 0 && pct >= 100 ? "Review" : p.done > 0 ? "Continue" : "Start Learning";
-          const open = () => onNav({ view: "batch", courseId: c.id, batchId: b?.id ?? null });
-          return (
-            <div key={key} style={{ ...card, padding: 12, display: "flex", gap: 12 }}>
-              <button onClick={open} aria-label={b?.name ?? c.name} style={{ width: 88, height: 88, borderRadius: 14, flexShrink: 0, border: "none", cursor: "pointer", background: gradient, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <AppIcon name={courseIconName(c)} size={38} color="white" strokeWidth={1.6} />
-              </button>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <button onClick={open} style={{ display: "block", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{b?.name ?? c.name}</button>
-                {b && <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--text-muted)" }}>{c.name}</p>}
-                <div style={{ display: "flex", justifyContent: "space-between", margin: "5px 0 5px", fontSize: 11.5, color: "var(--text-muted)" }}>
-                  <span>{pct}% Completed</span>
-                  <span style={{ fontWeight: 700 }}>{pct}%</span>
+            {owned.map(({ key, course: c, batch: b }) => {
+              const p = prog(c.id);
+              const pct = pctOf(p.done, p.lessons);
+              const label = p.lessons > 0 && pct >= 100 ? "Review" : p.done > 0 ? "Continue" : "Start Learning";
+              const open = () => onNav({ view: "batch", courseId: c.id, batchId: b?.id ?? null });
+              return (
+                <div key={key} style={{ ...card, padding: 12, display: "flex", gap: 12 }}>
+                  <button onClick={open} aria-label={b?.name ?? c.name} style={{ width: 88, height: 88, borderRadius: 14, flexShrink: 0, border: "none", cursor: "pointer", background: gradient, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <AppIcon name={courseIconName(c)} size={38} color="white" strokeWidth={1.6} />
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <button onClick={open} style={{ display: "block", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{b?.name ?? c.name}</button>
+                    {b && <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--text-muted)" }}>{c.name}</p>}
+                    <div style={{ display: "flex", justifyContent: "space-between", margin: "5px 0 5px", fontSize: 11.5, color: "var(--text-muted)" }}>
+                      <span>{pct}% Completed</span>
+                      <span style={{ fontWeight: 700 }}>{pct}%</span>
+                    </div>
+                    <Bar pct={pct} />
+                    <p style={{ margin: "6px 0 8px", fontSize: 11, color: "var(--text-disabled)", display: "flex", alignItems: "center", gap: 5 }}>
+                      <AppIcon name="file" size={12} color="var(--text-disabled)" />
+                      {[p.lessons > 0 && `${p.lessons} Lessons`, (b?.duration || c.duration || fmtDuration(p.minutes)).replace(/\s*\(.*\)$/, "")].filter(Boolean).join(" • ")}
+                    </p>
+                    <button onClick={open} style={{
+                      ...primaryBtn, width: "100%", padding: "9px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      ...(label === "Start Learning" ? { background: "var(--error)", color: "var(--error-text)", boxShadow: "none" }
+                        : label === "Review" ? { background: "var(--blue-tint)", color: "var(--blue)", boxShadow: "none" } : {}),
+                    }}>{label}<AppIcon name="arrowRight" size={14} /></button>
+                  </div>
                 </div>
-                <Bar pct={pct} />
-                <p style={{ margin: "6px 0 8px", fontSize: 11, color: "var(--text-disabled)", display: "flex", alignItems: "center", gap: 5 }}>
-                  <AppIcon name="file" size={12} color="var(--text-disabled)" />
-                  {[p.lessons > 0 && `${p.lessons} Lessons`, (b?.duration || c.duration || fmtDuration(p.minutes)).replace(/\s*\(.*\)$/, "")].filter(Boolean).join(" • ")}
-                </p>
-                <button onClick={open} style={{
-                  ...primaryBtn, width: "100%", padding: "9px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  ...(label === "Start Learning" ? { background: "var(--error)", color: "var(--error-text)", boxShadow: "none" }
-                    : label === "Review" ? { background: "var(--blue-tint)", color: "var(--blue)", boxShadow: "none" } : {}),
-                }}>{label}<AppIcon name="arrowRight" size={14} /></button>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <button onClick={onOpenLibrary} style={{ ...card, border: "none", cursor: "pointer", padding: "16px", display: "flex", alignItems: "center", gap: 14, textAlign: "left" }}>
+              <span style={{ width: 48, height: 48, borderRadius: 14, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="library" size={23} color="white" /></span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>Free Study Resources</span>
+                <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Open to every student, no batch needed</span>
+              </span>
+              <Chevron />
+            </button>
 
-        {owned.length > 0 && (
-          <button onClick={onOpenLibrary} style={{ ...card, border: "none", cursor: "pointer", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
-            <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="library" size={20} color="var(--blue)" /></span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>Study library</span>
-              <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 1 }}>All videos, notes, tests and current affairs</span>
-            </span>
-            <Chevron />
-          </button>
+            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+              {[
+                { icon: "video" as IconName, label: "Video Lectures" },
+                { icon: "file" as IconName, label: "Study Notes" },
+                { icon: "clipboard" as IconName, label: "Practice Questions" },
+                { icon: "newspaper" as IconName, label: "Current Affairs" },
+              ].map((r, i) => (
+                <button key={r.label} onClick={onOpenLibrary} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={r.icon} size={17} color="var(--blue)" /></span>
+                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{r.label}</span>
+                  <Chevron />
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -293,7 +321,7 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>{ch.title}</span>
         <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
-          {ch.topics.length} {ch.topics.length === 1 ? "Topic" : "Topics"}{ch.subject ? ` · ${ch.subject}` : ""}
+          {ch.topics.length} {ch.topics.length === 1 ? "Topic" : "Topics"}
           {done > 0 && <span style={{ color: "var(--success-text)", fontWeight: 700 }}> · {done}/{ch.topics.length} done</span>}
         </span>
       </span>
@@ -304,17 +332,23 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
   );
 }
 
-/** Every chapter of the batch in one numbered list, as in the mockup; the subject sits under each title. */
-function ChapterList({ data, onOpen }: { data: CourseSyllabus; onOpen: (ch: LearningChapter) => void }) {
-  if (data.chapters.length === 0) return <Empty icon="library" title="Chapters coming soon" text="Faculty will add the chapters shortly." />;
-  return <>{data.chapters.map((ch) => <ChapterRow key={ch.id} ch={ch} n={ch.number} onOpen={() => onOpen(ch)} />)}</>;
-}
+// ── 3 · Batch — mockup screen 3, with the batch's Subjects where the mockup lists batches ──
 
-// ── 3 · Batch — the one screen for a purchased batch ──
+type HomeTab = "overview" | "subjects" | "instructors";
 
-type BatchTab = "chapters" | "overview" | "announcements" | "students";
+function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+  const [tab, setTab] = useState<HomeTab>("subjects");
+  const { data, error } = useSyllabus(c.id);
+  const [infoTab, setInfoTab] = useState<BatchInfoTab>("overview");
+  const infoTabs = b ? batchInfoTabs(b, true) : [];
+  const subjects = data ? bySubject(data) : [];
+  const topics = data ? allTopics(data) : [];
+  const done = topics.filter((t) => t.completed).length;
+  const minutes = topics.reduce((n, t) => n + t.durationMin, 0);
+  const next = data ? nextTopic(data) : undefined;
+  const faculty = b?.faculty.length ? b.faculty : [...new Set(c.batches.flatMap((x) => x.faculty))];
+  const duration = (b?.duration || c.duration || fmtDuration(minutes)).replace(/\s*\(.*\)$/, "");
 
-function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
   const saveKey = `${c.id}:${b?.id ?? ""}`;
   const saved = savedBatchKeys.includes(saveKey);
   const [shareNote, setShareNote] = useState("");
@@ -322,52 +356,22 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
     const r = await shareText(b?.name ?? c.name, `${c.name} — CLATians · clatians.com/courses`);
     if (r === "copied") { setShareNote("Link copied"); setTimeout(() => setShareNote(""), 1500); }
   };
-  const [tab, setTab] = useState<BatchTab>("chapters");
-  const [infoTab, setInfoTab] = useState<BatchInfoTab>("overview");
-  const infoTabs = b ? batchInfoTabs(b, true) : [];
-  const { data, error } = useSyllabus(c.id);
-  const [extras, setExtras] = useState<BatchExtras | null>(null);
-  const topics = data ? allTopics(data) : [];
-  const done = topics.filter((t) => t.completed).length;
-  const minutes = topics.reduce((n, t) => n + t.durationMin, 0);
-  const next = data ? nextTopic(data) : undefined;
-  const duration = (b?.duration || c.duration || fmtDuration(minutes)).replace(/\s*\(.*\)$/, "");
-
-  useEffect(() => {
-    if (!b) return;
-    let live = true;
-    getBatchExtrasAction(b.id).then((res) => { if (live && res.ok) setExtras(res.extras); });
-    return () => { live = false; };
-  }, [b]);
-
-  const meta = b ? [
-    { icon: "video" as IconName, text: b.mode || "Live + Recorded" },
-    batchDateLine(b) && { icon: "calendar" as IconName, text: batchDateLine(b) },
-    // End dates read either "Jul 2027" or "Till CLAT 2027".
-    b.endDate && { icon: "flag" as IconName, text: /^till\b/i.test(b.endDate) ? `Runs ${b.endDate.replace(/^till/i, "till")}` : `Batch ends on ${b.endDate}` },
-    b.schedule && { icon: "clock" as IconName, text: b.schedule },
-  ].filter(Boolean) as { icon: IconName; text: string }[] : [];
-
-  const tabs: { key: BatchTab; label: string }[] = [
-    { key: "chapters", label: "Chapters" },
-    { key: "overview", label: "Details" },
-    ...(b ? [{ key: "announcements" as const, label: "Announcements" }, { key: "students" as const, label: "Students" }] : []),
-  ];
   const showSwitch = tab === "overview" && !!b && infoTabs.length > 1;
+  const openSubject = (subject: string) => onNav({ view: "subject", courseId: c.id, batchId: b?.id ?? null, subject });
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
       {/* Hero */}
-      <div style={{ position: "relative", height: 170, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <div style={{ position: "relative", height: 180, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <div style={{ position: "absolute", right: -30, top: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
         <div style={{ position: "absolute", left: -20, bottom: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <AppIcon name={courseIconName(c)} size={next ? 120 : 66} color={next ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.9)"} strokeWidth={1.3} />
-        <button onClick={onBack} aria-label="Back" style={{ position: "absolute", left: 12, top: 12, width: 36, height: 36, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button onClick={onBack} aria-label="Back" style={{ ...heroBtn, position: "absolute", left: 12, top: 12 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
         <div style={{ position: "absolute", right: 12, top: 12, display: "flex", gap: 8 }}>
-          {onToggleSaveBatch && (
-            <button onClick={() => onToggleSaveBatch(saveKey, b?.name ?? c.name, c.name)} aria-label={saved ? "Remove from saved" : "Save batch"} style={heroBtn}>
+          {onToggleSaveBatch && b && (
+            <button onClick={() => onToggleSaveBatch(saveKey, b.name, c.name)} aria-label={saved ? "Remove from saved" : "Save batch"} style={heroBtn}>
               <AppIcon name="heart" size={18} color="white" fill={saved ? "white" : "none"} />
             </button>
           )}
@@ -384,25 +388,13 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
       </div>
 
       <div style={{ background: "white", padding: "14px 16px 0" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <h1 style={{ flex: 1, margin: 0, fontSize: 20, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.25 }}>{b?.name ?? c.name}</h1>
-          {b && <span style={{ marginTop: 2 }}><Pill {...batchState(b)} /></span>}
-        </div>
-        {b && <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--text-muted)" }}>{c.name}</p>}
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.25 }}>{b?.name ?? c.name}</h1>
+        <p style={{ margin: "5px 0 0", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>{b ? c.name : c.tagline || c.description}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", margin: "10px 0 0", fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
           {topics.length > 0 && <Meta icon="file">{topics.length} Lessons</Meta>}
           {duration && <Meta icon="clock">{duration}</Meta>}
           <Meta icon="award">Certificate</Meta>
         </div>
-        {meta.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-            {meta.map((m) => (
-              <p key={m.text} style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
-                <AppIcon name={m.icon} size={14} color="var(--blue)" />{m.text}
-              </p>
-            ))}
-          </div>
-        )}
         {topics.length > 0 && (
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", marginBottom: 4 }}>
@@ -412,7 +404,11 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
           </div>
         )}
         <div style={{ margin: "8px -16px 0" }}>
-          <Tabs<BatchTab> tabs={tabs} active={tab} onChange={setTab} />
+          <Tabs<HomeTab>
+            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }]}
+            active={tab}
+            onChange={setTab}
+          />
         </div>
       </div>
 
@@ -421,7 +417,7 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
       <div style={{ padding: showSwitch ? "2px 16px 0" : "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
 
-        {tab === "chapters" && (
+        {tab === "overview" && (
           <>
             {next && (
               <button onClick={() => onOpenTopic(next.id)} style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -435,27 +431,123 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
                 <Chevron />
               </button>
             )}
-            {!data ? <Loading /> : <ChapterList data={data} onOpen={(ch) => onNav({ view: "chapter", courseId: c.id, chapterId: ch.id, from: b?.name ?? c.name })} />}
+            {b ? <BatchInfoPanel key={`${b.id}-${infoTab}`} b={b} tab={infoTab} /> : (
+              <>
+                {(c.overview || c.description) && (
+                  <div style={{ ...card, padding: 16 }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>About this course</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>{c.overview || c.description}</p>
+                  </div>
+                )}
+                {c.features.length > 0 && (
+                  <div style={{ ...card, padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>What you get</p>
+                    {c.features.map((f, i) => <Check key={i}>{f}</Check>)}
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 
-        {tab === "overview" && (
-          b ? <BatchInfoPanel key={`${b.id}-${infoTab}`} b={b} tab={infoTab} /> : (
-            <>
-              {(c.overview || c.description) && (
-                <div style={{ ...card, padding: 16 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>About this course</p>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>{c.overview || c.description}</p>
-                </div>
-              )}
-              {c.features.length > 0 && (
-                <div style={{ ...card, padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>What you get</p>
-                  {c.features.map((f, i) => <Check key={i}>{f}</Check>)}
-                </div>
-              )}
-            </>
-          )
+        {tab === "subjects" && (
+          <>
+            <p style={{ margin: "2px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Subjects</p>
+            {!data ? <Loading /> : subjects.length === 0 ? (
+              <Empty icon="library" title="Subjects coming soon" text="Faculty will add this batch's chapters shortly." />
+            ) : (
+              <div style={{ ...card, overflow: "hidden" }}>
+                {subjects.map((s, i) => {
+                  const st = s.chapters.flatMap((ch) => ch.topics);
+                  const sd = st.filter((t) => t.completed).length;
+                  return (
+                    <button key={s.name} onClick={() => openSubject(s.name)} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{s.name}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{s.chapters.length} {s.chapters.length === 1 ? "Chapter" : "Chapters"} · {st.length} {st.length === 1 ? "Topic" : "Topics"}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{sd} / {st.length} completed</span>
+                      </span>
+                      <Pill {...subjectState(sd, st.length)} />
+                      <Chevron />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === "instructors" && (
+          faculty.length === 0 ? (
+            <Empty icon="user" title="Faculty to be announced" text="Instructors are listed here once a batch is assigned." />
+          ) : faculty.map((f) => (
+            <div key={f} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 42, height: 42, borderRadius: "50%", background: gradient, color: "white", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {f.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("")}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>{f}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── 4 · Subject — mockup screen 4: Chapters / Announcements / Students ──
+
+type SubjectTab = "chapters" | "announcements" | "students";
+
+function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null; subject: string }) {
+  const [tab, setTab] = useState<SubjectTab>("chapters");
+  const { data, error } = useSyllabus(c.id);
+  const [extras, setExtras] = useState<BatchExtras | null>(null);
+  const group = data ? bySubject(data).find((s) => s.name === subject) : undefined;
+  const topics = group ? group.chapters.flatMap((ch) => ch.topics) : [];
+  const done = topics.filter((t) => t.completed).length;
+  const minutes = topics.reduce((n, t) => n + t.durationMin, 0);
+
+  useEffect(() => {
+    if (!b) return;
+    let live = true;
+    getBatchExtrasAction(b.id).then((res) => { if (live && res.ok) setExtras(res.extras); });
+    return () => { live = false; };
+  }, [b]);
+
+  const meta = [
+    { icon: "layers" as IconName, text: b?.name ?? c.name },
+    group && { icon: "file" as IconName, text: `${group.chapters.length} ${group.chapters.length === 1 ? "Chapter" : "Chapters"} · ${topics.length} ${topics.length === 1 ? "Topic" : "Topics"}` },
+    fmtDuration(minutes) && { icon: "clock" as IconName, text: `${fmtDuration(minutes)} of lessons` },
+  ].filter(Boolean) as { icon: IconName; text: string }[];
+
+  const tabs: { key: SubjectTab; label: string }[] = [
+    { key: "chapters", label: "Chapters" },
+    ...(b ? [{ key: "announcements" as const, label: "Announcements" }, { key: "students" as const, label: "Students" }] : []),
+  ];
+
+  return (
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
+      <div style={{ background: "white" }}>
+        <Header title={subject} onBack={onBack} right={<Pill {...subjectState(done, topics.length)} />} />
+        <div style={{ padding: "4px 16px 8px 48px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {meta.map((m) => (
+            <p key={m.text} style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
+              <AppIcon name={m.icon} size={14} color="var(--blue)" />{m.text}
+            </p>
+          ))}
+        </div>
+        {tabs.length > 1 ? <Tabs<SubjectTab> tabs={tabs} active={tab} onChange={setTab} /> : <div style={{ height: 6 }} />}
+      </div>
+
+      <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+        {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
+
+        {tab === "chapters" && (
+          !data ? <Loading /> : !group || group.chapters.length === 0 ? (
+            <Empty icon="library" title="Chapters coming soon" text="Faculty will add this subject's chapters shortly." />
+          ) : group.chapters.map((ch, i) => (
+            <ChapterRow key={ch.id} ch={ch} n={i + 1} onOpen={() => onNav({ view: "chapter", courseId: c.id, chapterId: ch.id, from: subject })} />
+          ))
         )}
 
         {tab === "announcements" && (
@@ -492,7 +584,7 @@ function BatchView({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
   );
 }
 
-// ── 4 · Chapter details — its topics ──
+// ── 5 · Chapter details — its topics ──
 
 function ChapterView({ course: c, chapterId, onBack, onOpenTopic }: LearningFlowProps & { course: CatalogItem; chapterId: string }) {
   const { data, error } = useSyllabus(c.id);
@@ -517,7 +609,7 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic }: LearningFlow
       <div style={{ background: "white", paddingBottom: 14 }}>
         <Header title="" onBack={onBack} />
         <div style={{ padding: "0 16px" }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Chapter {ch.number}{ch.subject ? ` · ${ch.subject}` : ""}</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Chapter {localChapterNumber(data!, ch)}{ch.subject ? ` · ${ch.subject}` : ""}</p>
           <h1 style={{ margin: "2px 0 0", fontSize: 20, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.25 }}>{ch.title}</h1>
           <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
             <AppIcon name="file" size={13} color="var(--text-muted)" />{ch.topics.length} Topics

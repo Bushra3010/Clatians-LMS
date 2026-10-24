@@ -341,14 +341,17 @@ async function runEnsureCatalog(): Promise<void> {
   }
 
   // Starter subject → chapter → topic content and the comprehension tests.
+  // v3: every subject gets several chapters with timed topics (and Quantitative
+  // Techniques). seedDemoSyllabus is find-or-create at every level, so this only
+  // fills in what a course is still missing.
   const claimSyllabus = await db.prepare(
-    "INSERT INTO meta (key) VALUES ('demo_syllabus_v1') ON CONFLICT DO NOTHING"
+    "INSERT INTO meta (key) VALUES ('demo_syllabus_v3') ON CONFLICT DO NOTHING"
   ).run();
   if (claimSyllabus.changes !== 1) return;
   try {
     await seedDemoSyllabus(await contentAuthorId());
   } catch (e) {
-    await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v1'").run();
+    await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v3'").run();
     throw e;
   }
 }

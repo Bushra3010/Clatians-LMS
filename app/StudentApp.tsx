@@ -122,7 +122,6 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const [watchTarget, setWatchTarget] = useState<WatchTarget | null>(null);
   const [testSession, setTestSession] = useState<Extract<StartResult, { ok: true }> | null>(null);
   const [testResult, setTestResult] = useState<{ title: string; result: Extract<SubmitResult, { ok: true }> } | null>(null);
-  const [coursesTab, setCoursesTab] = useState<"all" | "mine">("all");
   const [topic, setTopic] = useState<TopicDetail | null>(null);
   // The Study tab's open subject/chapter, kept here so a student returning
   // from a topic lands back on the same chapter.
@@ -306,8 +305,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
       case "notes": openFromProfile("my-notes"); break;
       case "ai-tutor": router.push("/tutor"); break;
       case "refer": openFromProfile("refer"); break;
-      case "courses": setCoursesTab("mine"); navigate({ screen: "courses", detail: null, profile: false }, "replace"); break;
-      case "browse-courses": setCoursesTab("all"); navigate({ screen: "courses", detail: null, profile: false }, "replace"); break;
+      case "courses":
+      case "browse-courses": navigate({ screen: "courses", detail: null, profile: false }, "replace"); break;
       case "tests": openFromProfile("tests"); break;
       case "saved": openFromProfile("saved"); break;
       case "payments": openFromProfile("payments"); break;
@@ -351,7 +350,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         )}
 
         {/* Top Bar — hidden while taking a test, which needs the whole screen */}
-        {detailPage !== "test-take" && <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => { setCoursesTab("all"); goScreen("courses"); }} />}
+        {detailPage !== "test-take" && <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => goScreen("courses")} />}
 
         {/* Scrollable content */}
         <div
@@ -573,7 +572,6 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                 await selectCourseAction(id);
                 router.refresh();
               }}
-              initialTab={coursesTab}
             />
           )}
           {!detailPage && activeScreen === "study"   && (
@@ -584,7 +582,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onNav={navLearning}
               onBack={back}
               onOpenTopic={handleOpenTopic}
-              onBrowseCourses={() => { setCoursesTab("all"); goScreen("courses"); }}
+              onBrowseCourses={() => goScreen("courses")}
               onOpenLibrary={() => openDetail("study-library")}
               onOpenNotifications={() => openDetail("notifications")}
               unreadCount={unreadCount}

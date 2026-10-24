@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TopicDetail } from "../../lib/topic-actions";
 import type { LiveClassItem } from "./LiveClassesPage";
 import { youtubeId } from "./ClassWatchPage";
@@ -132,6 +132,12 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const [showPdf, setShowPdf] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [shareNote, setShareNote] = useState("");
+  // The checklist's "Watch Video" scrolls to the player and starts it.
+  const [autoplay, setAutoplay] = useState(false);
+  const [stepHint, setStepHint] = useState("");
+  const playerRef = useRef<HTMLDivElement>(null);
+  const videoElRef = useRef<HTMLVideoElement>(null);
+  const doubtRef = useRef<HTMLTextAreaElement>(null);
   const share = async () => {
     const r = await shareText(topic.title, `${topic.chapter} · ${topic.subject} — CLATians`);
     if (r === "copied") { setShareNote("Copied"); setTimeout(() => setShareNote(""), 1500); }
@@ -152,7 +158,12 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     { key: "doubt", label: topic.doubts.length ? `Doubt (${topic.doubts.length})` : "Doubt" },
   ];
 
-  const switchTab = (t: Tab) => { setErr(""); setSent(false); setTab(t); };
+  const switchTab = (t: Tab) => { setErr(""); setSent(false); setStepHint(""); setTab(t); };
+  /** Show a tab from the checklist, starting at its top. */
+  const goTab = (t: Tab) => {
+    switchTab(t);
+    requestAnimationFrame(() => document.getElementById("screen-content")?.scrollTo({ top: 0, behavior: "smooth" }));
+  };
 
   const ask = async () => {
     setErr("");
@@ -182,13 +193,37 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     ? (lead.length > 260 ? lead.slice(0, 260).trimEnd() + "…" : lead)
     : `This topic is part of ${topic.chapter} in ${topic.subject}. Watch the lecture, read the notes and ask your doubts here.`;
 
-  const steps = [
-    { label: "Watch Video (Recorded)", done: topic.completed, tab: "content" as Tab, show: true },
-    { label: "Attend Live Class (If Scheduled)", done: !!next?.attended, tab: "live" as Tab, show: true },
-    { label: "Read Notes (PDF)", done: topic.completed && !!(topic.notes || topic.notesUrl), tab: "notes" as Tab, show: true },
-    { label: "Take Topic Test", done: (topic.test?.myAttempts ?? 0) > 0, tab: "notes" as Tab, show: !!topic.test },
-    { label: "Ask Doubt (If Any)", done: topic.doubts.length > 0, tab: "doubt" as Tab, show: true },
-  ].filter((s) => s.show);
+  const hasVideo = !!topic.videoUrl && isLink(topic.videoUrl);
+  const watch = () => {
+    setStepHint("");
+    if (tab !== "content") switchTab("content");
+    if (!hasVideo) { setStepHint("This topic's video isn't uploaded yet — read the notes meanwhile."); return; }
+    setAutoplay(true);
+    requestAnimationFrame(() => {
+      playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      videoElRef.current?.play().catch(() => {});
+    });
+  };
+  const liveSub = !next ? "No class scheduled yet"
+    : next.status === "live" ? "Live now"
+    : `Next: ${fmtIST(next.startAt, { day: "numeric", month: "short" })}, ${fmtIST(next.startAt, { hour: "numeric", minute: "2-digit", hour12: true })}`;
+
+  type StepKey = "video" | "live" | "notes" | "test" | "doubt";
+  const steps: { key: StepKey; label: string; sub: string; icon: IconName; action: string; done: boolean; live?: boolean }[] = [
+    { key: "video", label: "Watch Video (Recorded)", sub: hasVideo ? (topic.durationMin > 0 ? `${topic.durationMin} min lecture` : "Recorded lecture") : "Coming soon", icon: "video", action: "Watch", done: topic.completed },
+    { key: "live", label: "Attend Live Class (If Scheduled)", sub: liveSub, icon: "users", action: next?.status === "live" ? "Join" : "View", done: !!next?.attended, live: next?.status === "live" },
+    { key: "notes", label: "Read Notes (PDF)", sub: notesIsPdf ? "PDF notes" : topic.notes || topic.notesUrl ? "Topic notes" : "Coming soon", icon: "file", action: "Read", done: topic.completed && !!(topic.notes || topic.notesUrl) },
+    ...(topic.test ? [{ key: "test" as StepKey, label: "Take Topic Test", sub: `${topic.test.questionCount} questions${topic.test.myAttempts ? ` · ${topic.test.myAttempts} attempt${topic.test.myAttempts === 1 ? "" : "s"}` : ""}`, icon: "clipboard" as IconName, action: busy === "test" ? "Starting…" : topic.test.myAttempts ? "Retake" : "Start", done: topic.test.myAttempts > 0 }] : []),
+    { key: "doubt", label: "Ask Doubt (If Any)", sub: topic.doubts.length ? `${topic.doubts.length} asked` : "Faculty answer on this topic", icon: "chat", action: "Ask", done: topic.doubts.length > 0 },
+  ];
+  /** What each checklist row does when tapped. */
+  const onStep = (key: StepKey) => {
+    if (key === "video") watch();
+    else if (key === "live") goTab("live");
+    else if (key === "notes") goTab("notes");
+    else if (key === "test") { if (topic.test && busy !== "test") start(topic.test.id); }
+    else { goTab("doubt"); setTimeout(() => doubtRef.current?.focus(), 250); }
+  };
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", display: "flex", flexDirection: "column" }}>
@@ -233,10 +268,12 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
         {/* ── 6/7 · CONTENT: lecture, about, steps, the chapter's video lessons ── */}
         {tab === "content" && (
           <>
+            <div ref={playerRef} style={{ scrollMarginTop: 12 }}>
             {ytId ? (
               <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", background: "#000", boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
                 <iframe
-                  src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+                  key={autoplay ? "play" : "idle"}
+                  src={`https://www.youtube.com/embed/${ytId}?rel=0${autoplay ? "&autoplay=1" : ""}`}
                   title={topic.title}
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
                   allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -244,7 +281,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                 />
               </div>
             ) : topic.videoUrl && /\.(mp4|webm|m3u8)(\?|$)/i.test(topic.videoUrl) ? (
-              <video src={topic.videoUrl} controls playsInline style={{ width: "100%", borderRadius: 16, background: "#000" }} />
+              <video ref={videoElRef} src={topic.videoUrl} controls playsInline style={{ width: "100%", borderRadius: 16, background: "#000" }} />
             ) : topic.videoUrl && isLink(topic.videoUrl) ? (
               <button onClick={() => window.open(topic.videoUrl.trim(), "_blank", "noopener")} style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 16, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#0f1729,#1e2a4a)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
                 <span style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -259,18 +296,32 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                 <span style={{ fontSize: 12 }}>Meanwhile, read the notes for this topic.</span>
               </div>
             )}
+            </div>
 
             <p style={sectionTitle}>About this topic</p>
             <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{about}</p>
 
-            <div style={{ ...card, marginTop: 12, padding: "6px 14px" }}>
+            <div style={{ ...card, marginTop: 12, padding: "4px 12px" }}>
               {steps.map((s, i) => (
-                <button key={s.label} onClick={() => switchTab(s.tab)} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "11px 0", display: "flex", alignItems: "center", gap: 12 }}>
+                <button key={s.key} onClick={() => onStep(s.key)} className="press" style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "11px 0", display: "flex", alignItems: "center", gap: 11 }}>
                   <Check on={s.done} />
-                  <span style={{ flex: 1, fontSize: 13, color: "var(--ink-primary)", fontWeight: 600 }}>{s.label}</span>
+                  <span style={{ width: 34, height: 34, borderRadius: 10, background: s.live ? "#FFE4E6" : "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <AppIcon name={s.icon} size={17} color={s.live ? "#E03131" : "var(--blue)"} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13, color: "var(--ink-primary)", fontWeight: 700 }}>{s.label}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: s.live ? "#E03131" : "var(--text-muted)", fontWeight: s.live ? 700 : 500, marginTop: 2 }}>
+                      {s.live && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E03131" }} />}
+                      {s.sub}
+                    </span>
+                  </span>
+                  <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 2, fontSize: 12, fontWeight: 800, color: s.live ? "#E03131" : "var(--blue)" }}>
+                    {s.action}<AppIcon name="chevronRight" size={14} />
+                  </span>
                 </button>
               ))}
             </div>
+            {stepHint && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "var(--warning-text)", background: "var(--warning)", borderRadius: 10, padding: "9px 12px" }}>{stepHint}</p>}
 
             {topic.siblings.length > 1 && (
               <>
@@ -421,6 +472,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
             <p style={{ ...sectionTitle, marginTop: 0 }}>Ask Your Doubt</p>
             <div style={card}>
               <textarea
+                ref={doubtRef}
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); setSent(false); }}
                 rows={4}

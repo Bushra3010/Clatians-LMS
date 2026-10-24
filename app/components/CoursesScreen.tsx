@@ -73,6 +73,14 @@ export type CatalogItem = {
 };
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
+/** Darkens a "#rrggbb" color for a gradient's second stop; passes through anything else unchanged. */
+function shade(hex: string, amt: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = (shift: number) => Math.max(0, Math.round(((n >> shift) & 0xff) * (1 - amt)));
+  return `rgb(${ch(16)}, ${ch(8)}, ${ch(0)})`;
+}
 /** A small icon that sits inline with text (badges, notes). */
 const II = (name: IconName, size = 11) => <AppIcon name={name} size={size} strokeWidth={2.6} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} />;
 /** A tiny status dot, used in front of seat counts. */
@@ -95,7 +103,7 @@ const MODES = [
 ] as const;
 
 type ContentKey = "videos" | "notes" | "practice" | "current-affairs";
-type Mode = "mine" | (typeof MODES)[number]["key"];
+type Mode = (typeof MODES)[number]["key"];
 
 /** What the student is buying — one batch, or a whole course that has no batches. */
 type Target = { kind: "course"; course: CatalogItem } | { kind: "batch"; course: CatalogItem; batch: CatalogBatch };
@@ -153,7 +161,6 @@ interface CoursesScreenProps {
   /** After a purchase: open the course in My Learning. */
   onOpenCourseLearning?: (courseId: string, batchId?: string) => void;
   onViewOrder?: () => void;
-  initialTab?: "all" | "mine";
   /** The course the student picked to head their home screen. */
   selectedCourseId?: string | null;
   onSelectCourse?: (courseId: string) => Promise<void>;
@@ -166,12 +173,11 @@ type View =
   | { name: "checkout"; target: Target }
   | { name: "success"; target: Target; invoiceNo: string; amount: number };
 
-export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, onOpenCourseLearning, onViewOrder, initialTab = "all", selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
+export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, onOpenCourseLearning, onViewOrder, selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
   const [choosing, setChoosing] = useState(false);
-  const mine = useMemo(() => catalog.filter((c) => c.enrolled || c.batches.some((b) => b.enrolled)), [catalog]);
   // Only offer the modes that actually have courses behind them.
   const modes = useMemo(() => MODES.filter((m) => catalog.some((c) => c.category === m.key)), [catalog]);
-  const [mode, setMode] = useState<Mode>(initialTab === "mine" && mine.length > 0 ? "mine" : modes[0]?.key ?? "offline");
+  const [mode, setMode] = useState<Mode>(modes[0]?.key ?? "offline");
   const [view, setView] = useState<View>({ name: "list" });
   const [method, setMethod] = useState("upi");
   const [paying, setPaying] = useState(false);
@@ -180,7 +186,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   const [showAbout, setShowAbout] = useState(false);
   const [courseSel, setCourseSel] = useState<string | null>(null);
 
-  const shown = mode === "mine" ? mine : catalog.filter((c) => c.category === mode);
+  const shown = catalog.filter((c) => c.category === mode);
 
   // The catalog prop refreshes after a purchase; always render the fresh copy
   // of whatever course/batch the view points at.
@@ -593,12 +599,11 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
   // ── LIST — website-style catalog: hero, mode tabs, course chips, batch cards ──
   const tabs: { key: Mode; label: string; icon: IconName; count: number }[] = [
-    ...(mine.length > 0 ? [{ key: "mine" as Mode, label: "My Courses", icon: "star" as IconName, count: mine.length }] : []),
     ...modes.map((m) => ({ key: m.key as Mode, label: m.label.replace(" Course", "").replace("Mock Tests", "Mock"), icon: m.icon, count: catalog.filter((c) => c.category === m.key).length })),
   ];
   const active = shown.find((c) => c.id === courseSel) ?? shown[0];
-  // Browsing a mode shows every open batch (owned ones are marked); "My Courses" shows only what they own.
-  const activeBatches = !active ? [] : mode === "mine" ? active.batches.filter((b) => b.enrolled) : liveBatches(active);
+  // A mode's list shows every open batch for that category — owned ones are marked ENROLLED.
+  const activeBatches = !active ? [] : liveBatches(active);
   const courseAccess = !!active && active.enrolled && !active.batches.some((b) => b.enrolled);
 
   return (
@@ -674,8 +679,21 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
           {active && (
             <div style={{ padding: "10px 16px 0" }}>
-              <button onClick={() => openCourse(active)} style={{ background: "none", border: "none", padding: "0 2px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-                <AppIcon name={courseIconName(active)} size={14} />{active.name}{active.duration ? ` · ${active.duration}` : ""} · <span style={{ color: "var(--blue)" }}>Course details</span><AppIcon name="chevronRight" size={13} color="var(--blue)" />
+              <button onClick={() => openCourse(active)} className="press" style={{
+                width: "100%", background: "white", border: "1px solid var(--line)", borderRadius: 14,
+                padding: "10px 12px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                boxShadow: "0 1px 6px rgba(15,23,41,0.05)", textAlign: "left",
+              }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <AppIcon name={courseIconName(active)} size={17} color="var(--blue)" />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: W.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{active.name}</span>
+                  {active.duration && <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{active.duration}</span>}
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>
+                  Course details<AppIcon name="chevronRight" size={14} color="var(--blue)" />
+                </span>
               </button>
 
               {courseAccess && (
@@ -697,47 +715,67 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
                   const left = seatsLeft(b);
                   const seatText = left === null ? "" : left === 0 ? "Batch full" : b.filled === 0 ? `Only ${b.seats} Students` : left <= 5 ? `Only ${left} Seats Left!` : `${left} Seats Left`;
                   const seatColor = left !== null && left <= 5 && b.filled > 0 ? "var(--error-text)" : "var(--success-text)";
+                  const tint = active.color || "var(--blue)";
                   return (
                     <div key={b.id} onClick={() => openBatch(active, b)} className="press" style={{
-                      position: "relative", display: "flex", gap: 10, alignItems: "stretch",
-                      background: "white", borderRadius: 16, padding: "14px 14px 14px 18px", cursor: "pointer",
+                      display: "flex", alignItems: "stretch", background: "white", borderRadius: 16, cursor: "pointer",
                       border: "none", boxShadow: "0 2px 10px rgba(15,23,41,0.06)", overflow: "hidden",
                     }}>
-                      <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: b.enrolled ? "var(--green)" : "var(--blue)" }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Left graphic — ~40% of the card, carries the batch's status at a glance */}
+                      <div style={{
+                        flex: "0 0 38%", position: "relative", minWidth: 0, overflow: "hidden",
+                        background: `linear-gradient(160deg, ${tint}, ${shade(tint, 0.22)})`,
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
+                      }}>
+                        <div style={{ position: "absolute", right: -18, top: -18, width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
+                        <div style={{ position: "absolute", left: -14, bottom: -22, width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.10)" }} />
+                        <AppIcon name={courseIconName(active)} size={38} color="rgba(255,255,255,0.95)" strokeWidth={1.5} style={{ position: "relative" }} />
+                        {b.enrolled && (
+                          <span style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,0.94)", color: "var(--success-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20 }}>
+                            <AppIcon name="check" size={9} strokeWidth={3.5} />ENROLLED
+                          </span>
+                        )}
+                        {!b.enrolled && b.status === "filling-fast" && (
+                          <span style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,0.94)", color: "#EA580C", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20 }}>
+                            <AppIcon name="flame" size={9} />HOT
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right content */}
+                      <div style={{ flex: 1, minWidth: 0, padding: "12px 14px", display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                           {b.batchType && <span style={{ ...badge, background: "var(--blue-tint)", color: "var(--blue)" }}>{b.batchType}</span>}
                           {b.language && <span style={{ ...badge, background: "#FEF3C7", color: "#92400E" }}>{b.language}</span>}
-                          {b.status === "filling-fast" && <span style={{ ...badge, background: "#FFEDD5", color: "#EA580C" }}>{II("flame", 10)}HOT</span>}
-                          {b.enrolled && <span style={{ ...badge, background: "var(--success)", color: "var(--success-text)" }}>{II("check", 10)}ENROLLED</span>}
                         </div>
-                        <p style={{ margin: "8px 0 0", fontSize: 14.5, fontWeight: 800, color: W.ink, lineHeight: 1.3 }}>{b.name}</p>
+                        <p style={{ margin: "7px 0 0", fontSize: 14, fontWeight: 800, color: W.ink, lineHeight: 1.3 }}>{b.name}</p>
                         {(b.startDate || b.endDate) && (
                           <p style={{ margin: "5px 0 0", fontSize: 11.5, color: "#94A3B8" }}>{II("calendar", 12)}{[b.startDate, b.endDate].filter(Boolean).join(" – ")}</p>
                         )}
                         {b.chips.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 7 }}>
-                            {b.chips.slice(0, 3).map((x, i) => <span key={i} style={{ fontSize: 11.5, color: "#475569" }}><AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" style={{ display: "inline-block", verticalAlign: "-1px", marginRight: 5 }} />{x}</span>)}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
+                            {b.chips.slice(0, 2).map((x, i) => <span key={i} style={{ fontSize: 11.5, color: "#475569" }}><AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" style={{ display: "inline-block", verticalAlign: "-1px", marginRight: 5 }} />{x}</span>)}
                           </div>
                         )}
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", gap: 6, flexShrink: 0 }}>
-                        {b.enrolled ? (
-                          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--success-text)" }}>Full access</span>
-                        ) : (
-                          <div style={{ textAlign: "right" }}>
-                            <p style={{ margin: 0, fontSize: 17, fontWeight: 900, color: W.ink }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</p>
-                            {b.originalFee > b.fee && <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", textDecoration: "line-through" }}>{inr(b.originalFee)}</p>}
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); if (b.enrolled) openBatch(active, b); else startCheckout({ kind: "batch", course: active, batch: b }); }}
-                          disabled={!b.enrolled && left === 0}
-                          style={{ ...enrollBtn, opacity: !b.enrolled && left === 0 ? 0.5 : 1 }}
-                        >
-                          {b.enrolled ? "Open" : "Enroll"}
-                        </button>
-                        {!b.enrolled && seatText && <span style={{ fontSize: 10.5, fontWeight: 700, color: seatColor, whiteSpace: "nowrap" }}>{seatText}</span>}
+
+                        <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+                          {b.enrolled ? (
+                            <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--success-text)" }}>Full access</span>
+                          ) : (
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: W.ink }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</p>
+                              {b.originalFee > b.fee && <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", textDecoration: "line-through" }}>{inr(b.originalFee)}</p>}
+                              {seatText && <p style={{ margin: "1px 0 0", fontSize: 10.5, fontWeight: 700, color: seatColor }}>{seatText}</p>}
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (b.enrolled) openBatch(active, b); else startCheckout({ kind: "batch", course: active, batch: b }); }}
+                            disabled={!b.enrolled && left === 0}
+                            style={{ ...enrollBtn, flexShrink: 0, opacity: !b.enrolled && left === 0 ? 0.5 : 1 }}
+                          >
+                            {b.enrolled ? "Open" : "Enroll"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
