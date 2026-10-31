@@ -155,6 +155,30 @@ async function upsertCourses(rows: Course[]): Promise<number> {
   return n;
 }
 
+/** The live site sends `details` as a JSON string; the bundled mirror as an object. Store an object either way. */
+function batchDetails(raw: unknown): Record<string, unknown> {
+  if (typeof raw === "string") {
+    try {
+      const v = JSON.parse(raw);
+      return v && typeof v === "object" ? v : {};
+    } catch {
+      return {};
+    }
+  }
+  return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+}
+
+/**
+ * After a sync from the live site, courses the site no longer lists are hidden
+ * from browsing (never deleted — enrolled students keep them in My Learning).
+ */
+async function relistCourses(liveSlugs: string[]): Promise<void> {
+  if (liveSlugs.length === 0) return;
+  await db.prepare(
+    "UPDATE courses SET listed = CASE WHEN slug = ANY(?::text[]) THEN 1 ELSE 0 END WHERE slug IS NOT NULL"
+  ).run(liveSlugs);
+}
+
 async function upsertBatches(rows: Batch[]): Promise<number> {
   let n = 0;
   for (const b of rows) {
@@ -170,7 +194,7 @@ async function upsertBatches(rows: Batch[]): Promise<number> {
       b.emi || "", b.offer || "", b.color || "", b.bg || "", b.status || "upcoming",
       b.language || "Hinglish", b.batchType || "",
       json(b.chips), json(b.faculty), json(b.highlights), json(b.syllabus),
-      b.description || "", JSON.stringify(b.details ?? {}),
+      b.description || "", JSON.stringify(batchDetails(b.details)),
     ];
 
     const existing = await db.prepare("SELECT id FROM batches WHERE slug = ?").get(b.slug) as { id: string } | undefined;
@@ -288,6 +312,7 @@ export async function syncCatalog(): Promise<SyncResult> {
     faculty: await upsertFaculty(facultyMembers),
     warnings,
   };
+  if (source === "website" && courses) await relistCourses(courses.map((c) => c.slug).filter(Boolean));
   return result;
 }
 
@@ -316,13 +341,14 @@ async function runEnsureCatalog(): Promise<void> {
   // concurrent request sees the row already there and skips. Without this,
   // parallel first-loads each run the seed and the content lands many times over.
   const claimCatalog = await db.prepare(
-    "INSERT INTO meta (key) VALUES ('catalog_synced') ON CONFLICT DO NOTHING"
+    // v2: re-pulls the live site's catalog (new course slugs, string batch details).
+    "INSERT INTO meta (key) VALUES ('catalog_synced_v2') ON CONFLICT DO NOTHING"
   ).run();
   if (claimCatalog.changes === 1) {
     try {
       await syncCatalog();
     } catch (e) {
-      await db.prepare("DELETE FROM meta WHERE key = 'catalog_synced'").run();
+      await db.prepare("DELETE FROM meta WHERE key = 'catalog_synced_v2'").run();
       throw e;
     }
   }
@@ -341,17 +367,17 @@ async function runEnsureCatalog(): Promise<void> {
   }
 
   // Starter subject → chapter → topic content and the comprehension tests.
-  // v3: every subject gets several chapters with timed topics (and Quantitative
-  // Techniques). seedDemoSyllabus is find-or-create at every level, so this only
-  // fills in what a course is still missing.
+  // v4: every offline / online course (including the live site's new ones) gets
+  // the five subjects with chapters and timed topics. seedDemoSyllabus is
+  // find-or-create at every level, so this only fills in what is missing.
   const claimSyllabus = await db.prepare(
-    "INSERT INTO meta (key) VALUES ('demo_syllabus_v3') ON CONFLICT DO NOTHING"
+    "INSERT INTO meta (key) VALUES ('demo_syllabus_v4') ON CONFLICT DO NOTHING"
   ).run();
   if (claimSyllabus.changes !== 1) return;
   try {
     await seedDemoSyllabus(await contentAuthorId());
   } catch (e) {
-    await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v3'").run();
+    await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v4'").run();
     throw e;
   }
 }

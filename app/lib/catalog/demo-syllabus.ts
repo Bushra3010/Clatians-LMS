@@ -519,7 +519,8 @@ export async function seedDemoSyllabus(authorId: string | null): Promise<void> {
 
   const subjects = await db.prepare("SELECT id, slug, name FROM subjects").all() as { id: string; slug: string; name: string }[];
   const courses = await db.prepare(
-    "SELECT id FROM courses WHERE slug IN ('clat', 'clat-ailet', 'clat-online')"
+    // Every classroom / online course — the website's own course list changes, so match by kind, not slug.
+    "SELECT id FROM courses WHERE status = 'active' AND category IN ('offline', 'online')"
   ).all() as { id: string }[];
 
   // Find-or-create at every level (module → chapter → topic), so later runs

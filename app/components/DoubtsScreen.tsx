@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Send, Clock } from "./icons";
 import type { DoubtMessage } from "../lib/doubt-actions";
+import { AppIcon } from "./AppIcon";
+import { AttachmentPicker, AttachmentPreview, type Attachment } from "./DoubtAttachment";
 
 export type DoubtItem = {
   id: string;
@@ -13,11 +15,13 @@ export type DoubtItem = {
   teacher: string | null;
   createdAt: string;
   messages: DoubtMessage[];
+  /** A photo or PDF the student attached. */
+  attachmentUrl?: string;
 };
 
 interface DoubtsScreenProps {
   doubts: DoubtItem[];
-  onAskDoubt: (subject: string, body: string) => Promise<void>;
+  onAskDoubt: (subject: string, body: string, attachmentUrl?: string) => Promise<void>;
   onFollowUp: (doubtId: string, body: string) => Promise<{ ok: boolean }>;
 }
 
@@ -39,12 +43,13 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
   const [replyMap, setReplyMap] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
 
   const ask = async () => {
-    if (!subject.trim() || !body.trim()) return;
+    if (!subject.trim() || (!body.trim() && !attachment)) return;
     setBusy(true);
-    await onAskDoubt(subject, body);
-    setSubject(""); setBody(""); setBusy(false);
+    await onAskDoubt(subject, body, attachment?.url ?? "");
+    setSubject(""); setBody(""); setAttachment(null); setBusy(false);
   };
 
   const reply = async (id: string) => {
@@ -66,6 +71,9 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
         <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Ask a new doubt</p>
         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g., Legal Reasoning)" style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", padding: "10px 14px", fontSize: 14, marginBottom: 8, outline: "none", color: "var(--text-primary)", background: "var(--surface-input)" }} />
         <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your question here…" rows={3} style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", padding: "10px 14px", fontSize: 14, marginBottom: 8, outline: "none", resize: "vertical", color: "var(--text-primary)", background: "var(--surface-input)" }} />
+        <div style={{ marginBottom: 8 }}>
+          <AttachmentPicker value={attachment} onChange={setAttachment} disabled={busy} />
+        </div>
         <button onClick={ask} disabled={busy} style={{ width: "100%", background: "var(--blue)", color: "white", border: "none", borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
           {busy ? "Submitting…" : "Post Doubt"}
         </button>
@@ -74,13 +82,13 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
       {/* Doubts list */}
       {sorted.length === 0 ? (
         <div style={{ background: "var(--surface)", borderRadius: 18, padding: "28px 18px", textAlign: "center", border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
+          <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--blue-tint)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}><AppIcon name="chat" size={24} color="var(--blue)" /></span>
           <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>No doubts yet. Ask one above!</p>
         </div>
       ) : sorted.map((d) => (
         <div key={d.id} style={{ background: "var(--surface)", borderRadius: 18, border: "1px solid var(--border)", marginBottom: 10, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
           <button onClick={() => setOpenId(openId === d.id ? null : d.id)} style={{ width: "100%", textAlign: "left", padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start", background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>💬</div>
+            <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="chat" size={18} color="var(--blue)" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{d.subject}</span>
@@ -98,6 +106,9 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
 
           {openId === d.id && (
             <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--border)" }}>
+              <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{d.body}</p>
+              {d.attachmentUrl && <AttachmentPreview url={d.attachmentUrl} />}
+              <div style={{ height: 8 }} />
               {d.answer && (
                 <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: 12, padding: "10px 12px", marginBottom: 8 }}>
                   <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "var(--info-text)" }}>Answer{d.teacher ? ` by ${d.teacher}` : ""}</p>

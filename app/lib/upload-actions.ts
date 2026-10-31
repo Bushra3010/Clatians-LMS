@@ -3,6 +3,10 @@
 import { requireRole } from "./auth";
 import { storageConfigured, objectPathFor, signUpload, MAX_UPLOAD_BYTES } from "./storage";
 
+/** What a student may attach to a doubt: a photo of the question, or a PDF. */
+const DOUBT_EXT = /\.(pdf|png|jpe?g|webp)$/i;
+const DOUBT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
 /** Kinds of file faculty may upload: documents, slides, images, video, audio. */
 const ALLOWED_EXT = /\.(pdf|docx?|pptx?|xlsx?|txt|png|jpe?g|webp|gif|mp4|webm|mov|m4v|mp3|m4a)$/i;
 
@@ -27,6 +31,25 @@ export async function requestUploadAction(fileName: string, size: number): Promi
 
   try {
     const { uploadUrl, publicUrl } = await signUpload(objectPathFor(name));
+    return { ok: true, direct: true, uploadUrl, publicUrl };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not start the upload." };
+  }
+}
+
+/**
+ * A student's doubt attachment: same direct-to-storage upload as faculty files,
+ * limited to images and PDFs under 10 MB, kept in their own folder.
+ */
+export async function requestDoubtUploadAction(fileName: string, size: number): Promise<UploadTicket> {
+  await requireRole(["student"]);
+  const name = String(fileName ?? "");
+  if (!DOUBT_EXT.test(name)) return { ok: false, error: "Attach a photo (JPG, PNG, WebP) or a PDF." };
+  if (!(size > 0)) return { ok: false, error: "The file is empty." };
+  if (size > DOUBT_MAX_BYTES) return { ok: false, error: "File too large — max 10 MB." };
+  if (!storageConfigured()) return { ok: false, error: "Attachments aren't available right now." };
+  try {
+    const { uploadUrl, publicUrl } = await signUpload(objectPathFor(name, "doubts"));
     return { ok: true, direct: true, uploadUrl, publicUrl };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not start the upload." };

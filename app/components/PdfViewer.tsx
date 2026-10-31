@@ -11,7 +11,11 @@ export const isPdfUrl = (s: string) => /\.pdf($|[?#])/i.test((s || "").trim());
  * canvases instead — the same on every device. Pages paint as they scroll near.
  * Give it `key={url}` so a new file starts from a clean slate.
  */
-export default function PdfViewer({ url, title }: { url: string; title?: string }) {
+export default function PdfViewer({ url, title, allowDownload = true }: {
+  url: string; title?: string;
+  /** false: view-only — no open/download link, and no long-press or right-click menu on the pages. */
+  allowDownload?: boolean;
+}) {
   const boxRef = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState(false);
@@ -46,11 +50,11 @@ export default function PdfViewer({ url, title }: { url: string; title?: string 
   }, []);
 
   return (
-    <div>
+    <div onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()} style={allowDownload ? undefined : { userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
       <div ref={boxRef} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {error ? (
           <p style={{ margin: 0, padding: "22px 16px", background: "white", borderRadius: 14, textAlign: "center", fontSize: 13, color: "var(--text-secondary)" }}>
-            Couldn&apos;t show this PDF here. Use the button below to open it.
+            {allowDownload ? <>Couldn&apos;t show this PDF here. Use the button below to open it.</> : <>Couldn&apos;t show this PDF here. Please try again in a moment.</>}
           </p>
         ) : !doc ? (
           <div style={{ height: 320, background: "white", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "var(--text-disabled)" }}>
@@ -62,14 +66,14 @@ export default function PdfViewer({ url, title }: { url: string; title?: string 
           ))
         )}
       </div>
-      <a
+      {allowDownload && <a
         href={url.trim()}
         target="_blank"
         rel="noreferrer"
         style={{ display: "block", marginTop: 10, textAlign: "center", textDecoration: "none", background: "white", border: "1px solid var(--gold-100)", color: "var(--ink-primary)", borderRadius: 12, padding: "10px", fontSize: 12.5, fontWeight: 700 }}
       >
-        📥 Open / download {title ? `“${title}”` : "PDF"}
-      </a>
+        Open / download {title ? `“${title}”` : "PDF"}
+      </a>}
     </div>
   );
 }

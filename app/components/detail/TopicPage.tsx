@@ -9,6 +9,7 @@ import { TopicState } from "../learning/LearningFlow";
 import { fmtIST, parseServerDate } from "../../lib/dates";
 import { AppIcon, type IconName } from "../AppIcon";
 import { shareText } from "../../lib/share";
+import { AttachmentPicker, AttachmentPreview, type Attachment } from "../DoubtAttachment";
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
@@ -117,7 +118,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   onToggleSave?: () => void;
   onBack: () => void;
   onStartTest: (testId: string) => Promise<{ ok: boolean; error?: string }>;
-  onAskDoubt: (body: string) => Promise<{ ok: boolean; error?: string }>;
+  onAskDoubt: (body: string, attachmentUrl?: string) => Promise<{ ok: boolean; error?: string }>;
   onToggleDone: (done: boolean) => Promise<void>;
   /** Another topic of the same chapter. */
   onOpenTopic: (id: string) => void;
@@ -129,8 +130,10 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const [busy, setBusy] = useState<"doubt" | "test" | "done" | null>(null);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
-  const [showPdf, setShowPdf] = useState(false);
+  // Notes open straight away inside the app; "Hide" collapses them.
+  const [showPdf, setShowPdf] = useState(true);
   const [playing, setPlaying] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [shareNote, setShareNote] = useState("");
   // The checklist's "Watch Video" scrolls to the player and starts it.
   const [autoplay, setAutoplay] = useState(false);
@@ -150,6 +153,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const countdown = useCountdown(next && next.status !== "live" ? next.startAt : undefined);
   const recordings = topic.pastClasses.filter((c) => c.recordingUrl);
   const notesIsPdf = !!topic.notesUrl && isLink(topic.notesUrl) && isPdfUrl(topic.notesUrl);
+  const notesIsImage = !!topic.notesUrl && isLink(topic.notesUrl) && /\.(png|jpe?g|webp|gif)($|[?#])/i.test(topic.notesUrl.trim());
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "content", label: "Content" },
@@ -168,9 +172,9 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const ask = async () => {
     setErr("");
     setBusy("doubt");
-    const res = await onAskDoubt(draft);
+    const res = await onAskDoubt(draft, attachment?.url ?? "");
     setBusy(null);
-    if (res.ok) { setDraft(""); setSent(true); } else setErr(res.error ?? "Could not send your doubt.");
+    if (res.ok) { setDraft(""); setAttachment(null); setSent(true); } else setErr(res.error ?? "Could not send your doubt.");
   };
 
   const start = async (testId: string) => {
@@ -423,16 +427,28 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
         {/* ── 9 · NOTES ── */}
         {tab === "notes" && (
           <>
-            {(topic.notesUrl || !topic.notes) && <p style={{ ...sectionTitle, marginTop: 0 }}>Download Notes</p>}
+            {(topic.notesUrl || !topic.notes) && <p style={{ ...sectionTitle, marginTop: 0 }}>{topic.notesDownload ? "Download Notes" : "Notes"}</p>}
             {topic.notesUrl && isLink(topic.notesUrl) ? (
               <>
                 <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 42, height: 48, borderRadius: 8, background: "var(--red)", color: "white", fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{notesIsPdf ? "PDF" : "FILE"}</span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{topic.title} – Notes</span>
-                  {notesIsPdf && <button onClick={() => setShowPdf(!showPdf)} style={{ ...smallBtn, background: "white", border: "1.5px solid var(--blue-tint)" }}>{showPdf ? "Hide" : "View"}</button>}
-                  <a href={topic.notesUrl.trim()} target="_blank" rel="noopener noreferrer" download style={{ ...smallBtn, textDecoration: "none" }}>Download</a>
+                  <span style={{ width: 42, height: 48, borderRadius: 8, background: "var(--red)", color: "white", fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{notesIsPdf ? "PDF" : notesIsImage ? "IMG" : "FILE"}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{topic.title} – Notes</span>
+                    {!topic.notesDownload && (notesIsPdf || notesIsImage) && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 11, color: "var(--text-muted)" }}><AppIcon name="lock" size={11} color="var(--text-muted)" />View in app only</span>
+                    )}
+                  </span>
+                  {(notesIsPdf || notesIsImage) && <button onClick={() => setShowPdf(!showPdf)} style={{ ...smallBtn, background: "white", border: "1.5px solid var(--blue-tint)" }}>{showPdf ? "Hide" : "View"}</button>}
+                  {(topic.notesDownload || !(notesIsPdf || notesIsImage)) && (
+                    <a href={topic.notesUrl.trim()} target="_blank" rel="noopener noreferrer" download={topic.notesDownload || undefined} style={{ ...smallBtn, textDecoration: "none" }}>{topic.notesDownload ? "Download" : "Open"}</a>
+                  )}
                 </div>
-                {showPdf && notesIsPdf && <div style={{ marginTop: 10 }}><PdfViewer key={topic.notesUrl} url={topic.notesUrl} title={topic.title} /></div>}
+                {showPdf && notesIsPdf && <div style={{ marginTop: 10 }}><PdfViewer key={topic.notesUrl} url={topic.notesUrl} title={topic.title} allowDownload={topic.notesDownload} /></div>}
+                {showPdf && notesIsImage && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={topic.notesUrl.trim()} alt={`${topic.title} notes`} draggable={false} onContextMenu={topic.notesDownload ? undefined : (e) => e.preventDefault()}
+                    style={{ display: "block", width: "100%", marginTop: 10, borderRadius: 12, background: "white", userSelect: "none", WebkitTouchCallout: topic.notesDownload ? undefined : "none" }} />
+                )}
               </>
             ) : !topic.notes ? (
               <Empty icon="file" title="Notes coming soon" text="Notes for this topic haven't been added yet." />
@@ -479,7 +495,10 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                 placeholder="Type your doubt here… faculty will see it's about this topic."
                 style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid var(--border)", borderRadius: 12, padding: "10px 12px", fontSize: 16, fontFamily: "inherit", resize: "vertical", color: "var(--ink-primary)" }}
               />
-              <button onClick={ask} disabled={busy === "doubt" || !draft.trim()} style={{ ...primaryBtn, marginTop: 8, opacity: busy === "doubt" || !draft.trim() ? 0.6 : 1 }}>
+              <div style={{ marginTop: 8 }}>
+                <AttachmentPicker value={attachment} onChange={(a) => { setAttachment(a); setSent(false); }} disabled={busy === "doubt"} />
+              </div>
+              <button onClick={ask} disabled={busy === "doubt" || (!draft.trim() && !attachment)} style={{ ...primaryBtn, marginTop: 8, opacity: busy === "doubt" || (!draft.trim() && !attachment) ? 0.6 : 1 }}>
                 {busy === "doubt" ? "Sending…" : "Submit Doubt"}
               </button>
               {sent && <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 700, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 6 }}><AppIcon name="check" size={14} strokeWidth={3} />Sent to faculty. You&apos;ll be notified when they reply.</p>}
@@ -523,6 +542,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                     {d.status === "answered" ? "Answered" : "Pending"}
                   </span>
                 </div>
+                {d.attachmentUrl && <AttachmentPreview url={d.attachmentUrl} />}
                 {d.answer && (
                   <div style={{ marginTop: 10, background: "var(--blue-tint)", borderRadius: 12, padding: "10px 12px" }}>
                     <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 800, color: "var(--blue)" }}>{d.teacher ?? "Faculty"} replied</p>

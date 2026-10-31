@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
 import { notify } from "./notify";
+import { isOurFileUrl } from "./storage";
 
 /** A student posts a doubt to faculty. Callable as askDoubtAction(subject, body). */
-export async function askDoubtAction(subject: string, body: string) {
+export async function askDoubtAction(subject: string, body: string, attachmentUrl = "") {
   const user = await requireRole(["student"]);
-  const text = (body ?? "").trim();
+  // Only files from our own storage are kept as attachments.
+  const raw = String(attachmentUrl ?? "").trim();
+  const attachment = raw && (isOurFileUrl(raw) || /^\/uploads\/[\w.-]+$/.test(raw)) ? raw : "";
+  const text = (body ?? "").trim() || (attachment ? "Please see the attached file." : "");
   if (!text) return;
 
   // Attach the doubt to the student's first enrolled batch, if any.
@@ -17,9 +21,9 @@ export async function askDoubtAction(subject: string, body: string) {
     .get(user.id) as { course_id: string } | undefined;
 
   await db.prepare(
-    `INSERT INTO doubts (id, student_id, course_id, subject, body, status)
-     VALUES (?, ?, ?, ?, ?, 'open')`
-  ).run(newId(), user.id, enr?.course_id ?? null, (subject ?? "").trim(), text);
+    `INSERT INTO doubts (id, student_id, course_id, subject, body, attachment_url, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'open')`
+  ).run(newId(), user.id, enr?.course_id ?? null, (subject ?? "").trim(), text, attachment);
 
   revalidatePath("/");
   revalidatePath("/teacher/doubts");

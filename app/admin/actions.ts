@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, newId } from "@/app/lib/db";
 import {
   requireAdmin,
+  requireRole,
   findUserByEmail,
   hashPassword,
   type Role,
@@ -563,9 +564,15 @@ export async function deleteFacultyAction(formData: FormData) {
 }
 
 // ── Course syllabus: modules → chapters → lessons ───────────
+// Admins and teachers both edit study content (teachers from /teacher/syllabus).
+
+function revalidateSyllabus(courseId: string) {
+  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+  revalidatePath(`/teacher/syllabus/${courseId}`);
+}
 
 export async function createModuleAction(formData: FormData) {
-  await requireAdmin();
+  await requireRole(["admin", "teacher"]);
   const courseId = String(formData.get("courseId") ?? "");
   const subjectId = String(formData.get("subjectId") ?? "") || null;
   // A course's subject block is titled after its subject unless named otherwise.
@@ -585,11 +592,11 @@ export async function createModuleAction(formData: FormData) {
     String(formData.get("description") ?? "").trim(),
     max.m + 1,
   );
-  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+  revalidateSyllabus(courseId);
 }
 
 export async function createChapterAction(formData: FormData) {
-  await requireAdmin();
+  await requireRole(["admin", "teacher"]);
   const moduleId = String(formData.get("moduleId") ?? "");
   const courseId = String(formData.get("courseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -599,7 +606,7 @@ export async function createChapterAction(formData: FormData) {
   await db.prepare(
     "INSERT INTO chapters (id, module_id, title, description, sort_order) VALUES (?, ?, ?, ?, ?)"
   ).run(newId(), moduleId, title, String(formData.get("description") ?? "").trim(), max.m + 1);
-  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+  revalidateSyllabus(courseId);
 }
 
 /** Topic fields shared by create and edit. A blank test id means "no test". */
@@ -616,12 +623,14 @@ function topicFields(formData: FormData) {
     testId: String(formData.get("testId") ?? "") || null,
     durationMin: Math.max(0, Math.round(Number(formData.get("durationMin") ?? 0) || 0)),
     isFree: formData.get("isFree") ? 1 : 0,
+    // Off by default: the notes file opens only inside the app.
+    notesDownload: formData.get("notesDownload") ? 1 : 0,
   };
 }
 
 /** A topic (stored as a `lessons` row): video + notes + test, all optional. */
 export async function createLessonAction(formData: FormData) {
-  await requireAdmin();
+  await requireRole(["admin", "teacher"]);
   const chapterId = String(formData.get("chapterId") ?? "");
   const courseId = String(formData.get("courseId") ?? "");
   const f = topicFields(formData);
@@ -629,30 +638,30 @@ export async function createLessonAction(formData: FormData) {
 
   const max = await db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM lessons WHERE chapter_id = ?").get(chapterId) as { m: number };
   await db.prepare(
-    `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, test_id, duration_min, is_free, sort_order)
-     VALUES (?, ?, ?, 'topic', ?, ?, ?, ?, ?, ?, ?)`
-  ).run(newId(), chapterId, f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, max.m + 1);
-  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+    `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, test_id, duration_min, is_free, notes_download, sort_order)
+     VALUES (?, ?, ?, 'topic', ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(newId(), chapterId, f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, f.notesDownload, max.m + 1);
+  revalidateSyllabus(courseId);
   revalidatePath("/");
 }
 
 export async function updateLessonAction(formData: FormData) {
-  await requireAdmin();
+  await requireRole(["admin", "teacher"]);
   const id = String(formData.get("id") ?? "");
   const courseId = String(formData.get("courseId") ?? "");
   const f = topicFields(formData);
   if (!id || !f.title) return;
 
   await db.prepare(
-    `UPDATE lessons SET title = ?, body = ?, video_url = ?, notes_url = ?, test_id = ?, duration_min = ?, is_free = ?
+    `UPDATE lessons SET title = ?, body = ?, video_url = ?, notes_url = ?, test_id = ?, duration_min = ?, is_free = ?, notes_download = ?
      WHERE id = ?`
-  ).run(f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, id);
-  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+  ).run(f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, f.notesDownload, id);
+  revalidateSyllabus(courseId);
   revalidatePath("/");
 }
 
 export async function deleteSyllabusNodeAction(formData: FormData) {
-  await requireAdmin();
+  await requireRole(["admin", "teacher"]);
   const courseId = String(formData.get("courseId") ?? "");
   const kind = String(formData.get("kind") ?? "");
   const id = String(formData.get("id") ?? "");
@@ -661,7 +670,7 @@ export async function deleteSyllabusNodeAction(formData: FormData) {
 
   // Children cascade via the schema's ON DELETE CASCADE.
   await db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
-  revalidatePath(`/admin/courses/${courseId}/syllabus`);
+  revalidateSyllabus(courseId);
 }
 
 /** Put a student into a batch by hand (admin-side counterpart of checkout). */

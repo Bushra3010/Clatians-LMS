@@ -11,6 +11,7 @@ const NAV = [
   { href: "/teacher/classes", label: "Live Classes", icon: "◉" },
   { href: "/teacher/slots", label: "1:1 Slots", icon: "◷" },
   { href: "/teacher/attendance", label: "Attendance", icon: "☑" },
+  { href: "/teacher/syllabus", label: "Study Content", icon: "☰" },
   { href: "/teacher/content", label: "My Content", icon: "▦" },
   { href: "/teacher/resources", label: "Content Library", icon: "▤" },
   { href: "/teacher/tests", label: "Test Series", icon: "✎" },

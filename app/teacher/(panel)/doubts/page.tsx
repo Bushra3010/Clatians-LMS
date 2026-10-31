@@ -16,6 +16,7 @@ type Row = {
   student: string | null;
   course: string | null;
   created_at: string;
+  attachment_url: string;
 };
 
 function fmt(iso: string) {
@@ -27,7 +28,7 @@ export default async function TeacherDoubtsPage() {
 
   const rows = await db
     .prepare(
-      `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at,
+      `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, d.attachment_url,
               s.name AS student, c.name AS course
        FROM doubts d
        LEFT JOIN users s ON s.id = d.student_id
@@ -78,6 +79,17 @@ export default async function TeacherDoubtsPage() {
                 {r.subject && <span className="text-xs text-slate-400">{r.subject}</span>}
               </div>
               <p className="text-sm text-slate-800">{r.body}</p>
+              {r.attachment_url && (
+                <a href={r.attachment_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5 pr-3 hover:border-gold-500">
+                  {/\.pdf($|[?#])/i.test(r.attachment_url) ? (
+                    <span className="flex h-10 w-10 items-center justify-center rounded bg-red-600 text-[10px] font-bold text-white">PDF</span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.attachment_url} alt="Student's attached photo" className="h-16 w-16 rounded object-cover" />
+                  )}
+                  <span className="text-xs font-medium text-gold-700">Open attachment</span>
+                </a>
+              )}
               <p className="text-xs text-slate-400 mt-2">
                 {r.student ?? "Student"}{r.course ? ` · ${r.course}` : ""} · {fmt(r.created_at)}
               </p>

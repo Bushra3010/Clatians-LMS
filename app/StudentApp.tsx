@@ -58,6 +58,7 @@ export type DoubtItem = {
   teacher: string | null;
   createdAt: string;
   messages: DoubtMessage[];
+  attachmentUrl?: string;
 };
 
 export type StudentProfile = {
@@ -222,8 +223,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   const handleJoinClass = (id: string) => openClass(allClasses.find((c) => c.id === id), "live");
   const handleWatchRecording = (cls: LiveClassItem) => openClass(cls, "recording");
 
-  const handleAskDoubt = async (subject: string, body: string) => {
-    await askDoubtAction(subject, body);
+  const handleAskDoubt = async (subject: string, body: string, attachmentUrl = "") => {
+    await askDoubtAction(subject, body, attachmentUrl);
     router.refresh(); // re-fetch server props so the new doubt shows
   };
 
@@ -473,7 +474,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                 if (kind === "topic") { handleOpenTopic(key); return; }
                 if (kind === "batch") {
                   const [courseId, batchId] = key.split(":");
-                  showLearning({ view: "list" });
+                  showLearning({ view: "list", tab: "enrolled" });
                   goScreen("study");
                   navLearning({ view: "batch", courseId, batchId: batchId || null });
                   return;
@@ -493,8 +494,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onToggleSave={() => handleToggleSave("topic", topic.id, topic.title, `${topic.chapter} · ${topic.subject}`)}
               onBack={closeDetail}
               onStartTest={(testId) => handleStartTest(testId, "topic")}
-              onAskDoubt={async (body) => {
-                const res = await askTopicDoubtAction(topic.id, body);
+              onAskDoubt={async (body, attachmentUrl) => {
+                const res = await askTopicDoubtAction(topic.id, body, attachmentUrl ?? "");
                 if (res.ok) await reloadTopic(topic.id);
                 return res;
               }}
@@ -559,10 +560,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onEnrollBatch={handleEnrollBatch}
               onOpenContent={(key) => openDetail(key)}
               onOpenTests={() => openDetail("tests")}
-              onOpenStudy={() => { showLearning({ view: "list" }); goScreen("study"); }}
+              onOpenStudy={() => { showLearning({ view: "list", tab: "enrolled" }); goScreen("study"); }}
               onOpenCourseLearning={(courseId, batchId) => {
                 // Land on their batch, with My Learning's list one Back away.
-                showLearning({ view: "list" });
+                showLearning({ view: "list", tab: "enrolled" });
                 goScreen("study");
                 navLearning({ view: "batch", courseId, batchId: batchId ?? null });
               }}
@@ -584,6 +585,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTopic={handleOpenTopic}
               onBrowseCourses={() => goScreen("courses")}
               onOpenLibrary={() => openDetail("study-library")}
+              onReplaceNav={showLearning}
               onOpenNotifications={() => openDetail("notifications")}
               unreadCount={unreadCount}
               savedBatchKeys={saved.filter((it) => it.kind === "batch").map((it) => it.key)}
@@ -599,7 +601,11 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         {showNav && (
           <BottomNav
             active={detailPage === "tests" ? "tests" : activeScreen}
-            onChange={(s) => goScreen(s)}
+            onChange={(s) => {
+              // The My Learning tab always opens on its main list, not on whatever batch / chapter was open last.
+              if (s === "study") showLearning({ view: "list" });
+              goScreen(s);
+            }}
             onOpenTests={() => openDetail("tests")}
           />
         )}

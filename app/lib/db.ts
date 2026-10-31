@@ -344,6 +344,12 @@ const SCHEMA = `
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL;
   -- Optional solution video a teacher attaches when answering (the topic's "Doubt solving videos").
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';
+  -- A photo or PDF the student attached to their doubt.
+  ALTER TABLE doubts ADD COLUMN IF NOT EXISTS attachment_url TEXT NOT NULL DEFAULT '';
+  -- Notes file permission: 0 = opens only inside the app, 1 = students may download it.
+  ALTER TABLE lessons ADD COLUMN IF NOT EXISTS notes_download INTEGER NOT NULL DEFAULT 0;
+  -- 0 = the website no longer sells this course: hidden from browsing, still open to students enrolled in it.
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS listed INTEGER NOT NULL DEFAULT 1;
   CREATE TABLE IF NOT EXISTS lesson_progress (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,

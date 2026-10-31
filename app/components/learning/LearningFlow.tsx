@@ -5,7 +5,8 @@ import type { CatalogItem, CatalogBatch } from "../CoursesScreen";
 import type { CourseSyllabus, LearningChapter, LearningTopic } from "../../lib/learning";
 import { getCourseSyllabusAction, getBatchExtrasAction, type BatchExtras } from "../../lib/learning-actions";
 import { fmtIST } from "../../lib/dates";
-import { BatchInfoPanel, BatchInfoSwitch, batchInfoTabs, Check, type BatchInfoTab } from "../BatchInfo";
+import { Check } from "../BatchInfo";
+import { WebsiteBatchHero, WebsiteBatchBody, paletteFor } from "../WebsiteBatch";
 import { AppIcon, courseIconName, type IconName } from "../AppIcon";
 import { shareText } from "../../lib/share";
 
@@ -14,7 +15,8 @@ export type LearningProgress = { courseId: string; lessons: number; done: number
 
 /** Where the student is in My Learning. Lives in StudentApp so it survives opening a topic. */
 export type LearningNav =
-  | { view: "list" }
+  /** The list remembers its tab, so Back from a batch returns to Enrolled; tapping My Learning opens Free Resources. */
+  | { view: "list"; tab?: "enrolled" | "resources" }
   | { view: "batch"; courseId: string; batchId: string | null }
   | { view: "subject"; courseId: string; batchId: string | null; subject: string }
   | { view: "chapter"; courseId: string; chapterId: string; from: string };
@@ -143,6 +145,8 @@ interface LearningFlowProps {
   onOpenTopic: (topicId: string) => void;
   onBrowseCourses: () => void;
   onOpenLibrary: () => void;
+  /** Change the current screen in place (no Back step) — used for the list's tabs. */
+  onReplaceNav?: (next: LearningNav) => void;
   onOpenNotifications?: () => void;
   unreadCount?: number;
   /** Saved batches, as "courseId:batchId" keys (the heart on a batch). */
@@ -211,9 +215,13 @@ function Meta({ icon, children }: { icon: IconName; children: React.ReactNode })
 // ── 2 · My Learning — the batches they bought ──
 
 type ListTab = "enrolled" | "resources";
+/** My Learning opens on Free Resources unless the student was last on Enrolled. */
+const DEFAULT_LIST_TAB: ListTab = "resources";
 
-function MyLearningList({ catalog, progress, onNav, onBrowseCourses, onOpenLibrary, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
-  const [tab, setTab] = useState<ListTab>("enrolled");
+function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseCourses, onOpenLibrary, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
+  const [localTab, setLocalTab] = useState<ListTab>(DEFAULT_LIST_TAB);
+  const tab: ListTab = onReplaceNav ? (nav.view === "list" ? nav.tab ?? DEFAULT_LIST_TAB : DEFAULT_LIST_TAB) : localTab;
+  const setTab = (t: ListTab) => (onReplaceNav ? onReplaceNav({ view: "list", tab: t }) : setLocalTab(t));
   const prog = (id: string) => progress.find((p) => p.courseId === id) ?? { courseId: id, lessons: 0, done: 0, minutes: 0 };
   const owned = ownedItems(catalog);
 
@@ -255,7 +263,7 @@ function MyLearningList({ catalog, progress, onNav, onBrowseCourses, onOpenLibra
               const open = () => onNav({ view: "batch", courseId: c.id, batchId: b?.id ?? null });
               return (
                 <div key={key} style={{ ...card, padding: 12, display: "flex", gap: 12 }}>
-                  <button onClick={open} aria-label={b?.name ?? c.name} style={{ width: 88, height: 88, borderRadius: 14, flexShrink: 0, border: "none", cursor: "pointer", background: gradient, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <button onClick={open} aria-label={b?.name ?? c.name} style={{ width: 88, height: 88, borderRadius: 14, flexShrink: 0, border: "none", cursor: "pointer", background: b ? `linear-gradient(135deg, ${paletteFor(b).from}, ${paletteFor(b).to})` : gradient, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <AppIcon name={courseIconName(c)} size={38} color="white" strokeWidth={1.6} />
                   </button>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -339,8 +347,6 @@ type HomeTab = "overview" | "subjects" | "instructors";
 function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
   const [tab, setTab] = useState<HomeTab>("subjects");
   const { data, error } = useSyllabus(c.id);
-  const [infoTab, setInfoTab] = useState<BatchInfoTab>("overview");
-  const infoTabs = b ? batchInfoTabs(b, true) : [];
   const subjects = data ? bySubject(data) : [];
   const topics = data ? allTopics(data) : [];
   const done = topics.filter((t) => t.completed).length;
@@ -356,13 +362,12 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
     const r = await shareText(b?.name ?? c.name, `${c.name} — CLATians · clatians.com/courses`);
     if (r === "copied") { setShareNote("Link copied"); setTimeout(() => setShareNote(""), 1500); }
   };
-  const showSwitch = tab === "overview" && !!b && infoTabs.length > 1;
   const openSubject = (subject: string) => onNav({ view: "subject", courseId: c.id, batchId: b?.id ?? null, subject });
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      {/* Hero */}
-      <div style={{ position: "relative", height: 180, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      {/* Hero — in the batch's colours from clatians.com */}
+      <div style={{ position: "relative", height: 180, background: b ? `linear-gradient(135deg, ${paletteFor(b).from} 0%, ${paletteFor(b).to} 100%)` : gradient, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <div style={{ position: "absolute", right: -30, top: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
         <div style={{ position: "absolute", left: -20, bottom: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <AppIcon name={courseIconName(c)} size={next ? 120 : 66} color={next ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.9)"} strokeWidth={1.3} />
@@ -382,7 +387,7 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
         {shareNote && <span style={{ position: "absolute", right: 14, top: 56, fontSize: 11, fontWeight: 700, color: "white", background: "rgba(0,0,0,0.35)", padding: "3px 8px", borderRadius: 8 }}>{shareNote}</span>}
         {next && (
           <button onClick={() => onOpenTopic(next.id)} aria-label="Continue learning" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 62, height: 62, borderRadius: "50%", border: "none", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.3)" }}>
-            <AppIcon name="play" size={24} color="var(--blue)" fill="var(--blue)" style={{ marginLeft: 3 }} />
+            <AppIcon name="play" size={24} color={b ? paletteFor(b).to : "var(--blue)"} fill={b ? paletteFor(b).to : "var(--blue)"} style={{ marginLeft: 3 }} />
           </button>
         )}
       </div>
@@ -412,9 +417,7 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
         </div>
       </div>
 
-      {showSwitch && <BatchInfoSwitch tabs={infoTabs} active={infoTab} onChange={setInfoTab} />}
-
-      <div style={{ padding: showSwitch ? "2px 16px 0" : "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
 
         {tab === "overview" && (
@@ -431,7 +434,13 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
                 <Chevron />
               </button>
             )}
-            {b ? <BatchInfoPanel key={`${b.id}-${infoTab}`} b={b} tab={infoTab} /> : (
+            {b ? (
+              // The batch page from clatians.com, without the buying bits.
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <WebsiteBatchHero b={b} courseName={c.name} enrolled embedded hideTitle />
+                <WebsiteBatchBody b={b} enrolled hidePlans hideCta />
+              </div>
+            ) : (
               <>
                 {(c.overview || c.description) && (
                   <div style={{ ...card, padding: 16 }}>

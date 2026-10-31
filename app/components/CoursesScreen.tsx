@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pushBack, goBack } from "../lib/back-stack";
 import type { BatchDetails } from "../lib/catalog/batches";
-import { BatchInfoPanel, BatchInfoSwitch, batchInfoTabs, type BatchInfoTab } from "./BatchInfo";
+import { WebsiteBatchHero, WebsiteBatchBody, WebsiteBatchStickyBar } from "./WebsiteBatch";
 import { AppIcon, courseIconName, type IconName } from "./AppIcon";
 
 /** A cohort of a course — what a student actually joins and pays for. */
@@ -64,6 +64,8 @@ export type CatalogItem = {
   whoFor: string[];
   testimonial: { name: string; rank: string; college: string; quote: string; avatar: string } | null;
   enrolled: boolean;
+  /** false when the website no longer sells it: hidden from browsing, kept for enrolled students. */
+  listed: boolean;
   contentCount: number;
   classCount: number;
   testCount: number;
@@ -176,17 +178,18 @@ type View =
 export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpenStudy, onOpenCourseLearning, onViewOrder, selectedCourseId = null, onSelectCourse }: CoursesScreenProps) {
   const [choosing, setChoosing] = useState(false);
   // Only offer the modes that actually have courses behind them.
-  const modes = useMemo(() => MODES.filter((m) => catalog.some((c) => c.category === m.key)), [catalog]);
+  // Browsing shows only what the website sells today.
+  const browsable = useMemo(() => catalog.filter((c) => c.listed !== false), [catalog]);
+  const modes = useMemo(() => MODES.filter((m) => browsable.some((c) => c.category === m.key)), [browsable]);
   const [mode, setMode] = useState<Mode>(modes[0]?.key ?? "offline");
   const [view, setView] = useState<View>({ name: "list" });
   const [method, setMethod] = useState("upi");
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
-  const [infoTab, setInfoTab] = useState<BatchInfoTab>("overview");
   const [showAbout, setShowAbout] = useState(false);
   const [courseSel, setCourseSel] = useState<string | null>(null);
 
-  const shown = catalog.filter((c) => c.category === mode);
+  const shown = browsable.filter((c) => c.category === mode);
 
   // The catalog prop refreshes after a purchase; always render the fresh copy
   // of whatever course/batch the view points at.
@@ -210,12 +213,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   };
   const back = () => goBack(() => show({ name: "list" }));
 
-  const openCourse = (course: CatalogItem) => {
-    setShowAbout(false);
-    go({ name: "course", course });
-  };
   const openBatch = (course: CatalogItem, batch: CatalogBatch) => {
-    setInfoTab("overview");
     go({ name: "batch", course, batch });
   };
   const startCheckout = (target: Target) => {
@@ -283,102 +281,21 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
     );
   }
 
-  // ── BATCH DETAIL — everything clatians.com says about the batch, as an app screen ──
+  // ── BATCH DETAIL — the clatians.com batch page, section for section ──
   if (view.name === "batch") {
     const c = fresh(view.course);
     const b = freshBatch(view.course, view.batch);
-    const left = seatsLeft(b);
-    const full = left === 0;
-    const pct = b.seats > 0 ? Math.min(100, Math.round((b.filled / b.seats) * 100)) : 0;
-    const tabs = batchInfoTabs(b, b.enrolled);
-    const tab = tabs.some((t) => t.key === infoTab) ? infoTab : "overview";
-    const quick = [
-      { label: "Starts", value: b.startDate },
-      { label: "Duration", value: b.duration.replace(/\s*\(.*\)$/, "") },
-      { label: "Language", value: b.language },
-    ].filter((q) => q.value);
-
+    const enroll = () => {
+      if (b.enrolled) { if (onOpenCourseLearning) onOpenCourseLearning(c.id, b.id); else onOpenStudy?.(); }
+      else startCheckout({ kind: "batch", course: c, batch: b });
+    };
     return (
-      <div style={{ background: "var(--app-bg)", minHeight: "100vh" }}>
-        <BackBar label={c.name} onClick={back} />
-
-        <div style={{ padding: "0 16px" }}>
-          {/* Hero */}
-          <div style={{ background: gradient, borderRadius: 20, padding: "18px 18px 16px", color: "white", boxShadow: "0 8px 24px rgba(11,92,255,0.28)", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", right: -30, top: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-            <div style={{ position: "absolute", right: 30, bottom: -40, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-            <div style={{ position: "relative", display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {b.batchType && <span style={heroChip}>{b.batchType}</span>}
-              {b.language && <span style={heroChip}>{b.language}</span>}
-              {b.status === "filling-fast" && <span style={{ ...heroChip, background: "#F97316" }}>{II("flame")}HOT</span>}
-              {b.enrolled && <span style={{ ...heroChip, background: "var(--green)" }}>{II("check")}ENROLLED</span>}
-            </div>
-            <h2 style={{ position: "relative", margin: "12px 0 0", fontSize: 20, fontWeight: 900, lineHeight: 1.3 }}>{b.name}</h2>
-            <p style={{ position: "relative", margin: "4px 0 0", fontSize: 12.5, color: "rgba(255,255,255,0.8)" }}>{II(courseIconName(c), 13)}{c.name}{b.faculty[0] ? ` · by ${b.faculty[0]}` : ""}</p>
-            {quick.length > 0 && (
-              <div style={{ position: "relative", display: "grid", gridTemplateColumns: `repeat(${quick.length}, minmax(0, 1fr))`, gap: 8, marginTop: 14 }}>
-                {quick.map((q) => (
-                  <div key={q.label} style={{ background: "rgba(255,255,255,0.14)", borderRadius: 12, padding: "8px 10px", minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700 }}>{q.label}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Fee — or, once bought, a note that it's theirs */}
-          {b.enrolled ? (
-            <div style={{ ...cardStyle, background: "var(--success)", border: "1px solid var(--success-border)", boxShadow: "none", display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="check" size={20} strokeWidth={3} color="white" /></span>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--success-text)" }}>You&apos;re enrolled in this batch</p>
-                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--success-text)" }}>Chapters, notes and live classes are open in My Learning.</p>
-              </div>
-            </div>
-          ) : (
-            <div style={cardStyle}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                <Price b={b} size={24} />
-                {b.offer && <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: "var(--success-text)", background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 8, padding: "4px 8px", maxWidth: 140, textAlign: "center" }}>{II("gift")}{b.offer}</span>}
-              </div>
-              {left !== null && (
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}>
-                    <span style={{ fontWeight: 800, color: left !== null && left <= 5 ? "var(--error-text)" : "var(--success-text)" }}>
-                      {full ? "Batch full" : <><Dot color={left !== null && left <= 5 ? "var(--error-text)" : "var(--green)"} />{left !== null && left <= 5 ? `Only ${left} seats left!` : `${left} seats left`}</>}
-                    </span>
-                    <span style={{ color: "var(--text-muted)" }}>{b.filled}/{b.seats} joined</span>
-                  </div>
-                  <div style={{ height: 6, background: "var(--surface-dim)", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: pct >= 80 ? "var(--error-text)" : "var(--green)" }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+      <div style={{ background: "#F8FAFC", minHeight: "100vh" }}>
+        <WebsiteBatchHero b={b} courseName={c.name} onBack={back} onEnroll={enroll} enrolled={b.enrolled} />
+        <div style={{ padding: "20px 16px 16px" }}>
+          <WebsiteBatchBody b={b} onEnroll={enroll} enrolled={b.enrolled} />
         </div>
-
-        <div style={{ marginTop: 6 }}>
-          <BatchInfoSwitch tabs={tabs} active={tab} onChange={setInfoTab} />
-        </div>
-        <div style={{ padding: "2px 16px 18px" }}>
-          <BatchInfoPanel key={`${b.id}-${tab}`} b={b} tab={tab} />
-        </div>
-
-        {/* Sticky buy bar — the batch's price lives here */}
-        <div style={stickyBar}>
-          {b.enrolled
-            ? <span style={{ fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}>{II("check", 13)}Enrolled</span>
-            : <Price b={b} size={20} />}
-          {b.enrolled ? (
-            <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(c.id, b.id) : onOpenStudy?.()} style={primaryBtn}>Start learning</button>
-          ) : (
-            <button onClick={() => startCheckout({ kind: "batch", course: c, batch: b })} disabled={full} style={{ ...primaryBtn, opacity: full ? 0.5 : 1, cursor: full ? "not-allowed" : "pointer" }}>
-              {full ? "Batch full" : b.fee === 0 ? "Join free" : "Enroll now"}
-            </button>
-          )}
-        </div>
+        <WebsiteBatchStickyBar b={b} onEnroll={enroll} enrolled={b.enrolled} />
       </div>
     );
   }
@@ -599,7 +516,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
   // ── LIST — website-style catalog: hero, mode tabs, course chips, batch cards ──
   const tabs: { key: Mode; label: string; icon: IconName; count: number }[] = [
-    ...modes.map((m) => ({ key: m.key as Mode, label: m.label.replace(" Course", "").replace("Mock Tests", "Mock"), icon: m.icon, count: catalog.filter((c) => c.category === m.key).length })),
+    ...modes.map((m) => ({ key: m.key as Mode, label: m.label.replace(" Course", "").replace("Mock Tests", "Mock"), icon: m.icon, count: browsable.filter((c) => c.category === m.key).length })),
   ];
   const active = shown.find((c) => c.id === courseSel) ?? shown[0];
   // A mode's list shows every open batch for that category — owned ones are marked ENROLLED.
@@ -679,22 +596,6 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
           {active && (
             <div style={{ padding: "10px 16px 0" }}>
-              <button onClick={() => openCourse(active)} className="press" style={{
-                width: "100%", background: "white", border: "1px solid var(--line)", borderRadius: 14,
-                padding: "10px 12px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
-                boxShadow: "0 1px 6px rgba(15,23,41,0.05)", textAlign: "left",
-              }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <AppIcon name={courseIconName(active)} size={17} color="var(--blue)" />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: W.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{active.name}</span>
-                  {active.duration && <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{active.duration}</span>}
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>
-                  Course details<AppIcon name="chevronRight" size={14} color="var(--blue)" />
-                </span>
-              </button>
 
               {courseAccess && (
                 <div style={{ background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 14, padding: "11px 14px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -769,11 +670,10 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
                             </div>
                           )}
                           <button
-                            onClick={(e) => { e.stopPropagation(); if (b.enrolled) openBatch(active, b); else startCheckout({ kind: "batch", course: active, batch: b }); }}
-                            disabled={!b.enrolled && left === 0}
-                            style={{ ...enrollBtn, flexShrink: 0, opacity: !b.enrolled && left === 0 ? 0.5 : 1 }}
+                            onClick={(e) => { e.stopPropagation(); openBatch(active, b); }}
+                            style={{ ...enrollBtn, flexShrink: 0 }}
                           >
-                            {b.enrolled ? "Open" : "Enroll"}
+                            View Details
                           </button>
                         </div>
                       </div>
@@ -816,9 +716,4 @@ const primaryBtn: React.CSSProperties = {
   background: gradient, color: "white", border: "none", borderRadius: 14,
   padding: "13px 20px", fontSize: 14, fontWeight: 800, cursor: "pointer",
   boxShadow: "0 6px 16px rgba(61,36,17,0.3)", whiteSpace: "nowrap", flexShrink: 0,
-};
-const stickyBar: React.CSSProperties = {
-  position: "sticky", bottom: 0, background: "white", borderTop: "1px solid var(--gold-100)",
-  padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-  boxShadow: "0 -4px 16px rgba(0,0,0,0.06)",
 };

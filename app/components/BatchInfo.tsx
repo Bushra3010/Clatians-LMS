@@ -120,111 +120,112 @@ export function BatchInfoSwitch({ tabs, active, onChange }: { tabs: { key: Batch
 
 // ── Overview ──
 
+/** Overview, in the same order as the batch page on clatians.com. */
 export function BatchOverview({ b }: { b: CatalogBatch }) {
   const d = b.details ?? {};
-  const facts: { icon: IconName; label: string; value: string }[] = [
+  const open = b.seats >= 999;
+  const left = Math.max(0, b.seats - b.filled);
+  const pct = b.seats > 0 && !open ? Math.min(100, Math.round((b.filled / b.seats) * 100)) : 0;
+  const keyInfo: { icon: IconName; label: string; value: string }[] = [
     { icon: "calendar" as const, label: "Starts", value: b.startDate },
-    { icon: "flag" as const, label: "Till", value: b.endDate },
-    { icon: "clock" as const, label: "Duration", value: b.duration },
-    { icon: "calendar" as const, label: "Schedule", value: b.schedule },
-    { icon: "pin" as const, label: "Mode", value: b.mode },
-    { icon: "language" as const, label: "Language", value: b.language },
+    { icon: "flag" as const, label: "Ends", value: b.endDate },
+    { icon: "clock" as const, label: "Duration", value: b.duration.split("(")[0].trim() },
+    { icon: "users" as const, label: "Seats Left", value: open ? "Open" : b.seats > 0 ? `${left} / ${b.seats}` : "" },
   ].filter((f) => f.value);
-  const phases = (d.aboutStrategy ?? "").split(/→|->/).map((s) => s.trim()).filter(Boolean);
-  const [allHi, setAllHi] = useState(false);
-  const hi = allHi ? b.highlights : b.highlights.slice(0, 5);
+  const line = [b.exam, b.mode, b.language, b.schedule.split("·")[0].trim()].filter(Boolean).join(" · ");
+  const chips = b.chips.filter((c) => c.trim());
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {facts.length > 0 && (
-        <div style={card}>
-          <Title icon="layers">Batch details</Title>
+      {/* Key info — Starts / Ends / Duration / Seats Left, then the seat bar */}
+      {keyInfo.length > 0 && (
+        <div style={{ ...card, background: gradient, color: "white" }}>
+          {line && <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "rgba(255,255,255,0.78)" }}>{line}</p>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {facts.map((f) => (
-              <div key={f.label} style={{ background: "var(--app-bg)", borderRadius: 12, padding: "10px 11px", minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 5 }}>
-                  <AppIcon name={f.icon} size={12} color="var(--text-disabled)" />{f.label}
+            {keyInfo.map((f) => (
+              <div key={f.label} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12, padding: "10px 12px", minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.65)", display: "flex", alignItems: "center", gap: 5 }}>
+                  <AppIcon name={f.icon} size={12} color="rgba(255,255,255,0.65)" />{f.label}
                 </p>
-                <p style={{ margin: "4px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--ink-primary)", overflowWrap: "anywhere" }}>{f.value}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 13.5, fontWeight: 900, overflowWrap: "anywhere" }}>{f.value}</p>
               </div>
             ))}
+          </div>
+          {!open && b.seats > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>
+                <span>{left} seats remaining</span><span>{pct}% filled</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 6, background: "rgba(255,255,255,0.18)", overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", borderRadius: 6, background: pct > 80 ? "#EF4444" : pct > 50 ? "#F59E0B" : "#34D399" }} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* What's Included — the batch's highlights */}
+      {b.highlights.length > 0 && (
+        <div style={card}>
+          <Title icon="check">What&apos;s Included</Title>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {b.highlights.map((h, i) => <Check key={i}>{h}</Check>)}
           </div>
         </div>
       )}
 
-      {(b.description || d.aboutDuration || phases.length > 0) && (
+      {/* About + Faculty */}
+      {(b.description || b.faculty.length > 0) && (
         <div style={card}>
           <Title icon="info">About this batch</Title>
           {b.description && <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>{b.description}</p>}
-          {d.aboutDuration && (
-            <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-              <AppIcon name="clock" size={14} color="var(--text-muted)" /><span><b style={{ color: "var(--ink-primary)" }}>Duration:</b> {d.aboutDuration}</span>
-            </p>
-          )}
-          {phases.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Strategy</p>
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                {phases.map((p, i) => (
-                  <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ background: "var(--blue-tint)", color: "var(--blue-dark)", fontSize: 11.5, fontWeight: 800, padding: "5px 10px", borderRadius: 20 }}>{i + 1}. {p}</span>
-                    {i < phases.length - 1 && <AppIcon name="chevronRight" size={14} color="var(--text-disabled)" />}
+          {b.faculty.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: b.description ? 12 : 0, paddingTop: b.description ? 12 : 0, borderTop: b.description ? "1px solid var(--line)" : "none" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-disabled)", marginRight: 2 }}>Faculty:</span>
+              {b.faculty.map((f) => (
+                <span key={f} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 20, padding: "4px 10px 4px 4px" }}>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--green)", color: "white", fontSize: 9.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {f.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                   </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {((d.aboutFeatures?.length ?? 0) > 0 || b.chips.length > 0) && (
-        <div style={card}>
-          <Title icon="gift">What you get</Title>
-          {d.aboutFeatures && d.aboutFeatures.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-              {d.aboutFeatures.map((f, i) => (
-                <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: "12px 11px", minWidth: 0 }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <AppIcon name={featureIconName(f.title)} size={17} color="var(--blue)" />
-                  </span>
-                  <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{f.title}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.45 }}>{f.subtitle}</p>
-                </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--success-text)" }}>{f}</span>
+                </span>
               ))}
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {b.chips.map((c, i) => <Check key={i}>{c}</Check>)}
-            </div>
           )}
         </div>
       )}
 
-      {b.highlights.length > 0 && (
+      {/* Special Features */}
+      {(d.aboutDuration || d.aboutStrategy || (d.aboutFeatures?.length ?? 0) > 0) && (
         <div style={card}>
-          <Title icon="star">Highlights</Title>
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            {hi.map((h, i) => <Check key={i}>{h}</Check>)}
-          </div>
-          {b.highlights.length > 5 && <MoreToggle open={allHi} label={`Show all ${b.highlights.length}`} onClick={() => setAllHi(!allHi)} />}
+          <Title icon="star">Special Features</Title>
+          {d.aboutDuration && <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--text-secondary)" }}><b style={{ color: "var(--ink-primary)" }}>Duration:</b> {d.aboutDuration}</p>}
+          {d.aboutStrategy && <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--text-secondary)" }}><b style={{ color: "var(--ink-primary)" }}>Strategy:</b> {d.aboutStrategy}</p>}
+          {d.aboutFeatures && d.aboutFeatures.length > 0 && (
+            <>
+              {d.aboutFeaturesLabel && <p style={{ margin: "8px 0 8px", fontSize: 13, fontWeight: 800, color: "var(--ink-primary)" }}>{d.aboutFeaturesLabel}</p>}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: d.aboutFeaturesLabel ? 0 : 8 }}>
+                {d.aboutFeatures.map((f, i) => (
+                  <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: "12px 11px", minWidth: 0 }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <AppIcon name={featureIconName(f.title)} size={17} color="var(--blue)" />
+                    </span>
+                    <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{f.title}</p>
+                    {f.subtitle && <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.45 }}>{f.subtitle}</p>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {b.faculty.length > 0 && (
+      {/* Batch Includes */}
+      {chips.length > 0 && (
         <div style={card}>
-          <Title icon="user">Faculty</Title>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {b.faculty.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <span style={{ width: 40, height: 40, borderRadius: "50%", background: gradient, color: "white", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {f.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("")}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{f}</p>
-                  <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "var(--text-muted)" }}>{i === 0 ? "Lead instructor" : "Instructor"}</p>
-                </div>
-              </div>
-            ))}
+          <Title icon="gift">Batch Includes</Title>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {chips.map((c, i) => <Check key={i}>{c}</Check>)}
           </div>
         </div>
       )}

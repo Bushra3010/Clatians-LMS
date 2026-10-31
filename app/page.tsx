@@ -31,7 +31,7 @@ type ContentRow = {
 };
 type DoubtRow = {
   id: string; subject: string; body: string; status: string;
-  answer: string; teacher: string | null; created_at: string;
+  answer: string; teacher: string | null; created_at: string; attachment_url: string;
 };
 type CourseQueryRow = {
   id: string; slug: string | null; name: string; description: string; price: number;
@@ -39,7 +39,7 @@ type CourseQueryRow = {
   tagline: string; overview: string; duration: string; batch_size: string;
   mode: string; fee_text: string; emi: string;
   features: string; includes: string; curriculum: string; who_for: string; testimonial: string;
-  enrolled: number; content_count: number; videos: number; notes: number;
+  enrolled: number; listed: number; content_count: number; videos: number; notes: number;
   practice: number; current_affairs: number; class_count: number; test_count: number;
 };
 type BatchQueryRow = {
@@ -139,7 +139,7 @@ export default async function Home() {
      ORDER BY m.created_at ASC`
   ).all(user.id),
     db.prepare(
-    `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, u.name AS teacher
+    `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, d.attachment_url, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? ORDER BY d.created_at DESC`
   ).all(user.id),
@@ -160,7 +160,7 @@ export default async function Home() {
     db.prepare(
     `SELECT c.id, c.slug, c.name, c.description, c.price, c.category, c.icon, c.color, c.bg,
             c.tagline, c.overview, c.duration, c.batch_size, c.mode, c.fee_text, c.emi,
-            c.features, c.includes, c.curriculum, c.who_for, c.testimonial,
+            c.features, c.includes, c.curriculum, c.who_for, c.testimonial, c.listed,
             (EXISTS(SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = c.id))::int AS enrolled,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved') AS content_count,
             (SELECT COUNT(*) FROM content ct WHERE ct.course_id = c.id AND ct.status = 'approved' AND ct.type = 'video') AS videos,
@@ -335,6 +335,7 @@ export default async function Home() {
     id: d.id, subject: d.subject, body: d.body, status: d.status,
     answer: d.answer, teacher: d.teacher, createdAt: d.created_at,
     messages: msgsByDoubt.get(d.id) ?? [],
+    attachmentUrl: d.attachment_url || "",
   }));
 
   // ── Course catalog (for enroll / buy) ──
@@ -367,7 +368,7 @@ export default async function Home() {
       curriculum: parseJson<CatalogItem["curriculum"]>(r.curriculum, []),
       whoFor: parseJson<string[]>(r.who_for, []),
       testimonial: parseJson<CatalogItem["testimonial"]>(r.testimonial, null),
-      enrolled: r.enrolled === 1, contentCount: r.content_count, classCount: r.class_count,
+      enrolled: r.enrolled === 1, listed: r.listed !== 0, contentCount: r.content_count, classCount: r.class_count,
       testCount: r.test_count,
       breakdown: { videos: r.videos, notes: r.notes, practice: r.practice, currentAffairs: r.current_affairs },
       contents: contentByCourse.get(r.id) ?? [],

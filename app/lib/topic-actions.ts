@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
+import { isOurFileUrl } from "./storage";
 import { isEnrolled, loadChapterTopics, type LearningTopic } from "./learning";
 import type { LiveClassItem } from "../components/detail/LiveClassesPage";
 
@@ -10,7 +11,7 @@ import type { LiveClassItem } from "../components/detail/LiveClassesPage";
  * One syllabus topic (a `lessons` row) as the student sees it: the video,
  * the notes, the topic's practice test and the student's own doubts on it.
  */
-export type TopicDoubt = { id: string; body: string; status: string; answer: string; teacher: string | null; createdAt: string; videoUrl: string };
+export type TopicDoubt = { id: string; body: string; status: string; answer: string; teacher: string | null; createdAt: string; videoUrl: string; attachmentUrl: string };
 /** An answered doubt on this topic that came with a solution video (any student's, shown without their name). */
 export type SolutionVideo = { id: string; question: string; videoUrl: string; teacher: string | null; createdAt: string };
 
@@ -23,6 +24,8 @@ export type TopicDetail = {
   durationMin: number;
   notes: string;
   notesUrl: string;
+  /** May students download the notes file, or only view it inside the app? */
+  notesDownload: boolean;
   test: { id: string; title: string; questionCount: number; durationMin: number; myAttempts: number; bestScore: number | null; bestTotal: number | null } | null;
   completed: boolean;
   doubts: TopicDoubt[];
@@ -41,13 +44,13 @@ export type TopicResult = { ok: true; topic: TopicDetail } | { ok: false; error:
 
 type TopicRow = {
   id: string; title: string; body: string; video_url: string; notes_url: string;
-  duration_min: number; is_free: number; test_id: string | null;
+  duration_min: number; is_free: number; test_id: string | null; notes_download: number;
   chapter: string; chapter_id: string; course_id: string; subject: string | null; module_title: string;
 };
 
 async function loadTopic(lessonId: string) {
   return await db.prepare(
-    `SELECT l.id, l.title, l.body, l.video_url, l.notes_url, l.duration_min, l.is_free, l.test_id,
+    `SELECT l.id, l.title, l.body, l.video_url, l.notes_url, l.duration_min, l.is_free, l.test_id, l.notes_download,
             ch.title AS chapter, ch.id AS chapter_id, m.course_id, s.name AS subject, m.title AS module_title
      FROM lessons l
      JOIN chapters ch ON ch.id = l.chapter_id
@@ -105,10 +108,10 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
   ).get(user.id, t.id) as { completed: number } | undefined;
 
   const doubts = await db.prepare(
-    `SELECT d.id, d.body, d.status, d.answer, d.video_url, d.created_at, u.name AS teacher
+    `SELECT d.id, d.body, d.status, d.answer, d.video_url, d.attachment_url, d.created_at, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? AND d.lesson_id = ? ORDER BY d.created_at DESC`
-  ).all(user.id, t.id) as { id: string; body: string; status: string; answer: string; video_url: string; created_at: string; teacher: string | null }[];
+  ).all(user.id, t.id) as { id: string; body: string; status: string; answer: string; video_url: string; attachment_url: string; created_at: string; teacher: string | null }[];
 
   const solutionVideos = access.enrolled
     ? await db.prepare(
@@ -143,11 +146,12 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
       durationMin: t.duration_min,
       notes: t.body,
       notesUrl: t.notes_url,
+      notesDownload: t.notes_download === 1,
       test: test
         ? { id: test.id, title: test.title, questionCount: test.qcount, durationMin: test.duration_min, myAttempts: test.my_attempts, bestScore: test.best_score, bestTotal: test.best_total }
         : null,
       completed: progress?.completed === 1,
-      doubts: doubts.map((d) => ({ id: d.id, body: d.body, status: d.status, answer: d.answer, teacher: d.teacher, createdAt: d.created_at, videoUrl: d.video_url || "" })),
+      doubts: doubts.map((d) => ({ id: d.id, body: d.body, status: d.status, answer: d.answer, teacher: d.teacher, createdAt: d.created_at, videoUrl: d.video_url || "", attachmentUrl: d.attachment_url || "" })),
       solutionVideos: solutionVideos.map((v) => ({ id: v.id, question: v.body, videoUrl: v.video_url, teacher: v.teacher, createdAt: v.created_at })),
       courseId: t.course_id,
       chapterId: t.chapter_id,
@@ -174,19 +178,29 @@ export async function setTopicDoneAction(lessonId: string, done: boolean): Promi
 }
 
 /** A doubt raised from inside a topic — tagged with it so faculty see the context. */
-export async function askTopicDoubtAction(lessonId: string, body: string): Promise<{ ok: boolean; error?: string }> {
+export async function askTopicDoubtAction(lessonId: string, body: string, attachmentUrl = ""): Promise<{ ok: boolean; error?: string }> {
   const user = await requireRole(["student"]);
-  const text = String(body ?? "").trim();
+  const attachment = cleanAttachment(attachmentUrl);
+  if (attachment === null) return { ok: false, error: "That attachment couldn't be used. Please attach it again." };
+  // A photo of the question is a doubt on its own.
+  const text = String(body ?? "").trim() || (attachment ? "Please see the attached file." : "");
   if (!text) return { ok: false, error: "Write your doubt first." };
   const t = await loadTopic(String(lessonId ?? ""));
   if (!t || !(await canOpen(user.id, t)).ok) return { ok: false, error: "You can't ask on this topic." };
 
   await db.prepare(
-    `INSERT INTO doubts (id, student_id, course_id, lesson_id, subject, body, status)
-     VALUES (?, ?, ?, ?, ?, ?, 'open')`
-  ).run(newId(), user.id, t.course_id, t.id, `${t.subject ?? t.module_title} · ${t.title}`, text);
+    `INSERT INTO doubts (id, student_id, course_id, lesson_id, subject, body, attachment_url, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`
+  ).run(newId(), user.id, t.course_id, t.id, `${t.subject ?? t.module_title} · ${t.title}`, text, attachment);
 
   revalidatePath("/");
   revalidatePath("/teacher/doubts");
   return { ok: true };
+}
+
+/** "" for none, the URL when it is one of our uploaded files, null when it isn't. */
+function cleanAttachment(url: string): string | null {
+  const u = String(url ?? "").trim();
+  if (!u) return "";
+  return isOurFileUrl(u) || /^\/uploads\/[\w.-]+$/.test(u) ? u : null;
 }
