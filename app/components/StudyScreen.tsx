@@ -8,6 +8,7 @@ import type { StudentProgress } from "./detail/ProgressPage";
 import type { LiveClassItem } from "./detail/LiveClassesPage";
 import { fmtTime, subjectStyle } from "./detail/LiveClassesPage";
 import { ChevronRight, CheckCircle2 } from "./icons";
+import { AppIcon } from "./AppIcon";
 
 const baseTabs = ["Videos", "Notes", "Tests", "Current Affairs"] as const;
 type Tab = "Syllabus" | typeof baseTabs[number];
@@ -37,6 +38,8 @@ interface StudyScreenProps {
   /** Open subject/chapter live in the parent, so they survive opening a topic. */
   syllabusNav?: { subjectId: string | null; chapterId: string | null };
   onSyllabusNav?: (nav: { subjectId: string | null; chapterId: string | null }) => void;
+  /** Opens the website's blog (daily Current Affairs notes). */
+  onOpenCurrentAffairs?: () => void;
 }
 
 function EmptyCard({ emoji, text }: { emoji: string; text: string }) {
@@ -104,7 +107,7 @@ function LiveClassesBlock({ upcoming, past, onJoin, onWatch }: { upcoming: LiveC
   );
 }
 
-export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic, onBrowseCourses, syllabusNav = { subjectId: null, chapterId: null }, onSyllabusNav }: StudyScreenProps) {
+export default function StudyScreen({ videos, notes, currentAffairs, tests, progress, onStartTest, upcomingClasses, pastClasses, onJoinClass, onWatchRecording, subjects = [], onOpenTopic, onBrowseCourses, syllabusNav = { subjectId: null, chapterId: null }, onSyllabusNav, onOpenCurrentAffairs }: StudyScreenProps) {
   // The syllabus tab leads whenever the student's course actually has one.
   const hasSyllabus = subjects.length > 0;
   const allTopics = subjects.flatMap((s) => s.chapters.flatMap((c) => c.topics));
@@ -314,7 +317,17 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
               </div>
             )}
 
-            {activeTab === "Current Affairs" && (
+            {activeTab === "Current Affairs" && onOpenCurrentAffairs && (
+              <button onClick={onOpenCurrentAffairs} style={{ width: "100%", cursor: "pointer", textAlign: "left", border: "none", borderRadius: 18, padding: "16px", background: blueGradient, display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <span style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="newspaper" size={22} color="white" /></span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "white" }}>Daily Current Affairs notes</span>
+                  <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>From The CLATians Journal, updated every day</span>
+                </span>
+                <AppIcon name="arrowRight" size={16} color="white" />
+              </button>
+            )}
+            {activeTab === "Current Affairs" && currentAffairs.length > 0 && (
               currentAffairs.length === 0 ? <EmptyCard emoji="🗞" text="No current affairs items yet" /> :
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {currentAffairs.map((item) => (

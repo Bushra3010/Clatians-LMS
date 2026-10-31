@@ -145,6 +145,8 @@ interface LearningFlowProps {
   onOpenTopic: (topicId: string) => void;
   onBrowseCourses: () => void;
   onOpenLibrary: () => void;
+  /** Current Affairs = the website's blog, in its own page. */
+  onOpenCurrentAffairs?: () => void;
   /** Change the current screen in place (no Back step) — used for the list's tabs. */
   onReplaceNav?: (next: LearningNav) => void;
   onOpenNotifications?: () => void;
@@ -218,7 +220,7 @@ type ListTab = "enrolled" | "resources";
 /** My Learning opens on Free Resources unless the student was last on Enrolled. */
 const DEFAULT_LIST_TAB: ListTab = "resources";
 
-function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseCourses, onOpenLibrary, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
+function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseCourses, onOpenLibrary, onOpenCurrentAffairs, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
   const [localTab, setLocalTab] = useState<ListTab>(DEFAULT_LIST_TAB);
   const tab: ListTab = onReplaceNav ? (nav.view === "list" ? nav.tab ?? DEFAULT_LIST_TAB : DEFAULT_LIST_TAB) : localTab;
   const setTab = (t: ListTab) => (onReplaceNav ? onReplaceNav({ view: "list", tab: t }) : setLocalTab(t));
@@ -306,7 +308,7 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
                 { icon: "clipboard" as IconName, label: "Practice Questions" },
                 { icon: "newspaper" as IconName, label: "Current Affairs" },
               ].map((r, i) => (
-                <button key={r.label} onClick={onOpenLibrary} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={r.icon} size={17} color="var(--blue)" /></span>
                   <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{r.label}</span>
                   <Chevron />

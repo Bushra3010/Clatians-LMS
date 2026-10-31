@@ -1,5 +1,6 @@
 "use client";
 
+import { AppIcon } from "./AppIcon";
 import { ChevronRight, CalendarIcon } from "./icons";
 import ClatLogo from "./ClatLogo";
 import { HeroCarousel, RecommenderStack } from "./HomeHero";
@@ -623,11 +624,10 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
               background: "rgba(245,166,35,0.16)",
               border: "1px solid rgba(245,166,35,0.35)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22,
-            }}>📰</div>
+            }}><AppIcon name="newspaper" size={22} color="var(--gold)" /></div>
             <div>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "white" }}>Today&apos;s Current Affairs</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.65)" }}>Stay updated for CLAT GK</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.65)" }}>Daily notes from The CLATians Journal</p>
             </div>
           </div>
           <button onClick={() => onToolClick?.("current-affairs")} className="press" style={{
@@ -635,7 +635,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
             border: "none", borderRadius: 12, padding: "10px 16px",
             fontSize: 12, fontWeight: 800, cursor: "pointer",
             boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
-          }}>Read →</button>
+          }}>Read</button>
         </div>
       </div>
 

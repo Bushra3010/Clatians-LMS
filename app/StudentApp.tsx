@@ -12,6 +12,8 @@ import DoubtsScreen from "./components/DoubtsScreen";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
+import CurrentAffairsPage from "./components/detail/CurrentAffairsPage";
+import { AppIcon } from "./components/AppIcon";
 import AiPracticePage from "./components/detail/AiPracticePage";
 import SlotsPage, { type SlotOpen, type SlotBooking } from "./components/detail/SlotsPage";
 import MyPaymentsPage, { type PaymentItem } from "./components/detail/MyPaymentsPage";
@@ -388,11 +390,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "my-notes"        && <NotesPage onBack={closeDetail} initialNotes={notes} />}
           {detailPage === "refer"           && <ReferPage onBack={closeDetail} referral={referral} />}
           {detailPage === "current-affairs" && (
-            <ContentListPage
+            <CurrentAffairsPage
               onBack={closeDetail}
-              type="current-affairs"
-              items={content["current-affairs"]}
-              onToggleDone={handleToggleDone}
               banner={resources.caq.length > 0 ? (
                 <button onClick={() => openDetail("ca-quiz")} style={{
                   width: "100%", marginBottom: 14, cursor: "pointer", textAlign: "left",
@@ -401,14 +400,14 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                   display: "flex", alignItems: "center", gap: 12,
                   boxShadow: "0 6px 18px rgba(61,36,17,0.25)",
                 }}>
-                  <span style={{ fontSize: 26 }}>🗞</span>
+                  <span style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="puzzle" size={22} color="white" /></span>
                   <span style={{ flex: 1 }}>
                     <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "white" }}>Today&apos;s Current Affairs quiz</span>
                     <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>
                       {resources.caq.length} questions · instant answers
                     </span>
                   </span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>→</span>
+                  <AppIcon name="arrowRight" size={16} color="white" />
                 </button>
               ) : null}
             />
@@ -526,6 +525,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onBrowseCourses={() => goScreen("courses")}
               syllabusNav={syllabusNav}
               onSyllabusNav={setSyllabusNav}
+              onOpenCurrentAffairs={() => openDetail("current-affairs")}
             />
           )}
           {detailPage === "help" && <HelpSupportPage onBack={closeDetail} />}
@@ -585,6 +585,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTopic={handleOpenTopic}
               onBrowseCourses={() => goScreen("courses")}
               onOpenLibrary={() => openDetail("study-library")}
+              onOpenCurrentAffairs={() => openDetail("current-affairs")}
               onReplaceNav={showLearning}
               onOpenNotifications={() => openDetail("notifications")}
               unreadCount={unreadCount}
