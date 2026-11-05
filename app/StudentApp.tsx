@@ -587,6 +587,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenLibrary={() => openDetail("study-library")}
               onOpenCurrentAffairs={() => openDetail("current-affairs")}
               onReplaceNav={showLearning}
+              onStartTest={(testId) => handleStartTest(testId, "tests")}
               onOpenNotifications={() => openDetail("notifications")}
               unreadCount={unreadCount}
               savedBatchKeys={saved.filter((it) => it.kind === "batch").map((it) => it.key)}

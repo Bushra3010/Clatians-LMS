@@ -51,3 +51,43 @@ export async function getBatchExtrasAction(batchId: string): Promise<{ ok: true;
     },
   };
 }
+
+/** A topic's practice test, with the student's best attempt — for the batch's Tests tab. */
+export type TopicTest = {
+  lessonId: string;
+  testId: string;
+  title: string;
+  questions: number;
+  durationMin: number;
+  attempts: number;
+  bestScore: number | null;
+  bestTotal: number | null;
+};
+
+/** Every published topic test in a course, keyed by the topic (lesson) it belongs to. */
+export async function getCourseTestsAction(courseId: string): Promise<{ ok: true; tests: TopicTest[] } | { ok: false; error: string }> {
+  const user = await requireRole(["student"]);
+  const rows = await db.prepare(
+    `SELECT l.id AS lesson_id, t.id AS test_id, t.title, t.duration_min,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS questions,
+            (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS attempts,
+            (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS best_score,
+            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
+     FROM modules m
+     JOIN chapters ch ON ch.module_id = m.id
+     JOIN lessons l ON l.chapter_id = ch.id
+     JOIN tests t ON t.id = l.test_id AND t.status = 'published'
+     WHERE m.course_id = ?`
+  ).all(user.id, user.id, user.id, String(courseId ?? "")) as {
+    lesson_id: string; test_id: string; title: string; duration_min: number; questions: number;
+    attempts: number; best_score: number | null; best_total: number | null;
+  }[];
+  return {
+    ok: true,
+    tests: rows.map((r) => ({
+      lessonId: r.lesson_id, testId: r.test_id, title: r.title, questions: Number(r.questions) || 0,
+      durationMin: r.duration_min || 0, attempts: Number(r.attempts) || 0,
+      bestScore: r.best_score == null ? null : Number(r.best_score), bestTotal: r.best_total == null ? null : Number(r.best_total),
+    })),
+  };
+}

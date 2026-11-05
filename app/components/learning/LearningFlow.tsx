@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CatalogItem, CatalogBatch } from "../CoursesScreen";
 import type { CourseSyllabus, LearningChapter, LearningTopic } from "../../lib/learning";
-import { getCourseSyllabusAction, getBatchExtrasAction, type BatchExtras } from "../../lib/learning-actions";
+import { getCourseSyllabusAction, getBatchExtrasAction, getCourseTestsAction, type BatchExtras, type TopicTest } from "../../lib/learning-actions";
 import { fmtIST } from "../../lib/dates";
 import { Check } from "../BatchInfo";
 import { WebsiteBatchHero, WebsiteBatchBody, paletteFor } from "../WebsiteBatch";
@@ -17,8 +17,11 @@ export type LearningProgress = { courseId: string; lessons: number; done: number
 export type LearningNav =
   /** The list remembers its tab, so Back from a batch returns to Enrolled; tapping My Learning opens Free Resources. */
   | { view: "list"; tab?: "enrolled" | "resources" }
-  | { view: "batch"; courseId: string; batchId: string | null }
+  /** The batch remembers its tab, so Back from a subject's tests returns to Tests. */
+  | { view: "batch"; courseId: string; batchId: string | null; tab?: HomeTab }
   | { view: "subject"; courseId: string; batchId: string | null; subject: string }
+  /** A subject's tests, chapter by chapter (from the batch's Tests tab). */
+  | { view: "subjectTests"; courseId: string; batchId: string | null; subject: string }
   | { view: "chapter"; courseId: string; chapterId: string; from: string };
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
@@ -130,6 +133,20 @@ function useSyllabus(courseId: string) {
   return { data, error };
 }
 
+/** The course's topic tests by topic id; loads only once the Tests tab is opened. */
+function useCourseTests(courseId: string, active = true) {
+  const [tests, setTests] = useState<Map<string, TopicTest> | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let live = true;
+    getCourseTestsAction(courseId).then((res) => {
+      if (live) setTests(new Map(res.ok ? res.tests.map((t) => [t.lessonId, t]) : []));
+    });
+    return () => { live = false; };
+  }, [courseId, active]);
+  return tests;
+}
+
 const allTopics = (s: CourseSyllabus) => s.chapters.flatMap((c) => c.topics);
 /** The first open topic the student hasn't finished — where "Continue" goes. */
 const nextTopic = (s: CourseSyllabus): LearningTopic | undefined => allTopics(s).find((t) => !t.completed && !t.locked);
@@ -154,6 +171,8 @@ interface LearningFlowProps {
   /** Saved batches, as "courseId:batchId" keys (the heart on a batch). */
   savedBatchKeys?: string[];
   onToggleSaveBatch?: (key: string, title: string, subtitle: string) => void;
+  /** Starts a topic test; resolves with an error message when it can't start. */
+  onStartTest?: (testId: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 /**
@@ -167,6 +186,7 @@ export default function LearningFlow(props: LearningFlowProps) {
   if (nav.view === "chapter") return <ChapterView key={nav.chapterId} {...props} course={course} chapterId={nav.chapterId} />;
   // Right after a purchase the batch may not be in the catalog yet; fall back to the course's own enrolled batch.
   const batch = (nav.batchId ? course.batches.find((b) => b.id === nav.batchId) : undefined) ?? course.batches.find((b) => b.enrolled) ?? null;
+  if (nav.view === "subjectTests") return <SubjectTestsView key={`${batch?.id ?? course.id}-tests-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
   if (nav.view === "subject") return <SubjectView key={`${batch?.id ?? course.id}-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
   return <BatchHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
 }
@@ -344,11 +364,16 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
 
 // ── 3 · Batch — mockup screen 3, with the batch's Subjects where the mockup lists batches ──
 
-type HomeTab = "overview" | "subjects" | "instructors";
+type HomeTab = "overview" | "subjects" | "instructors" | "tests";
 
-function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
-  const [tab, setTab] = useState<HomeTab>("subjects");
+function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+  const [tab, setTabState] = useState<HomeTab>(nav.view === "batch" && nav.tab ? nav.tab : "subjects");
+  const setTab = (t: HomeTab) => {
+    setTabState(t);
+    if (nav.view === "batch") onReplaceNav?.({ ...nav, tab: t });
+  };
   const { data, error } = useSyllabus(c.id);
+  const tests = useCourseTests(c.id, tab === "tests");
   const subjects = data ? bySubject(data) : [];
   const topics = data ? allTopics(data) : [];
   const done = topics.filter((t) => t.completed).length;
@@ -412,7 +437,7 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
         )}
         <div style={{ margin: "8px -16px 0" }}>
           <Tabs<HomeTab>
-            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }]}
+            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }, { key: "tests", label: "Tests" }]}
             active={tab}
             onChange={setTab}
           />
@@ -488,6 +513,36 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
           </>
         )}
 
+        {tab === "tests" && (
+          <>
+            <p style={{ margin: "2px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Tests by subject</p>
+            {!data || !tests ? <Loading /> : subjects.length === 0 ? (
+              <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this batch's tests shortly." />
+            ) : (
+              <div style={{ ...card, overflow: "hidden" }}>
+                {subjects.map((s, i) => {
+                  const list = s.chapters.flatMap((ch) => ch.topics).map((t) => tests.get(t.id)).filter(Boolean) as TopicTest[];
+                  const tried = list.filter((t) => t.attempts > 0).length;
+                  return (
+                    <button key={s.name} onClick={() => onNav({ view: "subjectTests", courseId: c.id, batchId: b?.id ?? null, subject: s.name })} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <AppIcon name="clipboard" size={19} color="var(--blue)" />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{s.name}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{s.chapters.length} {s.chapters.length === 1 ? "Chapter" : "Chapters"} · {list.length} {list.length === 1 ? "Test" : "Tests"}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{list.length ? `${tried} / ${list.length} attempted` : "Tests coming soon"}</span>
+                      </span>
+                      {list.length > 0 && <Pill {...subjectState(tried, list.length)} />}
+                      <Chevron />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
         {tab === "instructors" && (
           faculty.length === 0 ? (
             <Empty icon="user" title="Faculty to be announced" text="Instructors are listed here once a batch is assigned." />
@@ -505,14 +560,122 @@ function BatchHome({ course: c, batch: b, onBack, onNav, onOpenTopic, savedBatch
   );
 }
 
-// ── 4 · Subject — mockup screen 4: Chapters / Announcements / Students ──
+/** Tests chapter by chapter: each chapter's topic tests with Start / Retake. */
+function ChapterTests({ chapters, tests, onStartTest, firstNumber = 1 }: {
+  chapters: LearningChapter[];
+  tests: Map<string, TopicTest>;
+  onStartTest?: LearningFlowProps["onStartTest"];
+  /** Number shown on the first chapter (a chapter screen shows only its own). */
+  firstNumber?: number;
+}) {
+  const [starting, setStarting] = useState<string | null>(null);
+  const [startError, setStartError] = useState("");
 
-type SubjectTab = "chapters" | "announcements" | "students";
+  const start = async (testId: string) => {
+    if (!onStartTest || starting) return;
+    setStarting(testId);
+    setStartError("");
+    const res = await onStartTest(testId);
+    setStarting(null);
+    if (!res.ok) setStartError(res.error || "Couldn't start this test. Try again.");
+  };
 
-function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null; subject: string }) {
+  return (
+    <>
+      {startError && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{startError}</p>}
+      {chapters.map((ch, idx) => {
+        const i = firstNumber - 1 + idx;
+        const chTests = ch.topics.map((t) => ({ topic: t, test: tests.get(t.id) })).filter((x): x is { topic: LearningTopic; test: TopicTest } => !!x.test);
+        return (
+          <div key={ch.id} style={{ ...card, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: chTests.length ? "1px solid var(--line)" : "none" }}>
+              <Num n={i + 1} active={chTests.some((x) => x.test.attempts > 0)} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Chapter {i + 1}</span>
+                <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)", marginTop: 1 }}>{ch.title}</span>
+              </span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", flexShrink: 0 }}>{chTests.length} {chTests.length === 1 ? "Test" : "Tests"}</span>
+            </div>
+            {chTests.length === 0 ? (
+              <p style={{ margin: 0, padding: "0 14px 12px 56px", fontSize: 12, color: "var(--text-disabled)" }}>Test for this chapter coming soon</p>
+            ) : chTests.map(({ topic, test }, j) => {
+              const locked = topic.locked && !topic.isFree;
+              const meta = [`${test.questions} ${test.questions === 1 ? "Question" : "Questions"}`, test.durationMin > 0 ? `${test.durationMin} min` : "Untimed"].join(" · ");
+              return (
+                <div key={test.testId + topic.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: j ? "1px solid var(--line)" : "none" }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 10, background: test.attempts ? "var(--success)" : "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <AppIcon name={test.attempts ? "check" : "clipboard"} size={16} strokeWidth={test.attempts ? 3 : 2} color={test.attempts ? "var(--success-text)" : "var(--blue)"} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{topic.title}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{meta}</span>
+                    {test.attempts > 0 && test.bestScore != null && (
+                      <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--success-text)", marginTop: 2 }}>
+                        Best {test.bestScore}{test.bestTotal != null ? ` / ${test.bestTotal}` : ""} · {test.attempts} {test.attempts === 1 ? "attempt" : "attempts"}
+                      </span>
+                    )}
+                  </span>
+                  {locked ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: "var(--text-disabled)" }}><AppIcon name="lock" size={14} color="var(--text-disabled)" />Locked</span>
+                  ) : (
+                    <button onClick={() => start(test.testId)} disabled={!!starting} style={{
+                      flexShrink: 0, cursor: starting ? "default" : "pointer", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 800,
+                      border: test.attempts ? "1.5px solid var(--blue)" : "none", background: test.attempts ? "white" : gradient, color: test.attempts ? "var(--blue)" : "white",
+                      opacity: starting && starting !== test.testId ? 0.5 : 1,
+                    }}>{starting === test.testId ? "Starting…" : test.attempts ? "Retake" : "Start"}</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Subject tests — the batch's Tests tab → a subject → its tests, chapter by chapter ──
+
+function SubjectTestsView({ course: c, batch: b, subject, onBack, onStartTest }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null; subject: string }) {
+  const { data, error } = useSyllabus(c.id);
+  const tests = useCourseTests(c.id);
+  const group = data ? bySubject(data).find((s) => s.name === subject) : undefined;
+  const all = group && tests ? group.chapters.flatMap((ch) => ch.topics).map((t) => tests.get(t.id)).filter(Boolean) as TopicTest[] : [];
+  const tried = all.filter((t) => t.attempts > 0).length;
+
+  return (
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
+      <div style={{ background: "white", paddingBottom: 10 }}>
+        <Header title={`${subject} Tests`} onBack={onBack} right={all.length > 0 ? <Pill {...subjectState(tried, all.length)} /> : undefined} />
+        <div style={{ padding: "4px 16px 0 48px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}><AppIcon name="layers" size={14} color="var(--blue)" />{b?.name ?? c.name}</p>
+          {group && (
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
+              <AppIcon name="clipboard" size={14} color="var(--blue)" />{group.chapters.length} {group.chapters.length === 1 ? "Chapter" : "Chapters"} · {all.length} {all.length === 1 ? "Test" : "Tests"} · {tried} attempted
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
+        {!data || !tests ? <Loading /> : !group || group.chapters.length === 0 ? (
+          <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this subject's tests shortly." />
+        ) : <ChapterTests chapters={group.chapters} tests={tests} onStartTest={onStartTest} />}
+      </div>
+    </div>
+  );
+}
+
+// ── 4 · Subject — mockup screen 4: Chapters / Tests / Announcements ──
+
+type SubjectTab = "chapters" | "tests" | "announcements";
+
+function SubjectView({ course: c, batch: b, subject, onBack, onNav, onStartTest }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null; subject: string }) {
   const [tab, setTab] = useState<SubjectTab>("chapters");
   const { data, error } = useSyllabus(c.id);
   const [extras, setExtras] = useState<BatchExtras | null>(null);
+  const tests = useCourseTests(c.id, tab === "tests");
   const group = data ? bySubject(data).find((s) => s.name === subject) : undefined;
   const topics = group ? group.chapters.flatMap((ch) => ch.topics) : [];
   const done = topics.filter((t) => t.completed).length;
@@ -533,7 +696,8 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFl
 
   const tabs: { key: SubjectTab; label: string }[] = [
     { key: "chapters", label: "Chapters" },
-    ...(b ? [{ key: "announcements" as const, label: "Announcements" }, { key: "students" as const, label: "Students" }] : []),
+    { key: "tests", label: "Tests" },
+    ...(b ? [{ key: "announcements" as const, label: "Announcements" }] : []),
   ];
 
   return (
@@ -561,6 +725,12 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFl
           ))
         )}
 
+        {tab === "tests" && (
+          !data || !tests ? <Loading /> : !group || group.chapters.length === 0 ? (
+            <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this subject's tests shortly." />
+          ) : <ChapterTests chapters={group.chapters} tests={tests} onStartTest={onStartTest} />
+        )}
+
         {tab === "announcements" && (
           !extras ? <Loading /> : extras.announcements.length === 0 ? (
             <Empty icon="megaphone" title="No announcements yet" text="Updates from your faculty will appear here." />
@@ -572,24 +742,6 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFl
             </div>
           ))
         )}
-
-        {tab === "students" && b && (
-          !extras ? <Loading /> : (
-            <div style={{ ...card, padding: 16 }}>
-              <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "var(--ink-primary)" }}>{extras.studentCount}</p>
-              <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "var(--text-muted)" }}>{extras.studentCount === 1 ? "student" : "students"} in this batch{b.seats > 0 && b.seats < 500 ? ` · ${b.seats} seats` : ""}</p>
-              {extras.classmates.length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {extras.classmates.map((n, i) => (
-                    <span key={i} style={{ background: "var(--blue-tint)", color: "var(--blue-dark)", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 20 }}>{n}</span>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-disabled)" }}>Your classmates appear here as they join.</p>
-              )}
-            </div>
-          )
-        )}
       </div>
     </div>
   );
@@ -597,9 +749,10 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav }: LearningFl
 
 // ── 5 · Chapter details — its topics ──
 
-function ChapterView({ course: c, chapterId, onBack, onOpenTopic }: LearningFlowProps & { course: CatalogItem; chapterId: string }) {
+function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }: LearningFlowProps & { course: CatalogItem; chapterId: string }) {
   const { data, error } = useSyllabus(c.id);
   const [hint, setHint] = useState("");
+  const tests = useCourseTests(c.id);
   const ch = data?.chapters.find((x) => x.id === chapterId);
 
   if (!ch) {
@@ -665,6 +818,10 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic }: LearningFlow
             </button>
           );
         })}
+
+        {/* This chapter's tests */}
+        <p style={{ margin: "12px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Chapter Tests</p>
+        {tests ? <ChapterTests chapters={[ch]} tests={tests} onStartTest={onStartTest} firstNumber={localChapterNumber(data!, ch)} /> : <Loading />}
       </div>
     </div>
   );

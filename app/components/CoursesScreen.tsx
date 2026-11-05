@@ -574,21 +574,21 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
       ) : (
         <>
           {/* Course chips */}
-          <div style={{ display: "flex", gap: 8, padding: "14px 16px 4px", overflowX: "auto", scrollbarWidth: "none" }}>
+          <div style={{ display: "flex", gap: 7, padding: "10px 16px 4px", overflowX: "auto", scrollbarWidth: "none" }}>
             {shown.map((c) => {
               const on = active?.id === c.id;
               const joined = c.enrolled || c.batches.some((b) => b.enrolled);
               return (
                 <button key={c.id} onClick={() => setCourseSel(c.id)} className="press" style={{
-                  display: "flex", alignItems: "center", gap: 7, flexShrink: 0, whiteSpace: "nowrap",
-                  padding: "9px 15px", borderRadius: 24, cursor: "pointer", fontSize: 13, fontWeight: 700,
+                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0, whiteSpace: "nowrap",
+                  padding: "4px 10px", borderRadius: 20, cursor: "pointer", fontSize: 11, fontWeight: 700,
                   background: on ? "var(--blue-tint)" : "white",
                   border: on ? "1.5px solid var(--blue)" : "1.5px solid var(--line)",
                   color: on ? "var(--blue)" : W.ink,
                 }}>
-                  <AppIcon name={courseIconName(c)} size={16} />
+                  <AppIcon name={courseIconName(c)} size={12} />
                   {c.name}
-                  {joined && <AppIcon name="check" size={12} strokeWidth={3} color="var(--green)" />}
+                  {joined && <AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" />}
                 </button>
               );
             })}
