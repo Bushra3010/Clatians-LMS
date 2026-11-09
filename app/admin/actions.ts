@@ -653,7 +653,26 @@ function topicFields(formData: FormData) {
   };
 }
 
-/** A topic (stored as a `lessons` row): video + notes + test, all optional. */
+/** Adds a test to a topic after its existing ones (a topic can have several). */
+async function attachLessonTest(lessonId: string, testId: string) {
+  const max = await db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM lesson_tests WHERE lesson_id = ?").get(lessonId) as { m: number };
+  await db.prepare(
+    "INSERT INTO lesson_tests (lesson_id, test_id, sort_order) VALUES (?, ?, ?) ON CONFLICT DO NOTHING"
+  ).run(lessonId, testId, Number(max.m) + 1);
+}
+
+/** Takes a test off a topic. The test itself is kept. */
+export async function removeLessonTestAction(formData: FormData) {
+  await requireRole(["admin", "teacher"]);
+  const lessonId = String(formData.get("lessonId") ?? "");
+  const courseId = String(formData.get("courseId") ?? "");
+  const testId = String(formData.get("testId") ?? "");
+  if (!lessonId || !testId) return;
+  await db.prepare("DELETE FROM lesson_tests WHERE lesson_id = ? AND test_id = ?").run(lessonId, testId);
+  revalidateSyllabus(courseId);
+}
+
+/** A topic (stored as a `lessons` row): video + notes + tests, all optional. */
 export async function createLessonAction(formData: FormData) {
   await requireRole(["admin", "teacher"]);
   const chapterId = String(formData.get("chapterId") ?? "");
@@ -662,10 +681,12 @@ export async function createLessonAction(formData: FormData) {
   if (!chapterId || !f.title) return;
 
   const max = await db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM lessons WHERE chapter_id = ?").get(chapterId) as { m: number };
+  const lessonId = newId();
   await db.prepare(
     `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, test_id, duration_min, is_free, notes_download, sort_order)
      VALUES (?, ?, ?, 'topic', ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(newId(), chapterId, f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, f.notesDownload, max.m + 1);
+  ).run(lessonId, chapterId, f.title, f.body, f.videoUrl, f.notesUrl, null, f.durationMin, f.isFree, f.notesDownload, max.m + 1);
+  if (f.testId) await attachLessonTest(lessonId, f.testId);
   revalidateSyllabus(courseId);
   revalidatePath("/");
 }
@@ -678,9 +699,10 @@ export async function updateLessonAction(formData: FormData) {
   if (!id || !f.title) return;
 
   await db.prepare(
-    `UPDATE lessons SET title = ?, body = ?, video_url = ?, notes_url = ?, test_id = ?, duration_min = ?, is_free = ?, notes_download = ?
+    `UPDATE lessons SET title = ?, body = ?, video_url = ?, notes_url = ?, duration_min = ?, is_free = ?, notes_download = ?
      WHERE id = ?`
-  ).run(f.title, f.body, f.videoUrl, f.notesUrl, f.testId, f.durationMin, f.isFree, f.notesDownload, id);
+  ).run(f.title, f.body, f.videoUrl, f.notesUrl, f.durationMin, f.isFree, f.notesDownload, id);
+  if (f.testId) await attachLessonTest(id, f.testId);
   revalidateSyllabus(courseId);
   revalidatePath("/");
 }

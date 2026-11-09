@@ -3,6 +3,7 @@
 import { seedDemoSyllabus } from "./demo-syllabus";
 import { seedDemoMocks } from "./demo-mocks";
 import { seedChapterTests } from "./demo-chapter-tests";
+import { seedTopicTests } from "./demo-topic-tests";
 import { db, newId } from "../db";
 import { courses as bundledCourses, type Course } from "./courses";
 import { batches as bundledBatches, type Batch } from "./batches";
@@ -406,6 +407,19 @@ async function runEnsureCatalog(): Promise<void> {
       await seedChapterTests(await contentAuthorId());
     } catch (e) {
       await db.prepare("DELETE FROM meta WHERE key = 'demo_chapter_tests_v2'").run();
+      throw e;
+    }
+  }
+
+  // Extra topic tests, so a topic can show Topic Test 1, Topic Test 2….
+  const claimTopicTests = await db.prepare(
+    "INSERT INTO meta (key) VALUES ('demo_topic_tests_v1') ON CONFLICT DO NOTHING"
+  ).run();
+  if (claimTopicTests.changes === 1) {
+    try {
+      await seedTopicTests(await contentAuthorId());
+    } catch (e) {
+      await db.prepare("DELETE FROM meta WHERE key = 'demo_topic_tests_v1'").run();
       throw e;
     }
   }

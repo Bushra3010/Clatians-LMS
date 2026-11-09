@@ -559,10 +559,15 @@ export async function seedDemoSyllabus(authorId: string | null): Promise<void> {
             }
             continue;
           }
+          const lessonId = newId();
           await db.prepare(
-            `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, test_id, duration_min, is_free, sort_order)
-             VALUES (?, ?, ?, 'topic', ?, '', '', ?, ?, ?, ?)`
-          ).run(newId(), chapter.id, t.title, t.notes, t.test ? topicTests.get(t.test) ?? null : null, t.durationMin ?? 0, t.free ? 1 : 0, ti);
+            `INSERT INTO lessons (id, chapter_id, title, type, body, video_url, notes_url, duration_min, is_free, sort_order)
+             VALUES (?, ?, ?, 'topic', ?, '', '', ?, ?, ?)`
+          ).run(lessonId, chapter.id, t.title, t.notes, t.durationMin ?? 0, t.free ? 1 : 0, ti);
+          const testId = t.test ? topicTests.get(t.test) : undefined;
+          if (testId) {
+            await db.prepare("INSERT INTO lesson_tests (lesson_id, test_id, sort_order) VALUES (?, ?, 1) ON CONFLICT DO NOTHING").run(lessonId, testId);
+          }
         }
       }
     }

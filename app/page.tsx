@@ -199,7 +199,7 @@ export default async function Home() {
             l.is_free AS lesson_is_free,
             (l.video_url <> '')::int AS has_video,
             (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
-            (l.test_id IS NOT NULL)::int AS has_test,
+            EXISTS (SELECT 1 FROM lesson_tests lt WHERE lt.lesson_id = l.id)::int AS has_test,
             COALESCE(lp.completed, 0) AS lesson_completed,
             (l.is_free = 0 AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = ? AND e.course_id = m.course_id))::int AS lesson_locked
      FROM modules m

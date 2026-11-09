@@ -52,7 +52,7 @@ function withLocks(rows: TopicRow[], enrolled: boolean): LearningTopic[] {
 const topicCols = `l.id, l.title, l.duration_min, l.is_free,
   (l.video_url <> '')::int AS has_video,
   (l.body <> '' OR l.notes_url <> '')::int AS has_notes,
-  (l.test_id IS NOT NULL)::int AS has_test,
+  EXISTS (SELECT 1 FROM lesson_tests lt WHERE lt.lesson_id = l.id)::int AS has_test,
   COALESCE(lp.completed, 0) AS completed`;
 
 /** A chapter's topics in order, with the student's progress and locks. */

@@ -6,6 +6,7 @@ import {
   createChapterAction,
   addChapterTestAction,
   removeChapterTestAction,
+  removeLessonTestAction,
   createLessonAction,
   updateLessonAction,
   deleteSyllabusNodeAction,
@@ -25,7 +26,7 @@ type Chapter = { id: string; module_id: string; title: string };
 type ChapterTestRow = { chapter_id: string; test_id: string; title: string; qcount: number };
 type Topic = {
   id: string; chapter_id: string; title: string; body: string; video_url: string; notes_url: string;
-  test_id: string | null; duration_min: number; is_free: number; notes_download: number;
+  duration_min: number; is_free: number; notes_download: number;
 };
 type TestOpt = { id: string; title: string; status: string; qcount: number };
 
@@ -71,9 +72,9 @@ function TopicFields({ topic, tests }: { topic?: Topic; tests: TestOpt[] }) {
         <textarea name="body" rows={4} defaultValue={topic?.body} className={inputCls} placeholder="Key points, definitions, examples…" />
       </label>
       <label className="block">
-        <span className="block text-xs font-medium text-slate-600 mb-1">📝 Topic test</span>
-        <select name="testId" defaultValue={topic?.test_id ?? ""} className={inputCls}>
-          <option value="">— no test —</option>
+        <span className="block text-xs font-medium text-slate-600 mb-1">📝 Add a topic test (a topic can have several)</span>
+        <select name="testId" defaultValue="" className={inputCls}>
+          <option value="">— don&apos;t add a test —</option>
           {tests.map((t) => (
             <option key={t.id} value={t.id}>{t.title} ({t.qcount} Q{t.status !== "published" ? " · draft" : ""})</option>
           ))}
@@ -121,7 +122,7 @@ export default async function SyllabusEditor({ courseId, backHref, backLabel, ca
   ).all(courseId) as Chapter[];
 
   const topics = await db.prepare(
-    `SELECT id, chapter_id, title, body, video_url, notes_url, test_id, duration_min, is_free, notes_download FROM lessons
+    `SELECT id, chapter_id, title, body, video_url, notes_url, duration_min, is_free, notes_download FROM lessons
      WHERE chapter_id IN (SELECT id FROM chapters WHERE module_id IN (SELECT id FROM modules WHERE course_id = ?))
      ORDER BY sort_order`
   ).all(courseId) as Topic[];
@@ -140,6 +141,14 @@ export default async function SyllabusEditor({ courseId, backHref, backLabel, ca
      ORDER BY ct.sort_order, ct.created_at`
   ).all(courseId) as ChapterTestRow[];
   const testsOfChapter = (chapterId: string) => chapterTests.filter((t) => t.chapter_id === chapterId);
+
+  const lessonTests = await db.prepare(
+    `SELECT lt.lesson_id, lt.test_id, t.title, (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount
+     FROM lesson_tests lt JOIN tests t ON t.id = lt.test_id
+     WHERE lt.lesson_id IN (SELECT l.id FROM lessons l JOIN chapters c ON c.id = l.chapter_id JOIN modules m ON m.id = c.module_id WHERE m.course_id = ?)
+     ORDER BY lt.sort_order, lt.created_at`
+  ).all(courseId) as { lesson_id: string; test_id: string; title: string; qcount: number }[];
+  const testsOfTopic = (lessonId: string) => lessonTests.filter((t) => t.lesson_id === lessonId);
 
   const chaptersOf = (moduleId: string) => chapters.filter((c) => c.module_id === moduleId);
   const topicsOf = (chapterId: string) => topics.filter((l) => l.chapter_id === chapterId);
@@ -256,13 +265,28 @@ export default async function SyllabusEditor({ courseId, backHref, backLabel, ca
                             <span className="ml-2 text-xs">
                               <span className={l.video_url ? "text-green-700" : "text-slate-300"}>🎥 video</span>{" · "}
                               <span className={l.body || l.notes_url ? "text-green-700" : "text-slate-300"}>📄 notes</span>{" · "}
-                              <span className={l.test_id ? "text-green-700" : "text-slate-300"}>📝 test</span>
+                              <span className={testsOfTopic(l.id).length ? "text-green-700" : "text-slate-300"}>📝 {testsOfTopic(l.id).length || ""} {testsOfTopic(l.id).length === 1 ? "test" : "tests"}</span>
                               {l.is_free ? <span className="text-slate-400"> · free preview</span> : null}
                               {l.notes_url ? <span className="text-slate-400"> · {l.notes_download ? "downloadable" : "view in app only"}</span> : null}
                             </span>
                           </span>
                           <DeleteButton courseId={courseId} kind="lesson" id={l.id} label="Remove" />
                         </div>
+                        {testsOfTopic(l.id).length > 0 && (
+                          <ul className="mt-1 space-y-0.5">
+                            {testsOfTopic(l.id).map((t, ti) => (
+                              <li key={t.test_id} className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                                <span>Topic Test {ti + 1}: {t.title} · {t.qcount} Q</span>
+                                <form action={removeLessonTestAction}>
+                                  <input type="hidden" name="courseId" value={courseId} />
+                                  <input type="hidden" name="lessonId" value={l.id} />
+                                  <input type="hidden" name="testId" value={t.test_id} />
+                                  <button className="font-medium text-red-600 hover:underline">Remove</button>
+                                </form>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                         <details className="mt-1">
                           <summary className="text-xs font-medium text-gold-700 cursor-pointer">Edit topic</summary>
                           <form action={updateLessonAction} className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">

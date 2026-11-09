@@ -353,6 +353,16 @@ const SCHEMA = `
   );
   INSERT INTO chapter_tests (chapter_id, test_id) SELECT id, test_id FROM chapters WHERE test_id IS NOT NULL ON CONFLICT DO NOTHING;
   UPDATE chapters SET test_id = NULL WHERE test_id IS NOT NULL;
+  -- Topic tests: a topic can have several (Topic Test 1, Topic Test 2…). lessons.test_id is retired.
+  CREATE TABLE IF NOT EXISTS lesson_tests (
+    lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    test_id TEXT NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    PRIMARY KEY (lesson_id, test_id)
+  );
+  INSERT INTO lesson_tests (lesson_id, test_id, sort_order) SELECT id, test_id, 1 FROM lessons WHERE test_id IS NOT NULL ON CONFLICT DO NOTHING;
+  UPDATE lessons SET test_id = NULL WHERE test_id IS NOT NULL;
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL;
   -- Optional solution video a teacher attaches when answering (the topic's "Doubt solving videos").
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';

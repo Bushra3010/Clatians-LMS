@@ -26,7 +26,8 @@ export type TopicDetail = {
   notesUrl: string;
   /** May students download the notes file, or only view it inside the app? */
   notesDownload: boolean;
-  test: { id: string; title: string; questionCount: number; durationMin: number; myAttempts: number; bestScore: number | null; bestTotal: number | null } | null;
+  /** The topic's tests in order (Topic Test 1, Topic Test 2…). */
+  tests: { id: string; title: string; questionCount: number; durationMin: number; myAttempts: number; bestScore: number | null; bestTotal: number | null }[];
   completed: boolean;
   doubts: TopicDoubt[];
   courseId: string;
@@ -44,13 +45,13 @@ export type TopicResult = { ok: true; topic: TopicDetail } | { ok: false; error:
 
 type TopicRow = {
   id: string; title: string; body: string; video_url: string; notes_url: string;
-  duration_min: number; is_free: number; test_id: string | null; notes_download: number;
+  duration_min: number; is_free: number; notes_download: number;
   chapter: string; chapter_id: string; course_id: string; subject: string | null; module_title: string;
 };
 
 async function loadTopic(lessonId: string) {
   return await db.prepare(
-    `SELECT l.id, l.title, l.body, l.video_url, l.notes_url, l.duration_min, l.is_free, l.test_id, l.notes_download,
+    `SELECT l.id, l.title, l.body, l.video_url, l.notes_url, l.duration_min, l.is_free, l.notes_download,
             ch.title AS chapter, ch.id AS chapter_id, m.course_id, s.name AS subject, m.title AS module_title
      FROM lessons l
      JOIN chapters ch ON ch.id = l.chapter_id
@@ -92,16 +93,16 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
       : { ok: false, locked: true, error: "Enrol in a batch to unlock this topic." };
   }
 
-  const test = t.test_id
-    ? await db.prepare(
-        `SELECT t.id, t.title, t.duration_min,
-                (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
-                (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS my_attempts,
-                (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS best_score,
-                (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
-         FROM tests t WHERE t.id = ? AND t.status = 'published'`
-      ).get(user.id, user.id, user.id, t.test_id) as { id: string; title: string; duration_min: number; qcount: number; my_attempts: number; best_score: number | null; best_total: number | null } | undefined
-    : undefined;
+  const tests = await db.prepare(
+    `SELECT t.id, t.title, t.duration_min,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount,
+            (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS my_attempts,
+            (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS best_score,
+            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
+     FROM lesson_tests lt JOIN tests t ON t.id = lt.test_id AND t.status = 'published'
+     WHERE lt.lesson_id = ?
+     ORDER BY lt.sort_order, lt.created_at, t.title`
+  ).all(user.id, user.id, user.id, t.id) as { id: string; title: string; duration_min: number; qcount: number; my_attempts: number; best_score: number | null; best_total: number | null }[];
 
   const progress = await db.prepare(
     "SELECT completed FROM lesson_progress WHERE user_id = ? AND lesson_id = ?"
@@ -147,9 +148,11 @@ export async function getTopicAction(lessonId: string): Promise<TopicResult> {
       notes: t.body,
       notesUrl: t.notes_url,
       notesDownload: t.notes_download === 1,
-      test: test
-        ? { id: test.id, title: test.title, questionCount: test.qcount, durationMin: test.duration_min, myAttempts: test.my_attempts, bestScore: test.best_score, bestTotal: test.best_total }
-        : null,
+      tests: tests.filter((x) => Number(x.qcount) > 0).map((x) => ({
+        id: x.id, title: x.title, questionCount: Number(x.qcount), durationMin: x.duration_min,
+        myAttempts: Number(x.my_attempts) || 0,
+        bestScore: x.best_score == null ? null : Number(x.best_score), bestTotal: x.best_total == null ? null : Number(x.best_total),
+      })),
       completed: progress?.completed === 1,
       doubts: doubts.map((d) => ({ id: d.id, body: d.body, status: d.status, answer: d.answer, teacher: d.teacher, createdAt: d.created_at, videoUrl: d.video_url || "", attachmentUrl: d.attachment_url || "" })),
       solutionVideos: solutionVideos.map((v) => ({ id: v.id, question: v.body, videoUrl: v.video_url, teacher: v.teacher, createdAt: v.created_at })),

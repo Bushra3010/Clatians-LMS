@@ -264,11 +264,14 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     if (res.ok) { setDraft(""); setAttachment(null); setSent(true); } else setErr(res.error ?? "Could not send your doubt.");
   };
 
+  const [testBusy, setTestBusy] = useState<string | null>(null);
   const start = async (testId: string) => {
     setErr("");
     setBusy("test");
+    setTestBusy(testId);
     const res = await onStartTest(testId);
     setBusy(null);
+    setTestBusy(null);
     if (!res.ok) setErr(res.error ?? "Could not start the test.");
   };
 
@@ -301,12 +304,23 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     : next.status === "live" ? "Live now"
     : `Next: ${fmtIST(next.startAt, { day: "numeric", month: "short" })}, ${fmtIST(next.startAt, { hour: "numeric", minute: "2-digit", hour12: true })}`;
 
-  type StepKey = "video" | "live" | "notes" | "test" | "doubt";
-  const steps: { key: StepKey; label: string; sub: string; icon: IconName; action: string; done: boolean; live?: boolean }[] = [
+  /** A topic's tests open in order: Topic Test 2 unlocks once Topic Test 1 is attempted. */
+  const testLocked = (i: number) => i > 0 && topic.tests[i - 1].myAttempts === 0;
+  const testSub = (t: TopicDetail["tests"][number], i: number) => testLocked(i)
+    ? `Attempt Topic Test ${i} to unlock`
+    : `${t.questionCount} questions${t.durationMin > 0 ? ` · ${t.durationMin} min` : ""}${t.myAttempts ? ` · ${t.myAttempts} attempt${t.myAttempts === 1 ? "" : "s"}` : ""}`;
+
+  type StepKey = "video" | "live" | "notes" | "doubt" | `test:${string}`;
+  const steps: { key: StepKey; label: string; sub: string; icon: IconName; action: string; done: boolean; live?: boolean; locked?: boolean }[] = [
     { key: "video", label: "Watch Video (Recorded)", sub: demoVideo ? "Demo lecture" : topic.durationMin > 0 ? `${topic.durationMin} min lecture` : "Recorded lecture", icon: "video", action: "Watch", done: topic.completed },
     { key: "live", label: "Attend Live Class (If Scheduled)", sub: next ? liveSub : `Next: ${fmtIST(demoNext.startAt, { day: "numeric", month: "short" })}, ${fmtIST(demoNext.startAt, { hour: "numeric", minute: "2-digit", hour12: true })}`, icon: "users", action: "Join", done: !!next?.attended, live: next?.status === "live" },
     { key: "notes", label: "Read Notes (PDF)", sub: demoNotes ? "Demo PDF notes" : notesIsPdf ? "PDF notes" : "Topic notes", icon: "file", action: "Read", done: topic.completed },
-    ...(topic.test ? [{ key: "test" as StepKey, label: "Take Topic Test", sub: `${topic.test.questionCount} questions${topic.test.myAttempts ? ` · ${topic.test.myAttempts} attempt${topic.test.myAttempts === 1 ? "" : "s"}` : ""}`, icon: "clipboard" as IconName, action: busy === "test" ? "Starting…" : topic.test.myAttempts ? "Retake" : "Start", done: topic.test.myAttempts > 0 }] : []),
+    ...topic.tests.map((t, i) => ({
+      key: `test:${t.id}` as StepKey, label: `Topic Test ${i + 1}`, sub: testSub(t, i),
+      icon: (testLocked(i) ? "lock" : "clipboard") as IconName,
+      action: testBusy === t.id ? "Starting…" : testLocked(i) ? "Locked" : t.myAttempts ? "Retake" : "Start",
+      done: t.myAttempts > 0, locked: testLocked(i),
+    })),
     { key: "doubt", label: "Ask Doubt (If Any)", sub: topic.doubts.length ? `${topic.doubts.length} asked` : "Faculty answer on this topic", icon: "chat", action: "Ask", done: topic.doubts.length > 0 },
   ];
   /** What each checklist row does when tapped. */
@@ -314,7 +328,12 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     if (key === "video") watch();
     else if (key === "live") goTab("live");
     else if (key === "notes") goTab("notes");
-    else if (key === "test") { if (topic.test && busy !== "test") start(topic.test.id); }
+    else if (key.startsWith("test:")) {
+      const i = topic.tests.findIndex((t) => `test:${t.id}` === key);
+      if (i < 0 || busy === "test") return;
+      if (testLocked(i)) setStepHint(`Attempt Topic Test ${i} first — then Topic Test ${i + 1} unlocks.`);
+      else start(topic.tests[i].id);
+    }
     else { goTab("doubt"); setTimeout(() => doubtRef.current?.focus(), 250); }
   };
 
@@ -392,18 +411,18 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
               {steps.map((s, i) => (
                 <button key={s.key} onClick={() => onStep(s.key)} className="press" style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "11px 0", display: "flex", alignItems: "center", gap: 11 }}>
                   <Check on={s.done} />
-                  <span style={{ width: 34, height: 34, borderRadius: 10, background: s.live ? "#FFE4E6" : "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <AppIcon name={s.icon} size={17} color={s.live ? "#E03131" : "var(--blue)"} />
+                  <span style={{ width: 34, height: 34, borderRadius: 10, background: s.live ? "#FFE4E6" : s.locked ? "var(--surface-dim)" : "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <AppIcon name={s.icon} size={17} color={s.live ? "#E03131" : s.locked ? "var(--text-disabled)" : "var(--blue)"} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13, color: "var(--ink-primary)", fontWeight: 700 }}>{s.label}</span>
+                    <span style={{ display: "block", fontSize: 13, color: s.locked ? "var(--text-muted)" : "var(--ink-primary)", fontWeight: 700 }}>{s.label}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: s.live ? "#E03131" : "var(--text-muted)", fontWeight: s.live ? 700 : 500, marginTop: 2 }}>
                       {s.live && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E03131" }} />}
                       {s.sub}
                     </span>
                   </span>
-                  <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 2, fontSize: 12, fontWeight: 800, color: s.live ? "#E03131" : "var(--blue)" }}>
-                    {s.action}<AppIcon name="chevronRight" size={14} />
+                  <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 2, fontSize: 12, fontWeight: 800, color: s.live ? "#E03131" : s.locked ? "var(--text-disabled)" : "var(--blue)" }}>
+                    {s.action}{!s.locked && <AppIcon name="chevronRight" size={14} />}
                   </span>
                 </button>
               ))}
@@ -555,21 +574,33 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
             )}
 
 
-            {topic.test && (
+            {topic.tests.length > 0 && (
               <>
-                <p style={sectionTitle}>Additional Resources</p>
-                <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 42, height: 42, borderRadius: 10, background: "var(--gold-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="file" size={20} color="#B45309" /></span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{topic.test.title}</span>
-                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
-                      {topic.test.questionCount} questions · {topic.test.durationMin > 0 ? `${topic.test.durationMin} min` : "Untimed"}
-                      {topic.test.bestScore !== null ? ` · Best ${topic.test.bestScore}/${topic.test.bestTotal}` : ""}
-                    </span>
-                  </span>
-                  <button onClick={() => start(topic.test!.id)} disabled={busy === "test"} style={{ ...smallBtn, opacity: busy === "test" ? 0.6 : 1 }}>
-                    {busy === "test" ? "…" : topic.test.myAttempts > 0 ? "Retry" : "Start"}
-                  </button>
+                <p style={sectionTitle}>Topic Tests</p>
+                <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+                  {topic.tests.map((t, i) => {
+                    const locked = testLocked(i);
+                    return (
+                      <div key={t.id} style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, borderTop: i ? "1px solid var(--line)" : "none" }}>
+                        <span style={{ width: 40, height: 40, borderRadius: 10, background: locked ? "var(--surface-dim)" : "var(--gold-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <AppIcon name={locked ? "lock" : "clipboard"} size={18} color={locked ? "var(--text-disabled)" : "#B45309"} />
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: locked ? "var(--text-muted)" : "var(--ink-primary)" }}>Topic Test {i + 1}</span>
+                          <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                            {testSub(t, i)}{!locked && t.bestScore !== null ? ` · Best ${t.bestScore}/${t.bestTotal}` : ""}
+                          </span>
+                        </span>
+                        {locked ? (
+                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: "var(--text-disabled)" }}><AppIcon name="lock" size={13} color="var(--text-disabled)" />Locked</span>
+                        ) : (
+                          <button onClick={() => start(t.id)} disabled={busy === "test"} style={{ ...smallBtn, opacity: busy === "test" && testBusy !== t.id ? 0.6 : 1 }}>
+                            {testBusy === t.id ? "…" : t.myAttempts > 0 ? "Retake" : "Start"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
