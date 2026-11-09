@@ -96,12 +96,12 @@ const METHODS = [
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
-/** The website's four modes of study — the top level of the catalog. */
+/** The website's four modes of study — the top level of the catalog, in tab order. */
 const MODES = [
-  { key: "offline", label: "Offline Course", icon: "landmark" as IconName },
   { key: "online", label: "Online Course", icon: "laptop" as IconName },
   { key: "mentorship", label: "Mentorship", icon: "target" as IconName },
   { key: "mock", label: "Mock Tests", icon: "clipboard" as IconName },
+  { key: "offline", label: "Offline Course", icon: "landmark" as IconName },
 ] as const;
 
 type ContentKey = "videos" | "notes" | "practice" | "current-affairs";
@@ -291,7 +291,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
     };
     return (
       <div style={{ background: "#F8FAFC", minHeight: "100vh" }}>
-        <WebsiteBatchHero b={b} courseName={c.name} onBack={back} onEnroll={enroll} enrolled={b.enrolled} />
+        <WebsiteBatchHero b={b} courseName={c.name} onBack={back} enrolled={b.enrolled} />
         <div style={{ padding: "20px 16px 16px" }}>
           <WebsiteBatchBody b={b} onEnroll={enroll} enrolled={b.enrolled} />
         </div>

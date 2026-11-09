@@ -477,7 +477,7 @@ function fullSyllabus(): SeedSubject[] {
 }
 
 /** A paper keyed on its title, created once and reused on later runs. */
-async function ensureTest(title: string, description: string, type: string, durationMin: number, questions: SeedQuestion[], authorId: string | null): Promise<string> {
+export async function ensureTest(title: string, description: string, type: string, durationMin: number, questions: SeedQuestion[], authorId: string | null): Promise<string> {
   const found = await db.prepare("SELECT id FROM tests WHERE title = ?").get(title) as { id: string } | undefined;
   if (found) return found.id;
   const id = newId();

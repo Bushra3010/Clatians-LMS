@@ -10,6 +10,7 @@ import { fmtIST, parseServerDate } from "../../lib/dates";
 import { AppIcon, type IconName } from "../AppIcon";
 import { shareText } from "../../lib/share";
 import { AttachmentPicker, AttachmentPreview, type Attachment } from "../DoubtAttachment";
+import { DEMO_VIDEO, DEMO_NOTES, DEMO_POSTER } from "../../lib/demo-media";
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
@@ -110,8 +111,85 @@ function calendarUrl(c: LiveClassItem) {
   return `https://calendar.google.com/calendar/render?${q}`;
 }
 
+/** The lecture on its own screen: black backdrop, video filling the width, full-screen button. */
+function LecturePlayer({ title, subtitle, ytId, src, demo, completed, busy, onToggleDone, onNext, onClose }: {
+  title: string;
+  subtitle: string;
+  ytId: string | null;
+  src: string;
+  demo: boolean;
+  completed: boolean;
+  busy: boolean;
+  onToggleDone: () => void;
+  onNext?: () => void;
+  onClose: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.fullscreenElement) onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
+  const fullScreen = () => {
+    const v = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+    const el = v ?? frameRef.current;
+    if (el?.requestFullscreen) el.requestFullscreen().catch(() => v?.webkitEnterFullscreen?.());
+    else v?.webkitEnterFullscreen?.();
+  };
+
+  const barBtn: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 12, padding: "12px 10px", fontSize: 13, fontWeight: 800, cursor: "pointer", flex: 1 };
+
+  return (
+    <div role="dialog" aria-label={`${title} lecture`} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#05070d", display: "flex", flexDirection: "column", color: "white" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "calc(12px + env(safe-area-inset-top)) 14px 12px", maxWidth: 900, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        <button onClick={onClose} aria-label="Close video" style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.12)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <AppIcon name="chevronRight" size={20} color="white" strokeWidth={2.5} style={{ transform: "rotate(180deg)" }} />
+        </button>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+          <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.6)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</span>
+        </span>
+        {demo && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 6, background: "rgba(8,189,128,0.9)" }}>DEMO</span>}
+      </div>
+
+      <div ref={frameRef} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0, background: "#000" }}>
+        {ytId ? (
+          <div style={{ position: "relative", width: "100%", maxWidth: 900, aspectRatio: "16 / 9", maxHeight: "100%" }}>
+            <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1`} title={title}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+          </div>
+        ) : (
+          <video ref={videoRef} src={src} autoPlay controls playsInline controlsList="nodownload" onContextMenu={(e) => e.preventDefault()}
+            style={{ width: "100%", maxWidth: 900, maxHeight: "100%", background: "#000" }} />
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, padding: "12px 14px calc(14px + env(safe-area-inset-bottom))", maxWidth: 900, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        {!ytId && (
+          <button onClick={fullScreen} style={{ ...barBtn, border: "1.5px solid rgba(255,255,255,0.25)", background: "transparent", color: "white" }}>
+            <AppIcon name="expand" size={15} color="white" />Full screen
+          </button>
+        )}
+        {onNext ? (
+          <button onClick={onNext} style={{ ...barBtn, border: "none", background: "var(--blue)", color: "white" }}>Next topic<AppIcon name="arrowRight" size={15} color="white" /></button>
+        ) : (
+          <button onClick={onToggleDone} disabled={busy} style={{ ...barBtn, border: "none", background: completed ? "#16a34a" : "var(--blue)", color: "white", opacity: busy ? 0.7 : 1 }}>
+            {completed ? <><AppIcon name="check" size={15} color="white" strokeWidth={3} />Completed</> : "Mark as complete"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** One syllabus topic: its lecture, live class, notes and the student's doubts on it. */
-export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onToggleDone, onOpenTopic, onJoinClass, onWatchRecording, saved = false, onToggleSave }: {
+export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onToggleDone, onOpenTopic, onJoinClass, onJoinDemoLive, onWatchRecording, saved = false, onToggleSave }: {
   topic: TopicDetail;
   /** Whether the student has saved this topic (the heart). */
   saved?: boolean;
@@ -123,6 +201,8 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   /** Another topic of the same chapter. */
   onOpenTopic: (id: string) => void;
   onJoinClass: (id: string) => void;
+  /** No class scheduled: open a sample live class so the student sees how it works. */
+  onJoinDemoLive?: () => void;
   onWatchRecording: (cls: LiveClassItem) => void;
 }) {
   const [tab, setTab] = useState<Tab>("content");
@@ -136,10 +216,8 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [shareNote, setShareNote] = useState("");
   // The checklist's "Watch Video" scrolls to the player and starts it.
-  const [autoplay, setAutoplay] = useState(false);
+  const [playerOpen, setPlayerOpen] = useState(false);
   const [stepHint, setStepHint] = useState("");
-  const playerRef = useRef<HTMLDivElement>(null);
-  const videoElRef = useRef<HTMLVideoElement>(null);
   const doubtRef = useRef<HTMLTextAreaElement>(null);
   const share = async () => {
     const r = await shareText(topic.title, `${topic.chapter} · ${topic.subject} — CLATians`);
@@ -197,16 +275,18 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
     ? (lead.length > 260 ? lead.slice(0, 260).trimEnd() + "…" : lead)
     : `This topic is part of ${topic.chapter} in ${topic.subject}. Watch the lecture, read the notes and ask your doubts here.`;
 
-  const hasVideo = !!topic.videoUrl && isLink(topic.videoUrl);
+  // Nothing uploaded yet: the demo lecture plays, so every step works in-app.
+  const demoVideo = !topic.videoUrl || !isLink(topic.videoUrl);
+  const demoNotes = !topic.notesUrl || !isLink(topic.notesUrl);
+  const fileVideo = !!topic.videoUrl && isVideoFile(topic.videoUrl.trim());
+  /** A lecture link that can't play in the app (not YouTube, not a video file). */
+  const externalVideo = !ytId && !fileVideo && !demoVideo;
+  const playerSrc = fileVideo ? topic.videoUrl.trim() : DEMO_VIDEO;
+  const poster = ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : demoVideo ? DEMO_POSTER : undefined;
   const watch = () => {
     setStepHint("");
-    if (tab !== "content") switchTab("content");
-    if (!hasVideo) { setStepHint("This topic's video isn't uploaded yet — read the notes meanwhile."); return; }
-    setAutoplay(true);
-    requestAnimationFrame(() => {
-      playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      videoElRef.current?.play().catch(() => {});
-    });
+    if (externalVideo) window.open(topic.videoUrl.trim(), "_blank", "noopener");
+    else setPlayerOpen(true);
   };
   const liveSub = !next ? "No class scheduled yet"
     : next.status === "live" ? "Live now"
@@ -214,16 +294,16 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
 
   type StepKey = "video" | "live" | "notes" | "test" | "doubt";
   const steps: { key: StepKey; label: string; sub: string; icon: IconName; action: string; done: boolean; live?: boolean }[] = [
-    { key: "video", label: "Watch Video (Recorded)", sub: hasVideo ? (topic.durationMin > 0 ? `${topic.durationMin} min lecture` : "Recorded lecture") : "Coming soon", icon: "video", action: "Watch", done: topic.completed },
-    { key: "live", label: "Attend Live Class (If Scheduled)", sub: liveSub, icon: "users", action: next?.status === "live" ? "Join" : "View", done: !!next?.attended, live: next?.status === "live" },
-    { key: "notes", label: "Read Notes (PDF)", sub: notesIsPdf ? "PDF notes" : topic.notes || topic.notesUrl ? "Topic notes" : "Coming soon", icon: "file", action: "Read", done: topic.completed && !!(topic.notes || topic.notesUrl) },
+    { key: "video", label: "Watch Video (Recorded)", sub: demoVideo ? "Demo lecture" : topic.durationMin > 0 ? `${topic.durationMin} min lecture` : "Recorded lecture", icon: "video", action: "Watch", done: topic.completed },
+    { key: "live", label: "Attend Live Class (If Scheduled)", sub: next ? liveSub : "Try a demo live class", icon: "users", action: next?.status === "live" || !next ? "Join" : "View", done: !!next?.attended, live: next?.status === "live" },
+    { key: "notes", label: "Read Notes (PDF)", sub: demoNotes ? "Demo PDF notes" : notesIsPdf ? "PDF notes" : "Topic notes", icon: "file", action: "Read", done: topic.completed },
     ...(topic.test ? [{ key: "test" as StepKey, label: "Take Topic Test", sub: `${topic.test.questionCount} questions${topic.test.myAttempts ? ` · ${topic.test.myAttempts} attempt${topic.test.myAttempts === 1 ? "" : "s"}` : ""}`, icon: "clipboard" as IconName, action: busy === "test" ? "Starting…" : topic.test.myAttempts ? "Retake" : "Start", done: topic.test.myAttempts > 0 }] : []),
     { key: "doubt", label: "Ask Doubt (If Any)", sub: topic.doubts.length ? `${topic.doubts.length} asked` : "Faculty answer on this topic", icon: "chat", action: "Ask", done: topic.doubts.length > 0 },
   ];
   /** What each checklist row does when tapped. */
   const onStep = (key: StepKey) => {
     if (key === "video") watch();
-    else if (key === "live") goTab("live");
+    else if (key === "live") { if (!next && onJoinDemoLive) onJoinDemoLive(); else goTab("live"); }
     else if (key === "notes") goTab("notes");
     else if (key === "test") { if (topic.test && busy !== "test") start(topic.test.id); }
     else { goTab("doubt"); setTimeout(() => doubtRef.current?.focus(), 250); }
@@ -272,35 +352,29 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
         {/* ── 6/7 · CONTENT: lecture, about, steps, the chapter's video lessons ── */}
         {tab === "content" && (
           <>
-            <div ref={playerRef} style={{ scrollMarginTop: 12 }}>
-            {ytId ? (
-              <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", background: "#000", boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
-                <iframe
-                  key={autoplay ? "play" : "idle"}
-                  src={`https://www.youtube.com/embed/${ytId}?rel=0${autoplay ? "&autoplay=1" : ""}`}
-                  title={topic.title}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-            ) : topic.videoUrl && /\.(mp4|webm|m3u8)(\?|$)/i.test(topic.videoUrl) ? (
-              <video ref={videoElRef} src={topic.videoUrl} controls playsInline style={{ width: "100%", borderRadius: 16, background: "#000" }} />
-            ) : topic.videoUrl && isLink(topic.videoUrl) ? (
-              <button onClick={() => window.open(topic.videoUrl.trim(), "_blank", "noopener")} style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 16, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#0f1729,#1e2a4a)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            {externalVideo ? (
+              <button onClick={watch} style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 16, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#0f1729,#1e2a4a)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
                 <span style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
+                  <AppIcon name="play" size={22} color="white" fill="white" style={{ marginLeft: 3 }} />
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>Watch lecture (opens in a new tab)</span>
               </button>
             ) : (
-              <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 16, background: "linear-gradient(135deg,#0f1729,#1e2a4a)", color: "rgba(255,255,255,0.8)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, textAlign: "center", padding: 16, boxSizing: "border-box" }}>
-                <AppIcon name="video" size={30} color="currentColor" />
-                <span style={{ fontSize: 13.5, fontWeight: 800, color: "white" }}>Video coming soon</span>
-                <span style={{ fontSize: 12 }}>Meanwhile, read the notes for this topic.</span>
-              </div>
+              // Tap to watch: the lecture opens in its own full-screen player.
+              <button onClick={watch} aria-label={`Play ${topic.title}`} style={{ position: "relative", display: "block", width: "100%", aspectRatio: "16 / 9", padding: 0, border: "none", borderRadius: 16, overflow: "hidden", cursor: "pointer", background: "linear-gradient(135deg,#0f1729,#1e2a4a)", boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {poster && <img src={poster} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+                <span style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.65) 100%)" }} />
+                <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 62, height: 62, borderRadius: "50%", background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
+                  <AppIcon name="play" size={24} color="var(--blue)" fill="var(--blue)" style={{ marginLeft: 3 }} />
+                </span>
+                {demoVideo && <span style={{ position: "absolute", top: 10, left: 10, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 6, background: "rgba(8,189,128,0.92)", color: "white" }}>DEMO LECTURE</span>}
+                <span style={{ position: "absolute", left: 12, right: 12, bottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, color: "white", textAlign: "left" }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Watch lecture</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}><AppIcon name="clock" size={12} color="white" />{topic.durationMin > 0 ? `${topic.durationMin} min` : "Full screen"}</span>
+                </span>
+              </button>
             )}
-            </div>
 
             <p style={sectionTitle}>About this topic</p>
             <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{about}</p>
@@ -393,15 +467,28 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                     ))}
                   </div>
                 )}
-                <button onClick={() => onJoinClass(next.id)} disabled={next.status !== "live"} style={{ ...primaryBtn, marginTop: 14, opacity: next.status === "live" ? 1 : 0.55, cursor: next.status === "live" ? "pointer" : "not-allowed" }}>
-                  {next.status === "live" ? "▶ Join Live Class" : "Join opens when the class starts"}
+                <button onClick={() => onJoinClass(next.id)} disabled={next.status !== "live"} style={{ ...primaryBtn, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, opacity: next.status === "live" ? 1 : 0.55, cursor: next.status === "live" ? "pointer" : "not-allowed" }}>
+                  {next.status === "live" ? <><AppIcon name="play" size={13} color="white" fill="white" />Join Live Class</> : "Join opens when the class starts"}
                 </button>
                 {next.status !== "live" && (
                   <button onClick={() => window.open(calendarUrl(next), "_blank", "noopener")} style={{ ...outlineBtn, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><AppIcon name="calendar" size={15} />Add to Calendar</button>
                 )}
               </div>
             ) : (
-              <Empty icon="video" title="No live class scheduled" text="When faculty schedule a live class for this course it shows up here." />
+              <div style={card}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 44, height: 44, borderRadius: 12, background: "#FFE4E6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="users" size={21} color="#E03131" /></span>
+                  <span>
+                    <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>No live class scheduled yet</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Join the demo to see how a live class works in the app.</span>
+                  </span>
+                </div>
+                {onJoinDemoLive && (
+                  <button onClick={onJoinDemoLive} style={{ ...primaryBtn, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                    <AppIcon name="play" size={13} color="white" fill="white" />Join demo live class
+                  </button>
+                )}
+              </div>
             )}
 
             <p style={sectionTitle}>Previous Live Classes</p>
@@ -427,7 +514,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
         {/* ── 9 · NOTES ── */}
         {tab === "notes" && (
           <>
-            {(topic.notesUrl || !topic.notes) && <p style={{ ...sectionTitle, marginTop: 0 }}>{topic.notesDownload ? "Download Notes" : "Notes"}</p>}
+            <p style={{ ...sectionTitle, marginTop: 0 }}>{topic.notesDownload ? "Download Notes" : "Notes"}</p>
             {topic.notesUrl && isLink(topic.notesUrl) ? (
               <>
                 <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -450,9 +537,20 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                     style={{ display: "block", width: "100%", marginTop: 10, borderRadius: 12, background: "white", userSelect: "none", WebkitTouchCallout: topic.notesDownload ? undefined : "none" }} />
                 )}
               </>
-            ) : !topic.notes ? (
-              <Empty icon="file" title="Notes coming soon" text="Notes for this topic haven't been added yet." />
-            ) : null}
+            ) : (
+              // No PDF uploaded yet: the sample notes PDF opens in the app.
+              <>
+                <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 42, height: 48, borderRadius: 8, background: "var(--red)", color: "white", fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>PDF</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>Sample notes (demo)</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 11, color: "var(--text-muted)" }}><AppIcon name="lock" size={11} color="var(--text-muted)" />View in app only</span>
+                  </span>
+                  <button onClick={() => setShowPdf(!showPdf)} style={{ ...smallBtn, background: "white", border: "1.5px solid var(--blue-tint)" }}>{showPdf ? "Hide" : "View"}</button>
+                </div>
+                {showPdf && <div style={{ marginTop: 10 }}><PdfViewer key={DEMO_NOTES} url={DEMO_NOTES} title={`${topic.title} – sample notes`} allowDownload={false} /></div>}
+              </>
+            )}
 
             {topic.notes && (
               <div style={{ ...card, marginTop: topic.notesUrl ? 10 : 0 }}>
@@ -506,9 +604,20 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
 
             <p style={sectionTitle}>Doubt Solving Videos</p>
             {topic.solutionVideos.length === 0 ? (
-              <div style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="video" size={20} color="var(--blue)" /></span>
-                <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>When faculty answer a doubt on this topic with a video, it shows up here.</p>
+              // None yet: a sample, so the student sees what a video answer looks like.
+              <div style={{ ...card, padding: "10px 12px" }}>
+                <button onClick={() => setPlaying(playing === "demo" ? null : "demo")} style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12 }}>
+                  <VideoThumb url={DEMO_VIDEO} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 10, fontWeight: 800, color: "var(--green)", letterSpacing: "0.05em" }}>SAMPLE</span>
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--ink-primary)", lineHeight: 1.4 }}>How do I find the main idea when a passage gives two views?</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>CLATians Faculty · video answer</span>
+                  </span>
+                  <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <AppIcon name={playing === "demo" ? "chevronDown" : "play"} size={12} color="white" fill={playing === "demo" ? "none" : "white"} style={{ marginLeft: playing === "demo" ? 0 : 2 }} />
+                  </span>
+                </button>
+                {playing === "demo" && <SolutionPlayer url={DEMO_VIDEO} />}
               </div>
             ) : (
               <div style={{ ...card, padding: 0, overflow: "hidden" }}>
@@ -531,6 +640,22 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                   );
                 })}
               </div>
+            )}
+
+            {!topic.doubts.some((d) => d.answer) && (
+              <>
+                <p style={sectionTitle}>How an answer looks</p>
+                <div style={card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--ink-primary)", lineHeight: 1.55 }}>In the tree passage, is &quot;trees lower temperatures&quot; the main idea?</p>
+                    <span style={{ flexShrink: 0, alignSelf: "flex-start", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: "var(--surface-dim)", color: "var(--text-muted)" }}>Example</span>
+                  </div>
+                  <div style={{ marginTop: 10, background: "var(--blue-tint)", borderRadius: 12, padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 800, color: "var(--blue)" }}>CLATians Faculty replied</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>No — that is a supporting detail. The main idea is the author&apos;s claim that trees should be funded like infrastructure; the temperature fact is evidence for it.</p>
+                  </div>
+                </div>
+              </>
             )}
 
             {topic.doubts.length > 0 && <p style={sectionTitle}>Your doubts on this topic</p>}
@@ -561,6 +686,21 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
           </>
         )}
       </div>
+
+      {playerOpen && (
+        <LecturePlayer
+          title={topic.title}
+          subtitle={`${topic.chapter} · ${topic.subject}`}
+          ytId={ytId}
+          src={playerSrc}
+          demo={demoVideo}
+          completed={topic.completed}
+          busy={busy === "done"}
+          onToggleDone={toggle}
+          onNext={topic.completed && nextSibling ? () => { setPlayerOpen(false); onOpenTopic(nextSibling.id); } : undefined}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
 
       {/* Mark complete → next topic */}
       <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: "1px solid var(--line)", padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", display: "flex", gap: 8 }}>

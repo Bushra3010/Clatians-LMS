@@ -52,9 +52,9 @@ export async function getBatchExtrasAction(batchId: string): Promise<{ ok: true;
   };
 }
 
-/** A topic's practice test, with the student's best attempt — for the batch's Tests tab. */
-export type TopicTest = {
-  lessonId: string;
+/** A chapter's test (questions from all its topics), with the student's best attempt. */
+export type ChapterTest = {
+  chapterId: string;
   testId: string;
   title: string;
   questions: number;
@@ -64,29 +64,73 @@ export type TopicTest = {
   bestTotal: number | null;
 };
 
-/** Every published topic test in a course, keyed by the topic (lesson) it belongs to. */
-export async function getCourseTestsAction(courseId: string): Promise<{ ok: true; tests: TopicTest[] } | { ok: false; error: string }> {
+/** Every chapter test in a course, in each chapter's order (Test 1, Test 2…). */
+export async function getCourseTestsAction(courseId: string): Promise<{ ok: true; tests: ChapterTest[] } | { ok: false; error: string }> {
   const user = await requireRole(["student"]);
   const rows = await db.prepare(
-    `SELECT l.id AS lesson_id, t.id AS test_id, t.title, t.duration_min,
+    `SELECT ch.id AS chapter_id, t.id AS test_id, t.title, t.duration_min,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS questions,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS attempts,
             (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS best_score,
             (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
      FROM modules m
      JOIN chapters ch ON ch.module_id = m.id
-     JOIN lessons l ON l.chapter_id = ch.id
-     JOIN tests t ON t.id = l.test_id AND t.status = 'published'
-     WHERE m.course_id = ?`
+     JOIN chapter_tests ct ON ct.chapter_id = ch.id
+     JOIN tests t ON t.id = ct.test_id AND t.status = 'published'
+     WHERE m.course_id = ?
+     ORDER BY ct.sort_order, ct.created_at, t.title`
   ).all(user.id, user.id, user.id, String(courseId ?? "")) as {
-    lesson_id: string; test_id: string; title: string; duration_min: number; questions: number;
+    chapter_id: string; test_id: string; title: string; duration_min: number; questions: number;
     attempts: number; best_score: number | null; best_total: number | null;
   }[];
   return {
     ok: true,
-    tests: rows.map((r) => ({
-      lessonId: r.lesson_id, testId: r.test_id, title: r.title, questions: Number(r.questions) || 0,
+    tests: rows.filter((r) => Number(r.questions) > 0).map((r) => ({
+      chapterId: r.chapter_id, testId: r.test_id, title: r.title, questions: Number(r.questions),
       durationMin: r.duration_min || 0, attempts: Number(r.attempts) || 0,
+      bestScore: r.best_score == null ? null : Number(r.best_score), bestTotal: r.best_total == null ? null : Number(r.best_total),
+    })),
+  };
+}
+
+/** A full mock test (all sections mixed), with the student's best attempt — for the batch's Tests tab. */
+export type MockTest = {
+  testId: string;
+  title: string;
+  questions: number;
+  durationMin: number;
+  /** Sections the paper covers, in the order they first appear. */
+  subjects: string[];
+  attempts: number;
+  bestScore: number | null;
+  bestTotal: number | null;
+};
+
+/** The course's published full mocks plus the ones open to every course, oldest first (Test 1, Test 2…). */
+export async function getBatchMocksAction(courseId: string): Promise<{ ok: true; tests: MockTest[] } | { ok: false; error: string }> {
+  const user = await requireRole(["student"]);
+  const rows = await db.prepare(
+    `SELECT t.id, t.title, t.duration_min,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS questions,
+            (SELECT string_agg(s.subject, '|' ORDER BY s.first) FROM (
+               SELECT q.subject, MIN(q.order_idx) AS first FROM questions q
+               WHERE q.test_id = t.id AND q.subject <> '' GROUP BY q.subject
+             ) s) AS subjects,
+            (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS attempts,
+            (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted') AS best_score,
+            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status = 'submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
+     FROM tests t
+     WHERE t.status = 'published' AND t.type = 'mock' AND (t.course_id = ? OR t.course_id IS NULL)
+     ORDER BY t.created_at, t.title`
+  ).all(user.id, user.id, user.id, String(courseId ?? "")) as {
+    id: string; title: string; duration_min: number; questions: number; subjects: string | null;
+    attempts: number; best_score: number | null; best_total: number | null;
+  }[];
+  return {
+    ok: true,
+    tests: rows.filter((r) => Number(r.questions) > 0).map((r) => ({
+      testId: r.id, title: r.title, questions: Number(r.questions), durationMin: r.duration_min || 0,
+      subjects: (r.subjects ?? "").split("|").filter(Boolean), attempts: Number(r.attempts) || 0,
       bestScore: r.best_score == null ? null : Number(r.best_score), bestTotal: r.best_total == null ? null : Number(r.best_total),
     })),
   };

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CatalogBatch } from "./CoursesScreen";
-import { AppIcon, type IconName } from "./AppIcon";
+import { AppIcon, featureIconName, type IconName } from "./AppIcon";
 
 // ─────────────────────────────────────────────────────────────
 // The batch page from clatians.com (/courses/[course]/[batch]), rebuilt for
@@ -79,12 +79,16 @@ function seatInfo(b: CatalogBatch) {
 
 // ── Hero ──────────────────────────────────────────────────────
 
-export function WebsiteBatchHero({ b, courseName, onBack, onEnroll, enrolled, embedded, hideTitle }: {
+const badgeStyle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0, whiteSpace: "nowrap",
+  fontSize: 10.5, fontWeight: 700, padding: "4px 9px", borderRadius: 20,
+};
+
+/** The batch page's top block. Buying happens from the sticky bar below, so no buttons here. */
+export function WebsiteBatchHero({ b, courseName, onBack, enrolled, embedded, hideTitle }: {
   b: CatalogBatch;
   courseName: string;
   onBack?: () => void;
-  /** Enroll Now (or, once bought, Start learning). Hidden when embedded. */
-  onEnroll?: () => void;
   enrolled?: boolean;
   /** Inside My Learning: no breadcrumb, no buttons. */
   embedded?: boolean;
@@ -121,14 +125,15 @@ export function WebsiteBatchHero({ b, courseName, onBack, onEnroll, enrolled, em
         )}
 
         {!hideTitle && <>
-        {/* Badges */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 20, background: st.bg, color: st.color }}>
-            <AppIcon name={st.icon} size={12} color={st.color} strokeWidth={2.5} />{st.label}
-          </span>
-          {b.language && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 20, background: "rgba(255,255,255,0.15)", color: "white" }}>{b.language}</span>}
-          {b.batchType && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 20, background: typeStyle.bg, color: typeStyle.color }}>{b.batchType}</span>}
-          {enrolled && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 20, background: "#dcfce7", color: "#166534" }}><AppIcon name="check" size={12} color="#166534" strokeWidth={3} />Enrolled</span>}
+        {/* Badges — one compact row; once bought, "Enrolled" replaces the enrolment status */}
+        <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6, marginBottom: 12, overflowX: "auto", scrollbarWidth: "none" }}>
+          {enrolled ? (
+            <span style={{ ...badgeStyle, background: "#dcfce7", color: "#166534" }}><AppIcon name="check" size={10} color="#166534" strokeWidth={3} />Enrolled</span>
+          ) : (
+            <span style={{ ...badgeStyle, background: st.bg, color: st.color }}><AppIcon name={st.icon} size={10} color={st.color} strokeWidth={2.5} />{st.label}</span>
+          )}
+          {b.batchType && <span style={{ ...badgeStyle, background: typeStyle.bg, color: typeStyle.color }}>{b.batchType}</span>}
+          {b.language && <span style={{ ...badgeStyle, background: "rgba(255,255,255,0.15)", color: "white" }}>{b.language}</span>}
         </div>
 
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 900, color: "white", lineHeight: 1.2 }}>{b.name}</h1>
@@ -156,18 +161,6 @@ export function WebsiteBatchHero({ b, courseName, onBack, onEnroll, enrolled, em
             <div style={{ height: 8, borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,0.1)" }}>
               <div style={{ width: `${pct}%`, height: "100%", borderRadius: 8, background: pct > 80 ? "#ef4444" : pct > 50 ? "#f59e0b" : p.accent }} />
             </div>
-          </div>
-        )}
-
-        {/* CTAs */}
-        {!embedded && (
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
-            <button onClick={onEnroll} disabled={!enrolled && !open && left === 0} style={{ padding: "13px 22px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 900, color: "white", background: p.accent, display: "inline-flex", alignItems: "center", gap: 7, opacity: !enrolled && !open && left === 0 ? 0.5 : 1 }}>
-              {enrolled ? <>Start learning<AppIcon name="arrowRight" size={15} /></> : !open && left === 0 ? "Batch full" : <>Enroll Now — {rupees(b.fee)}</>}
-            </button>
-            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" style={{ padding: "13px 18px", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "white", textDecoration: "none", background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <AppIcon name="chat" size={15} />Free Counselling
-            </a>
           </div>
         )}
 
@@ -294,14 +287,15 @@ export function WebsiteBatchBody({ b, onEnroll, enrolled, hidePlans, hideCta }: 
           {d.aboutFeatures && d.aboutFeatures.length > 0 && (
             <div style={{ marginTop: d.aboutDuration || d.aboutStrategy ? 16 : 0, paddingTop: d.aboutDuration || d.aboutStrategy ? 16 : 0, borderTop: d.aboutDuration || d.aboutStrategy ? "1px solid #F3F4F6" : "none" }}>
               {d.aboutFeaturesLabel && <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: INK }}>{d.aboutFeaturesLabel}</p>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Two compact tiles per row, so six features fit in one screen */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
                 {d.aboutFeatures.map((f, i) => (
-                  <div key={i} style={{ borderRadius: 12, padding: 14, background: "#F8FAFC", border: "1px solid #E9EEF2", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <Tick color={p.accent} size={20} round={false} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.3, color: INK }}>{f.title}</p>
-                      {f.subtitle && <p style={{ margin: "2px 0 0", fontSize: 12, lineHeight: 1.4, color: MUTED }}>{f.subtitle}</p>}
-                    </div>
+                  <div key={i} style={{ borderRadius: 12, padding: "10px 10px 11px", background: "#F8FAFC", border: "1px solid #E9EEF2", minWidth: 0 }}>
+                    <span style={{ width: 28, height: 28, borderRadius: 8, background: `${p.accent}1F`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 7 }}>
+                      <AppIcon name={featureIconName(f.title)} size={15} color={p.accent} strokeWidth={2.2} />
+                    </span>
+                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800, lineHeight: 1.3, color: INK }}>{f.title}</p>
+                    {f.subtitle && <p style={{ margin: "3px 0 0", fontSize: 11, lineHeight: 1.35, color: MUTED, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.subtitle}</p>}
                   </div>
                 ))}
               </div>

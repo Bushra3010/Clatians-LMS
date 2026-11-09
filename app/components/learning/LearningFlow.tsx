@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CatalogItem, CatalogBatch } from "../CoursesScreen";
 import type { CourseSyllabus, LearningChapter, LearningTopic } from "../../lib/learning";
-import { getCourseSyllabusAction, getBatchExtrasAction, getCourseTestsAction, type BatchExtras, type TopicTest } from "../../lib/learning-actions";
+import { getCourseSyllabusAction, getBatchExtrasAction, getCourseTestsAction, getBatchMocksAction, type BatchExtras, type ChapterTest, type MockTest } from "../../lib/learning-actions";
 import { fmtIST } from "../../lib/dates";
 import { Check } from "../BatchInfo";
 import { WebsiteBatchHero, WebsiteBatchBody, paletteFor } from "../WebsiteBatch";
@@ -17,11 +17,9 @@ export type LearningProgress = { courseId: string; lessons: number; done: number
 export type LearningNav =
   /** The list remembers its tab, so Back from a batch returns to Enrolled; tapping My Learning opens Free Resources. */
   | { view: "list"; tab?: "enrolled" | "resources" }
-  /** The batch remembers its tab, so Back from a subject's tests returns to Tests. */
+  /** The batch remembers its tab, so Back from a test returns to Tests. */
   | { view: "batch"; courseId: string; batchId: string | null; tab?: HomeTab }
   | { view: "subject"; courseId: string; batchId: string | null; subject: string }
-  /** A subject's tests, chapter by chapter (from the batch's Tests tab). */
-  | { view: "subjectTests"; courseId: string; batchId: string | null; subject: string }
   | { view: "chapter"; courseId: string; chapterId: string; from: string };
 
 const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
@@ -133,18 +131,111 @@ function useSyllabus(courseId: string) {
   return { data, error };
 }
 
-/** The course's topic tests by topic id; loads only once the Tests tab is opened. */
+/** The course's chapter tests, grouped by chapter id; loads only when needed. */
 function useCourseTests(courseId: string, active = true) {
-  const [tests, setTests] = useState<Map<string, TopicTest> | null>(null);
+  const [tests, setTests] = useState<Map<string, ChapterTest[]> | null>(null);
   useEffect(() => {
     if (!active) return;
     let live = true;
     getCourseTestsAction(courseId).then((res) => {
-      if (live) setTests(new Map(res.ok ? res.tests.map((t) => [t.lessonId, t]) : []));
+      if (!live) return;
+      const byChapter = new Map<string, ChapterTest[]>();
+      for (const t of res.ok ? res.tests : []) byChapter.set(t.chapterId, [...(byChapter.get(t.chapterId) ?? []), t]);
+      setTests(byChapter);
     });
     return () => { live = false; };
   }, [courseId, active]);
   return tests;
+}
+
+/** The batch's full mock tests; loads only once the Tests tab is opened. */
+function useBatchMocks(courseId: string, active = true) {
+  const [tests, setTests] = useState<MockTest[] | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let live = true;
+    getBatchMocksAction(courseId).then((res) => { if (live) setTests(res.ok ? res.tests : []); });
+    return () => { live = false; };
+  }, [courseId, active]);
+  return tests;
+}
+
+const SECTION_SHORT: Record<string, string> = {
+  "English": "English", "GK & Current Affairs": "GK", "Current Affairs & GK": "GK",
+  "Legal Reasoning": "Legal", "Logical Reasoning": "Logical", "Quantitative": "Quant", "Quantitative Techniques": "Quant",
+};
+
+/** Full mock tests as Test 1, Test 2…, each mixing every section. */
+function MockTestList({ tests, onStartTest }: { tests: MockTest[]; onStartTest?: LearningFlowProps["onStartTest"] }) {
+  const [starting, setStarting] = useState<string | null>(null);
+  const [startError, setStartError] = useState("");
+  const tried = tests.filter((t) => t.attempts > 0).length;
+
+  const start = async (testId: string) => {
+    if (!onStartTest || starting) return;
+    setStarting(testId);
+    setStartError("");
+    const res = await onStartTest(testId);
+    setStarting(null);
+    if (!res.ok) setStartError(res.error || "Couldn't start this test. Try again.");
+  };
+
+  return (
+    <>
+      <div style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <AppIcon name="clipboard" size={19} color="white" />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>Full Mock Tests</span>
+          <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>All sections mixed, like the real CLAT paper</span>
+        </span>
+        <span style={{ textAlign: "right", flexShrink: 0 }}>
+          <span style={{ display: "block", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1 }}>{tried}/{tests.length}</span>
+          <span style={{ display: "block", fontSize: 10.5, color: "var(--text-muted)", marginTop: 3 }}>attempted</span>
+        </span>
+      </div>
+      {startError && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{startError}</p>}
+
+      {tests.map((t, i) => {
+        const done = t.attempts > 0;
+        return (
+          <div key={t.testId} style={{ ...card, padding: "13px 14px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <span style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : "var(--blue-tint)", color: done ? "var(--success-text)" : "var(--blue)" }}>
+                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" }}>TEST</span>
+                <span style={{ fontSize: 17, fontWeight: 900, lineHeight: 1 }}>{i + 1}</span>
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{t.title}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="file" size={12} />{t.questions} Questions</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="clock" size={12} />{t.durationMin > 0 ? `${t.durationMin} min` : "Untimed"}</span>
+                </span>
+              </span>
+            </div>
+            {t.subjects.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "10px 0 0 56px" }}>
+                {t.subjects.map((sub) => (
+                  <span key={sub} style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: "var(--surface-dim)", color: "var(--text-secondary)" }}>{SECTION_SHORT[sub] ?? sub}</span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "11px 0 0 56px" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: done ? "var(--success-text)" : "var(--text-disabled)" }}>
+                {done && t.bestScore != null ? `Best ${t.bestScore}${t.bestTotal != null ? ` / ${t.bestTotal}` : ""} · ${t.attempts} ${t.attempts === 1 ? "attempt" : "attempts"}` : "Not attempted yet"}
+              </span>
+              <button onClick={() => start(t.testId)} disabled={!!starting} style={{
+                flexShrink: 0, cursor: starting ? "default" : "pointer", borderRadius: 10, padding: "8px 16px", fontSize: 12.5, fontWeight: 800,
+                border: done ? "1.5px solid var(--blue)" : "none", background: done ? "white" : gradient, color: done ? "var(--blue)" : "white",
+                opacity: starting && starting !== t.testId ? 0.5 : 1,
+              }}>{starting === t.testId ? "Starting…" : done ? "Retake" : "Start test"}</button>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 const allTopics = (s: CourseSyllabus) => s.chapters.flatMap((c) => c.topics);
@@ -186,7 +277,6 @@ export default function LearningFlow(props: LearningFlowProps) {
   if (nav.view === "chapter") return <ChapterView key={nav.chapterId} {...props} course={course} chapterId={nav.chapterId} />;
   // Right after a purchase the batch may not be in the catalog yet; fall back to the course's own enrolled batch.
   const batch = (nav.batchId ? course.batches.find((b) => b.id === nav.batchId) : undefined) ?? course.batches.find((b) => b.enrolled) ?? null;
-  if (nav.view === "subjectTests") return <SubjectTestsView key={`${batch?.id ?? course.id}-tests-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
   if (nav.view === "subject") return <SubjectView key={`${batch?.id ?? course.id}-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
   return <BatchHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
 }
@@ -312,29 +402,51 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
           </>
         ) : (
           <>
-            <button onClick={onOpenLibrary} style={{ ...card, border: "none", cursor: "pointer", padding: "16px", display: "flex", alignItems: "center", gap: 14, textAlign: "left" }}>
-              <span style={{ width: 48, height: 48, borderRadius: 14, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="library" size={23} color="white" /></span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>Free Study Resources</span>
-                <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Open to every student, no batch needed</span>
+            {/* Free for everyone — banner, then one tile per resource */}
+            <div style={{ position: "relative", overflow: "hidden", borderRadius: 18, padding: "18px 16px", background: "linear-gradient(135deg,#0D1837 0%,#1d4ed8 100%)" }}>
+              <div style={{ position: "absolute", top: -50, right: -40, width: 150, height: 150, borderRadius: "50%", background: "#08BD80", opacity: 0.18, filter: "blur(24px)" }} />
+              <div style={{ position: "absolute", bottom: -36, right: 24, width: 90, height: 90, borderRadius: "50%", border: "14px solid rgba(255,255,255,0.06)" }} />
+              <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", color: "#08BD80", background: "rgba(8,189,128,0.14)", border: "1px solid rgba(8,189,128,0.35)", padding: "3px 9px", borderRadius: 20 }}>
+                <AppIcon name="gift" size={11} color="#08BD80" />FREE FOR EVERY STUDENT
               </span>
-              <Chevron />
-            </button>
+              <p style={{ position: "relative", margin: "10px 0 4px", fontSize: 18, fontWeight: 900, color: "white", lineHeight: 1.25 }}>Start learning for free</p>
+              <p style={{ position: "relative", margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>Videos, notes, practice and daily current affairs. No batch needed.</p>
+              <button onClick={onOpenLibrary} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", borderRadius: 10, padding: "9px 14px", fontSize: 12.5, fontWeight: 800, background: "white", color: "#0D1837" }}>
+                Open library <AppIcon name="arrowRight" size={14} color="#0D1837" />
+              </button>
+            </div>
 
-            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+            <p style={{ margin: "6px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Explore resources</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
               {[
-                { icon: "video" as IconName, label: "Video Lectures" },
-                { icon: "file" as IconName, label: "Study Notes" },
-                { icon: "clipboard" as IconName, label: "Practice Questions" },
-                { icon: "newspaper" as IconName, label: "Current Affairs" },
-              ].map((r, i) => (
-                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={r.icon} size={17} color="var(--blue)" /></span>
-                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>{r.label}</span>
-                  <Chevron />
+                { icon: "video" as IconName, label: "Video Lectures", sub: "Recorded classes by faculty", color: "#EF4444" },
+                { icon: "file" as IconName, label: "Study Notes", sub: "Chapter-wise notes & PDFs", color: "#2563EB" },
+                { icon: "clipboard" as IconName, label: "Practice Questions", sub: "Topic-wise MCQs", color: "#7C3AED" },
+                { icon: "newspaper" as IconName, label: "Current Affairs", sub: "Daily notes for CLAT GK", color: "#059669" },
+              ].map((r) => (
+                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 12px 12px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0, position: "relative", overflow: "hidden" }}>
+                  <span style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: r.color }} />
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 11, background: `${r.color}14`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon name={r.icon} size={19} color={r.color} /></span>
+                    <AppIcon name="arrowRight" size={15} color="var(--text-disabled)" />
+                  </span>
+                  <span>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.25 }}>{r.label}</span>
+                    <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 3, lineHeight: 1.35 }}>{r.sub}</span>
+                  </span>
                 </button>
               ))}
             </div>
+
+            {/* Next step for a free user */}
+            <button onClick={onBrowseCourses} style={{ ...card, border: "1.5px dashed var(--blue)", background: "var(--blue-tint)", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "none" }}>
+              <span style={{ width: 38, height: 38, borderRadius: 11, background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="graduation" size={19} color="var(--blue)" /></span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>Want live classes & mentorship?</span>
+                <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Explore CLATians batches</span>
+              </span>
+              <Chevron color="var(--blue)" />
+            </button>
           </>
         )}
       </div>
@@ -366,14 +478,14 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
 
 type HomeTab = "overview" | "subjects" | "instructors" | "tests";
 
-function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, onStartTest, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
   const [tab, setTabState] = useState<HomeTab>(nav.view === "batch" && nav.tab ? nav.tab : "subjects");
   const setTab = (t: HomeTab) => {
     setTabState(t);
     if (nav.view === "batch") onReplaceNav?.({ ...nav, tab: t });
   };
   const { data, error } = useSyllabus(c.id);
-  const tests = useCourseTests(c.id, tab === "tests");
+  const mocks = useBatchMocks(c.id, tab === "tests");
   const subjects = data ? bySubject(data) : [];
   const topics = data ? allTopics(data) : [];
   const done = topics.filter((t) => t.completed).length;
@@ -513,35 +625,9 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
           </>
         )}
 
-        {tab === "tests" && (
-          <>
-            <p style={{ margin: "2px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Tests by subject</p>
-            {!data || !tests ? <Loading /> : subjects.length === 0 ? (
-              <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this batch's tests shortly." />
-            ) : (
-              <div style={{ ...card, overflow: "hidden" }}>
-                {subjects.map((s, i) => {
-                  const list = s.chapters.flatMap((ch) => ch.topics).map((t) => tests.get(t.id)).filter(Boolean) as TopicTest[];
-                  const tried = list.filter((t) => t.attempts > 0).length;
-                  return (
-                    <button key={s.name} onClick={() => onNav({ view: "subjectTests", courseId: c.id, batchId: b?.id ?? null, subject: s.name })} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <AppIcon name="clipboard" size={19} color="var(--blue)" />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{s.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{s.chapters.length} {s.chapters.length === 1 ? "Chapter" : "Chapters"} · {list.length} {list.length === 1 ? "Test" : "Tests"}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{list.length ? `${tried} / ${list.length} attempted` : "Tests coming soon"}</span>
-                      </span>
-                      {list.length > 0 && <Pill {...subjectState(tried, list.length)} />}
-                      <Chevron />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+        {tab === "tests" && (!mocks ? <Loading /> : mocks.length === 0 ? (
+          <Empty icon="clipboard" title="Mock tests coming soon" text="Full mock tests for this batch will appear here." />
+        ) : <MockTestList tests={mocks} onStartTest={onStartTest} />)}
 
         {tab === "instructors" && (
           faculty.length === 0 ? (
@@ -560,11 +646,13 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
   );
 }
 
-/** Tests chapter by chapter: each chapter's topic tests with Start / Retake. */
-function ChapterTests({ chapters, tests, onStartTest, firstNumber = 1 }: {
+/** Each chapter's tests (Test 1, Test 2…), every one covering all of the chapter's topics. */
+function ChapterTests({ chapters, tests, onStartTest, enrolled, firstNumber = 1 }: {
   chapters: LearningChapter[];
-  tests: Map<string, TopicTest>;
+  tests: Map<string, ChapterTest[]>;
   onStartTest?: LearningFlowProps["onStartTest"];
+  /** Chapter tests are for students in the batch. */
+  enrolled: boolean;
   /** Number shown on the first chapter (a chapter screen shows only its own). */
   firstNumber?: number;
 }) {
@@ -584,45 +672,48 @@ function ChapterTests({ chapters, tests, onStartTest, firstNumber = 1 }: {
     <>
       {startError && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{startError}</p>}
       {chapters.map((ch, idx) => {
-        const i = firstNumber - 1 + idx;
-        const chTests = ch.topics.map((t) => ({ topic: t, test: tests.get(t.id) })).filter((x): x is { topic: LearningTopic; test: TopicTest } => !!x.test);
+        const n = firstNumber + idx;
+        const list = tests.get(ch.id) ?? [];
+        const tried = list.filter((t) => t.attempts > 0).length;
         return (
           <div key={ch.id} style={{ ...card, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: chTests.length ? "1px solid var(--line)" : "none" }}>
-              <Num n={i + 1} active={chTests.some((x) => x.test.attempts > 0)} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderBottom: list.length ? "1px solid var(--line)" : "none" }}>
+              <Num n={n} active={tried > 0} />
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Chapter {i + 1}</span>
-                <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)", marginTop: 1 }}>{ch.title}</span>
+                <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Chapter {n}</span>
+                <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)", marginTop: 1, lineHeight: 1.3 }}>{ch.title}</span>
               </span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", flexShrink: 0 }}>{chTests.length} {chTests.length === 1 ? "Test" : "Tests"}</span>
+              {list.length > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", flexShrink: 0 }}>{tried}/{list.length} done</span>}
             </div>
-            {chTests.length === 0 ? (
-              <p style={{ margin: 0, padding: "0 14px 12px 56px", fontSize: 12, color: "var(--text-disabled)" }}>Test for this chapter coming soon</p>
-            ) : chTests.map(({ topic, test }, j) => {
-              const locked = topic.locked && !topic.isFree;
-              const meta = [`${test.questions} ${test.questions === 1 ? "Question" : "Questions"}`, test.durationMin > 0 ? `${test.durationMin} min` : "Untimed"].join(" · ");
+            {list.length === 0 ? (
+              <p style={{ margin: 0, padding: "0 14px 12px 58px", fontSize: 12, color: "var(--text-disabled)" }}>Chapter test coming soon</p>
+            ) : list.map((test, j) => {
+              const done = test.attempts > 0;
               return (
-                <div key={test.testId + topic.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: j ? "1px solid var(--line)" : "none" }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 10, background: test.attempts ? "var(--success)" : "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <AppIcon name={test.attempts ? "check" : "clipboard"} size={16} strokeWidth={test.attempts ? 3 : 2} color={test.attempts ? "var(--success-text)" : "var(--blue)"} />
+                <div key={test.testId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: j ? "1px solid var(--line)" : "none" }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : "var(--blue-tint)", color: done ? "var(--success-text)" : "var(--blue)" }}>
+                    <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: "0.05em" }}>TEST</span>
+                    <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{j + 1}</span>
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{topic.title}</span>
-                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{meta}</span>
-                    {test.attempts > 0 && test.bestScore != null && (
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--ink-primary)" }}>Chapter Test {j + 1}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                      {test.questions} Questions · All {ch.topics.length} topics · {test.durationMin > 0 ? `${test.durationMin} min` : "Untimed"}
+                    </span>
+                    {done && test.bestScore != null && (
                       <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--success-text)", marginTop: 2 }}>
                         Best {test.bestScore}{test.bestTotal != null ? ` / ${test.bestTotal}` : ""} · {test.attempts} {test.attempts === 1 ? "attempt" : "attempts"}
                       </span>
                     )}
                   </span>
-                  {locked ? (
+                  {!enrolled ? (
                     <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: "var(--text-disabled)" }}><AppIcon name="lock" size={14} color="var(--text-disabled)" />Locked</span>
                   ) : (
                     <button onClick={() => start(test.testId)} disabled={!!starting} style={{
                       flexShrink: 0, cursor: starting ? "default" : "pointer", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 800,
-                      border: test.attempts ? "1.5px solid var(--blue)" : "none", background: test.attempts ? "white" : gradient, color: test.attempts ? "var(--blue)" : "white",
+                      border: done ? "1.5px solid var(--blue)" : "none", background: done ? "white" : gradient, color: done ? "var(--blue)" : "white",
                       opacity: starting && starting !== test.testId ? 0.5 : 1,
-                    }}>{starting === test.testId ? "Starting…" : test.attempts ? "Retake" : "Start"}</button>
+                    }}>{starting === test.testId ? "Starting…" : done ? "Retake" : "Start"}</button>
                   )}
                 </div>
               );
@@ -631,39 +722,6 @@ function ChapterTests({ chapters, tests, onStartTest, firstNumber = 1 }: {
         );
       })}
     </>
-  );
-}
-
-// ── Subject tests — the batch's Tests tab → a subject → its tests, chapter by chapter ──
-
-function SubjectTestsView({ course: c, batch: b, subject, onBack, onStartTest }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null; subject: string }) {
-  const { data, error } = useSyllabus(c.id);
-  const tests = useCourseTests(c.id);
-  const group = data ? bySubject(data).find((s) => s.name === subject) : undefined;
-  const all = group && tests ? group.chapters.flatMap((ch) => ch.topics).map((t) => tests.get(t.id)).filter(Boolean) as TopicTest[] : [];
-  const tried = all.filter((t) => t.attempts > 0).length;
-
-  return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <div style={{ background: "white", paddingBottom: 10 }}>
-        <Header title={`${subject} Tests`} onBack={onBack} right={all.length > 0 ? <Pill {...subjectState(tried, all.length)} /> : undefined} />
-        <div style={{ padding: "4px 16px 0 48px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}><AppIcon name="layers" size={14} color="var(--blue)" />{b?.name ?? c.name}</p>
-          {group && (
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
-              <AppIcon name="clipboard" size={14} color="var(--blue)" />{group.chapters.length} {group.chapters.length === 1 ? "Chapter" : "Chapters"} · {all.length} {all.length === 1 ? "Test" : "Tests"} · {tried} attempted
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
-        {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
-        {!data || !tests ? <Loading /> : !group || group.chapters.length === 0 ? (
-          <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this subject's tests shortly." />
-        ) : <ChapterTests chapters={group.chapters} tests={tests} onStartTest={onStartTest} />}
-      </div>
-    </div>
   );
 }
 
@@ -728,7 +786,7 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav, onStartTest 
         {tab === "tests" && (
           !data || !tests ? <Loading /> : !group || group.chapters.length === 0 ? (
             <Empty icon="clipboard" title="Tests coming soon" text="Faculty will add this subject's tests shortly." />
-          ) : <ChapterTests chapters={group.chapters} tests={tests} onStartTest={onStartTest} />
+          ) : <ChapterTests chapters={group.chapters} tests={tests} onStartTest={onStartTest} enrolled={data.enrolled} />
         )}
 
         {tab === "announcements" && (
@@ -821,7 +879,7 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }:
 
         {/* This chapter's tests */}
         <p style={{ margin: "12px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Chapter Tests</p>
-        {tests ? <ChapterTests chapters={[ch]} tests={tests} onStartTest={onStartTest} firstNumber={localChapterNumber(data!, ch)} /> : <Loading />}
+        {tests ? <ChapterTests chapters={[ch]} tests={tests} onStartTest={onStartTest} enrolled={!!data?.enrolled} firstNumber={localChapterNumber(data!, ch)} /> : <Loading />}
       </div>
     </div>
   );

@@ -341,6 +341,18 @@ const SCHEMA = `
   -- doubts students raise about it.
   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS notes_url TEXT NOT NULL DEFAULT '';
   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS test_id TEXT REFERENCES tests(id) ON DELETE SET NULL;
+  -- Retired: a chapter's single test, before chapter_tests allowed several.
+  ALTER TABLE chapters ADD COLUMN IF NOT EXISTS test_id TEXT REFERENCES tests(id) ON DELETE SET NULL;
+  -- Chapter tests: papers with questions from every topic in the chapter; a chapter can have several.
+  CREATE TABLE IF NOT EXISTS chapter_tests (
+    chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+    test_id TEXT NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    PRIMARY KEY (chapter_id, test_id)
+  );
+  INSERT INTO chapter_tests (chapter_id, test_id) SELECT id, test_id FROM chapters WHERE test_id IS NOT NULL ON CONFLICT DO NOTHING;
+  UPDATE chapters SET test_id = NULL WHERE test_id IS NOT NULL;
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL;
   -- Optional solution video a teacher attaches when answering (the topic's "Doubt solving videos").
   ALTER TABLE doubts ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';

@@ -58,6 +58,7 @@ const PATHS = {
   image: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" /></>,
   close: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
+  expand: <><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="m21 3-7 7" /><path d="m3 21 7-7" /></>,
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -104,7 +105,8 @@ export function featureIconName(title: string): IconName {
     ["magazine", "newspaper"], ["material", "book"], ["book", "book"], ["note", "file"], ["mentor", "user"],
     ["special", "star"], ["english", "language"], ["doubt", "chat"], ["performance", "chart"], ["track", "chart"],
     ["test", "clipboard"], ["mock", "clipboard"], ["live", "video"], ["video", "video"], ["record", "video"],
-    ["library", "library"], ["counsel", "compass"], ["session", "calendar"],
+    ["library", "library"], ["counsel", "compass"], ["session", "calendar"], ["resource", "book"],
+    ["current", "newspaper"], ["affairs", "newspaper"], ["class", "graduation"],
   ];
   return map.find(([k]) => t.includes(k))?.[1] ?? "sparkle";
 }

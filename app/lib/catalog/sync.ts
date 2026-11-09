@@ -1,6 +1,8 @@
 "server-only";
 
 import { seedDemoSyllabus } from "./demo-syllabus";
+import { seedDemoMocks } from "./demo-mocks";
+import { seedChapterTests } from "./demo-chapter-tests";
 import { db, newId } from "../db";
 import { courses as bundledCourses, type Course } from "./courses";
 import { batches as bundledBatches, type Batch } from "./batches";
@@ -373,12 +375,39 @@ async function runEnsureCatalog(): Promise<void> {
   const claimSyllabus = await db.prepare(
     "INSERT INTO meta (key) VALUES ('demo_syllabus_v4') ON CONFLICT DO NOTHING"
   ).run();
-  if (claimSyllabus.changes !== 1) return;
-  try {
-    await seedDemoSyllabus(await contentAuthorId());
-  } catch (e) {
-    await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v4'").run();
-    throw e;
+  if (claimSyllabus.changes === 1) {
+    try {
+      await seedDemoSyllabus(await contentAuthorId());
+    } catch (e) {
+      await db.prepare("DELETE FROM meta WHERE key = 'demo_syllabus_v4'").run();
+      throw e;
+    }
+  }
+
+  // Full mock tests (all five sections mixed) for every batch's Tests tab.
+  const claimMocks = await db.prepare(
+    "INSERT INTO meta (key) VALUES ('demo_mocks_v1') ON CONFLICT DO NOTHING"
+  ).run();
+  if (claimMocks.changes === 1) {
+    try {
+      await seedDemoMocks(await contentAuthorId());
+    } catch (e) {
+      await db.prepare("DELETE FROM meta WHERE key = 'demo_mocks_v1'").run();
+      throw e;
+    }
+  }
+
+  // Chapter tests for the starter chapters (v2: several per chapter, via chapter_tests).
+  const claimChapterTests = await db.prepare(
+    "INSERT INTO meta (key) VALUES ('demo_chapter_tests_v2') ON CONFLICT DO NOTHING"
+  ).run();
+  if (claimChapterTests.changes === 1) {
+    try {
+      await seedChapterTests(await contentAuthorId());
+    } catch (e) {
+      await db.prepare("DELETE FROM meta WHERE key = 'demo_chapter_tests_v2'").run();
+      throw e;
+    }
   }
 }
 

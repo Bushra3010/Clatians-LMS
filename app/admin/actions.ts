@@ -595,6 +595,31 @@ export async function createModuleAction(formData: FormData) {
   revalidateSyllabus(courseId);
 }
 
+/** Adds a test to a chapter (a chapter can have several); it goes after the existing ones. */
+export async function addChapterTestAction(formData: FormData) {
+  await requireRole(["admin", "teacher"]);
+  const chapterId = String(formData.get("chapterId") ?? "");
+  const courseId = String(formData.get("courseId") ?? "");
+  const testId = String(formData.get("testId") ?? "");
+  if (!chapterId || !testId) return;
+  const max = await db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM chapter_tests WHERE chapter_id = ?").get(chapterId) as { m: number };
+  await db.prepare(
+    "INSERT INTO chapter_tests (chapter_id, test_id, sort_order) VALUES (?, ?, ?) ON CONFLICT DO NOTHING"
+  ).run(chapterId, testId, Number(max.m) + 1);
+  revalidateSyllabus(courseId);
+}
+
+/** Takes a test off a chapter. The test itself is kept. */
+export async function removeChapterTestAction(formData: FormData) {
+  await requireRole(["admin", "teacher"]);
+  const chapterId = String(formData.get("chapterId") ?? "");
+  const courseId = String(formData.get("courseId") ?? "");
+  const testId = String(formData.get("testId") ?? "");
+  if (!chapterId || !testId) return;
+  await db.prepare("DELETE FROM chapter_tests WHERE chapter_id = ? AND test_id = ?").run(chapterId, testId);
+  revalidateSyllabus(courseId);
+}
+
 export async function createChapterAction(formData: FormData) {
   await requireRole(["admin", "teacher"]);
   const moduleId = String(formData.get("moduleId") ?? "");

@@ -4,6 +4,8 @@ import { db } from "@/app/lib/db";
 import {
   createModuleAction,
   createChapterAction,
+  addChapterTestAction,
+  removeChapterTestAction,
   createLessonAction,
   updateLessonAction,
   deleteSyllabusNodeAction,
@@ -20,6 +22,7 @@ const delBtn = "text-xs rounded border border-red-200 text-red-600 px-2.5 py-1 h
 
 type Module = { id: string; title: string; description: string; subject_name: string | null };
 type Chapter = { id: string; module_id: string; title: string };
+type ChapterTestRow = { chapter_id: string; test_id: string; title: string; qcount: number };
 type Topic = {
   id: string; chapter_id: string; title: string; body: string; video_url: string; notes_url: string;
   test_id: string | null; duration_min: number; is_free: number; notes_download: number;
@@ -130,6 +133,14 @@ export default async function SyllabusEditor({ courseId, backHref, backLabel, ca
      ORDER BY t.created_at DESC`
   ).all(courseId) as TestOpt[];
 
+  const chapterTests = await db.prepare(
+    `SELECT ct.chapter_id, ct.test_id, t.title, (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS qcount
+     FROM chapter_tests ct JOIN tests t ON t.id = ct.test_id
+     WHERE ct.chapter_id IN (SELECT id FROM chapters WHERE module_id IN (SELECT id FROM modules WHERE course_id = ?))
+     ORDER BY ct.sort_order, ct.created_at`
+  ).all(courseId) as ChapterTestRow[];
+  const testsOfChapter = (chapterId: string) => chapterTests.filter((t) => t.chapter_id === chapterId);
+
   const chaptersOf = (moduleId: string) => chapters.filter((c) => c.module_id === moduleId);
   const topicsOf = (chapterId: string) => topics.filter((l) => l.chapter_id === chapterId);
 
@@ -198,6 +209,39 @@ export default async function SyllabusEditor({ courseId, backHref, backLabel, ca
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-slate-800">Chapter {ci + 1}: {ch.title}</p>
                     <DeleteButton courseId={courseId} kind="chapter" id={ch.id} label="Delete chapter" />
+                  </div>
+
+                  {/* Chapter tests: one or more papers, each covering every topic in the chapter */}
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                    <p className="text-xs font-semibold text-slate-600">Chapter tests (questions from all topics)</p>
+                    {testsOfChapter(ch.id).length === 0 ? (
+                      <p className="mt-1 text-xs text-slate-400">No chapter test yet.</p>
+                    ) : (
+                      <ul className="mt-2 space-y-1">
+                        {testsOfChapter(ch.id).map((t, ti) => (
+                          <li key={t.test_id} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="text-slate-700">Test {ti + 1}: {t.title} · {t.qcount} Q</span>
+                            <form action={removeChapterTestAction}>
+                              <input type="hidden" name="courseId" value={courseId} />
+                              <input type="hidden" name="chapterId" value={ch.id} />
+                              <input type="hidden" name="testId" value={t.test_id} />
+                              <button className="text-xs font-medium text-red-600 hover:underline">Remove</button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <form action={addChapterTestAction} className="mt-2 flex items-end gap-2">
+                      <input type="hidden" name="courseId" value={courseId} />
+                      <input type="hidden" name="chapterId" value={ch.id} />
+                      <select name="testId" required defaultValue="" className={inputCls}>
+                        <option value="" disabled>Choose a test to add…</option>
+                        {tests.filter((t) => !testsOfChapter(ch.id).some((x) => x.test_id === t.id)).map((t) => (
+                          <option key={t.id} value={t.id}>{t.title} · {t.qcount} Q{t.status !== "published" ? ` (${t.status})` : ""}</option>
+                        ))}
+                      </select>
+                      <button className={addBtn}>Add test</button>
+                    </form>
                   </div>
 
                   <ul className="mt-3 divide-y divide-slate-200 rounded-lg bg-white border border-slate-200">

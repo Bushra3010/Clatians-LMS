@@ -14,6 +14,7 @@ import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
 import CurrentAffairsPage from "./components/detail/CurrentAffairsPage";
 import { AppIcon } from "./components/AppIcon";
+import { DEMO_VIDEO } from "./lib/demo-media";
 import AiPracticePage from "./components/detail/AiPracticePage";
 import SlotsPage, { type SlotOpen, type SlotBooking } from "./components/detail/SlotsPage";
 import MyPaymentsPage, { type PaymentItem } from "./components/detail/MyPaymentsPage";
@@ -195,30 +196,42 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     if (map[item]) openDetail(map[item]);
   };
 
-  // Open a class: embed the YouTube stream/recording in-app (falling back to a
-  // new tab for non-YouTube links), with the private teacher chat underneath.
-  // Joining a class that is live records attendance.
+  // Open a class inside the app, with the private teacher chat underneath. A
+  // YouTube stream/recording is embedded; any other link (Meet, Zoom…) can't
+  // play in the app, so the demo lecture plays and the real link is one tap
+  // away. Joining a class that is live records attendance.
   const openClass = async (cls: LiveClassItem | undefined, kind: "live" | "recording") => {
     if (!cls) return;
     const url = kind === "live" ? cls.joinUrl : cls.recordingUrl ?? "";
     const ytId = youtubeId(url);
-    if (!ytId && url) {
-      window.open(url, "_blank", "noopener");
-    }
     const joined = kind === "live" && cls.status === "live" ? await joinClassAction(cls.id) : { attended: false };
     if (joined.attended) router.refresh();
-    if (ytId) {
-      setWatchTarget({
-        title: cls.title,
-        subtitle: [cls.subject, cls.teacher].filter(Boolean).join(" · "),
-        ytId,
-        notes: cls.notes,
-        isLive: kind === "live" && cls.status === "live",
-        classId: cls.id,
-        attended: joined.attended || cls.attended,
-      });
-      openDetail("watch-class");
-    }
+    setWatchTarget({
+      title: cls.title,
+      subtitle: [cls.subject, cls.teacher].filter(Boolean).join(" · "),
+      ytId: ytId ?? "",
+      videoUrl: ytId ? undefined : DEMO_VIDEO,
+      externalUrl: !ytId && url ? url : undefined,
+      demo: !ytId,
+      notes: cls.notes,
+      isLive: kind === "live" && cls.status === "live",
+      classId: cls.id,
+      attended: joined.attended || cls.attended,
+    });
+    openDetail("watch-class");
+  };
+
+  /** A sample live class for a topic that has none scheduled — shows how joining works. */
+  const openDemoLive = (title: string, subject: string) => {
+    setWatchTarget({
+      title: `${title} — Live Class`,
+      subtitle: [subject, "CLATians Faculty"].filter(Boolean).join(" · "),
+      ytId: "",
+      videoUrl: DEMO_VIDEO,
+      demo: true,
+      isLive: true,
+    });
+    openDetail("watch-class");
   };
 
   const allClasses = [...upcomingClasses, ...pastClasses];
@@ -493,6 +506,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onToggleSave={() => handleToggleSave("topic", topic.id, topic.title, `${topic.chapter} · ${topic.subject}`)}
               onBack={closeDetail}
               onStartTest={(testId) => handleStartTest(testId, "topic")}
+              onJoinDemoLive={() => openDemoLive(topic.title, topic.subject)}
               onAskDoubt={async (body, attachmentUrl) => {
                 const res = await askTopicDoubtAction(topic.id, body, attachmentUrl ?? "");
                 if (res.ok) await reloadTopic(topic.id);
