@@ -165,7 +165,7 @@ const SECTION_SHORT: Record<string, string> = {
   "Legal Reasoning": "Legal", "Logical Reasoning": "Logical", "Quantitative": "Quant", "Quantitative Techniques": "Quant",
 };
 
-/** Full mock tests as Test 1, Test 2…, each mixing every section. */
+/** Full mock tests as Test 1, Test 2…, each mixing every section. They open in order: a test unlocks once the one before it is attempted. */
 function MockTestList({ tests, onStartTest }: { tests: MockTest[]; onStartTest?: LearningFlowProps["onStartTest"] }) {
   const [starting, setStarting] = useState<string | null>(null);
   const [startError, setStartError] = useState("");
@@ -199,12 +199,15 @@ function MockTestList({ tests, onStartTest }: { tests: MockTest[]; onStartTest?:
 
       {tests.map((t, i) => {
         const done = t.attempts > 0;
+        const locked = i > 0 && tests[i - 1].attempts === 0;
         return (
-          <div key={t.testId} style={{ ...card, padding: "13px 14px" }}>
+          <div key={t.testId} style={{ ...card, padding: "13px 14px", opacity: locked ? 0.75 : 1 }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <span style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : "var(--blue-tint)", color: done ? "var(--success-text)" : "var(--blue)" }}>
-                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" }}>TEST</span>
-                <span style={{ fontSize: 17, fontWeight: 900, lineHeight: 1 }}>{i + 1}</span>
+              <span style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : locked ? "var(--surface-dim)" : "var(--blue-tint)", color: done ? "var(--success-text)" : locked ? "var(--text-disabled)" : "var(--blue)" }}>
+                {locked ? <AppIcon name="lock" size={18} color="var(--text-disabled)" /> : <>
+                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" }}>TEST</span>
+                  <span style={{ fontSize: 17, fontWeight: 900, lineHeight: 1 }}>{i + 1}</span>
+                </>}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{t.title}</span>
@@ -223,13 +226,17 @@ function MockTestList({ tests, onStartTest }: { tests: MockTest[]; onStartTest?:
             )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "11px 0 0 56px" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: done ? "var(--success-text)" : "var(--text-disabled)" }}>
-                {done && t.bestScore != null ? `Best ${t.bestScore}${t.bestTotal != null ? ` / ${t.bestTotal}` : ""} · ${t.attempts} ${t.attempts === 1 ? "attempt" : "attempts"}` : "Not attempted yet"}
+                {locked ? `Attempt Test ${i} to unlock` : done && t.bestScore != null ? `Best ${t.bestScore}${t.bestTotal != null ? ` / ${t.bestTotal}` : ""} · ${t.attempts} ${t.attempts === 1 ? "attempt" : "attempts"}` : "Not attempted yet"}
               </span>
-              <button onClick={() => start(t.testId)} disabled={!!starting} style={{
+              {locked ? (
+                <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 800, background: "var(--surface-dim)", color: "var(--text-disabled)" }}>
+                  <AppIcon name="lock" size={13} color="var(--text-disabled)" />Locked
+                </span>
+              ) : <button onClick={() => start(t.testId)} disabled={!!starting} style={{
                 flexShrink: 0, cursor: starting ? "default" : "pointer", borderRadius: 10, padding: "8px 16px", fontSize: 12.5, fontWeight: 800,
                 border: done ? "1.5px solid var(--blue)" : "none", background: done ? "white" : gradient, color: done ? "var(--blue)" : "white",
                 opacity: starting && starting !== t.testId ? 0.5 : 1,
-              }}>{starting === t.testId ? "Starting…" : done ? "Retake" : "Start test"}</button>
+              }}>{starting === t.testId ? "Starting…" : done ? "Retake" : "Start test"}</button>}
             </div>
           </div>
         );
@@ -549,7 +556,7 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
         )}
         <div style={{ margin: "8px -16px 0" }}>
           <Tabs<HomeTab>
-            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }, { key: "tests", label: "Tests" }]}
+            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }, { key: "tests", label: "Mock Test" }]}
             active={tab}
             onChange={setTab}
           />
@@ -689,24 +696,26 @@ function ChapterTests({ chapters, tests, onStartTest, enrolled, firstNumber = 1 
               <p style={{ margin: 0, padding: "0 14px 12px 58px", fontSize: 12, color: "var(--text-disabled)" }}>Chapter test coming soon</p>
             ) : list.map((test, j) => {
               const done = test.attempts > 0;
+              // Within a chapter, Test 2 opens after Test 1 is attempted, and so on.
+              const inOrder = j > 0 && list[j - 1].attempts === 0;
               return (
                 <div key={test.testId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: j ? "1px solid var(--line)" : "none" }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : "var(--blue-tint)", color: done ? "var(--success-text)" : "var(--blue)" }}>
-                    <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: "0.05em" }}>TEST</span>
-                    <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{j + 1}</span>
+                  <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : inOrder ? "var(--surface-dim)" : "var(--blue-tint)", color: done ? "var(--success-text)" : inOrder ? "var(--text-disabled)" : "var(--blue)" }}>
+                    <AppIcon name={inOrder ? "lock" : done ? "check" : "clipboard"} size={16} strokeWidth={done ? 3 : 2} color={done ? "var(--success-text)" : inOrder ? "var(--text-disabled)" : "var(--blue)"} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--ink-primary)" }}>Chapter Test {j + 1}</span>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: inOrder ? "var(--text-muted)" : "var(--ink-primary)" }}>Test {j + 1}</span>
                     <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
                       {test.questions} Questions · All {ch.topics.length} topics · {test.durationMin > 0 ? `${test.durationMin} min` : "Untimed"}
                     </span>
+                    {inOrder && <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-disabled)", marginTop: 2 }}>Attempt Test {j} to unlock</span>}
                     {done && test.bestScore != null && (
                       <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--success-text)", marginTop: 2 }}>
                         Best {test.bestScore}{test.bestTotal != null ? ` / ${test.bestTotal}` : ""} · {test.attempts} {test.attempts === 1 ? "attempt" : "attempts"}
                       </span>
                     )}
                   </span>
-                  {!enrolled ? (
+                  {!enrolled || inOrder ? (
                     <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: "var(--text-disabled)" }}><AppIcon name="lock" size={14} color="var(--text-disabled)" />Locked</span>
                   ) : (
                     <button onClick={() => start(test.testId)} disabled={!!starting} style={{
@@ -878,7 +887,7 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }:
         })}
 
         {/* This chapter's tests */}
-        <p style={{ margin: "12px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Chapter Tests</p>
+        <p style={{ margin: "12px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Tests</p>
         {tests ? <ChapterTests chapters={[ch]} tests={tests} onStartTest={onStartTest} enrolled={!!data?.enrolled} firstNumber={localChapterNumber(data!, ch)} /> : <Loading />}
       </div>
     </div>

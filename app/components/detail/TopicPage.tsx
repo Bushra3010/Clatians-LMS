@@ -189,7 +189,7 @@ function LecturePlayer({ title, subtitle, ytId, src, demo, completed, busy, onTo
 }
 
 /** One syllabus topic: its lecture, live class, notes and the student's doubts on it. */
-export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onToggleDone, onOpenTopic, onJoinClass, onJoinDemoLive, onWatchRecording, saved = false, onToggleSave }: {
+export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onToggleDone, onOpenTopic, onJoinClass, onDemoClass, onWatchRecording, saved = false, onToggleSave }: {
   topic: TopicDetail;
   /** Whether the student has saved this topic (the heart). */
   saved?: boolean;
@@ -201,8 +201,8 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   /** Another topic of the same chapter. */
   onOpenTopic: (id: string) => void;
   onJoinClass: (id: string) => void;
-  /** No class scheduled: open a sample live class so the student sees how it works. */
-  onJoinDemoLive?: () => void;
+  /** No class scheduled: open the sample live class or recording, so the student sees how it works. */
+  onDemoClass?: (kind: "live" | "recording") => void;
   onWatchRecording: (cls: LiveClassItem) => void;
 }) {
   const [tab, setTab] = useState<Tab>("content");
@@ -228,7 +228,16 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   const idx = topic.siblings.findIndex((s) => s.id === topic.id);
   const nextSibling = idx >= 0 ? topic.siblings[idx + 1] : undefined;
   const next = topic.nextClass;
-  const countdown = useCountdown(next && next.status !== "live" ? next.startAt : undefined);
+  // No class scheduled yet: a sample one (tomorrow, 10 AM) and a sample recording
+  // fill the Live Class tab, so Join and Watch Recording work in a demo.
+  const [demoTimes] = useState(() => {
+    const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(10, 0, 0, 0);
+    const past = new Date(); past.setDate(past.getDate() - 3); past.setHours(17, 0, 0, 0);
+    return { start: start.toISOString(), past: past.toISOString() };
+  });
+  const demoNext: LiveClassItem = { id: "demo", title: `${topic.title} — Live Session`, subject: topic.subject, teacher: "CLATians Faculty", startAt: demoTimes.start, durationMin: 60, status: "upcoming", joinUrl: "", attended: false };
+  const cls = next ?? demoNext;
+  const countdown = useCountdown(cls.status !== "live" ? cls.startAt : undefined);
   const recordings = topic.pastClasses.filter((c) => c.recordingUrl);
   const notesIsPdf = !!topic.notesUrl && isLink(topic.notesUrl) && isPdfUrl(topic.notesUrl);
   const notesIsImage = !!topic.notesUrl && isLink(topic.notesUrl) && /\.(png|jpe?g|webp|gif)($|[?#])/i.test(topic.notesUrl.trim());
@@ -295,7 +304,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   type StepKey = "video" | "live" | "notes" | "test" | "doubt";
   const steps: { key: StepKey; label: string; sub: string; icon: IconName; action: string; done: boolean; live?: boolean }[] = [
     { key: "video", label: "Watch Video (Recorded)", sub: demoVideo ? "Demo lecture" : topic.durationMin > 0 ? `${topic.durationMin} min lecture` : "Recorded lecture", icon: "video", action: "Watch", done: topic.completed },
-    { key: "live", label: "Attend Live Class (If Scheduled)", sub: next ? liveSub : "Try a demo live class", icon: "users", action: next?.status === "live" || !next ? "Join" : "View", done: !!next?.attended, live: next?.status === "live" },
+    { key: "live", label: "Attend Live Class (If Scheduled)", sub: next ? liveSub : `Next: ${fmtIST(demoNext.startAt, { day: "numeric", month: "short" })}, ${fmtIST(demoNext.startAt, { hour: "numeric", minute: "2-digit", hour12: true })}`, icon: "users", action: "Join", done: !!next?.attended, live: next?.status === "live" },
     { key: "notes", label: "Read Notes (PDF)", sub: demoNotes ? "Demo PDF notes" : notesIsPdf ? "PDF notes" : "Topic notes", icon: "file", action: "Read", done: topic.completed },
     ...(topic.test ? [{ key: "test" as StepKey, label: "Take Topic Test", sub: `${topic.test.questionCount} questions${topic.test.myAttempts ? ` · ${topic.test.myAttempts} attempt${topic.test.myAttempts === 1 ? "" : "s"}` : ""}`, icon: "clipboard" as IconName, action: busy === "test" ? "Starting…" : topic.test.myAttempts ? "Retake" : "Start", done: topic.test.myAttempts > 0 }] : []),
     { key: "doubt", label: "Ask Doubt (If Any)", sub: topic.doubts.length ? `${topic.doubts.length} asked` : "Faculty answer on this topic", icon: "chat", action: "Ask", done: topic.doubts.length > 0 },
@@ -303,7 +312,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
   /** What each checklist row does when tapped. */
   const onStep = (key: StepKey) => {
     if (key === "video") watch();
-    else if (key === "live") { if (!next && onJoinDemoLive) onJoinDemoLive(); else goTab("live"); }
+    else if (key === "live") goTab("live");
     else if (key === "notes") goTab("notes");
     else if (key === "test") { if (topic.test && busy !== "test") start(topic.test.id); }
     else { goTab("doubt"); setTimeout(() => doubtRef.current?.focus(), 250); }
@@ -430,86 +439,79 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
         )}
 
         {/* ── 8 · LIVE CLASS ── */}
-        {tab === "live" && (
-          <>
-            {next ? (
+        {tab === "live" && (() => {
+          const isDemo = !next;
+          const isLive = cls.status === "live";
+          const canJoin = isDemo || isLive;
+          const end = new Date(parseServerDate(cls.startAt).getTime() + cls.durationMin * 60_000).toISOString();
+          const teacher = cls.teacher || "CLATians Faculty";
+          const pastList: LiveClassItem[] = recordings.length ? recordings
+            : isDemo ? [{ id: "demo-rec", title: `${topic.title} — Doubt Session`, subject: topic.subject, teacher: "CLATians Faculty", startAt: demoTimes.past, durationMin: 45, status: "ended", joinUrl: "", attended: false, recordingUrl: "demo" }] : [];
+          return (
+            <>
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                  <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>{next.status === "live" ? "Live now" : "Upcoming Live Class"}</p>
-                  {next.status === "live" && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "var(--red)" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--red)" }} /> Live
-                    </span>
-                  )}
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>{isLive ? "Live Now" : "Upcoming Live Class"}</p>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "#E03131" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E03131" }} />Live
+                  </span>
                 </div>
-                <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)" }}>{next.title}</p>
-                <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "var(--text-muted)" }}>
-                  <AppIcon name="calendar" size={13} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} />{fmtIST(next.startAt, { day: "numeric", month: "short", year: "numeric" })}  •  {fmtIST(next.startAt, { hour: "numeric", minute: "2-digit", hour12: true })} – {fmtIST(new Date(parseServerDate(next.startAt).getTime() + next.durationMin * 60_000).toISOString(), { hour: "numeric", minute: "2-digit", hour12: true })}
+                <p style={{ margin: "10px 0 0", display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-secondary)" }}>
+                  <AppIcon name="calendar" size={15} color="var(--blue)" />
+                  {fmtIST(cls.startAt, { day: "numeric", month: "short", year: "numeric" })}
+                  <span style={{ color: "var(--text-disabled)" }}>•</span>
+                  {fmtIST(cls.startAt, { hour: "numeric", minute: "2-digit", hour12: true })} – {fmtIST(end, { hour: "numeric", minute: "2-digit", hour12: true })}
                 </p>
-                {next.teacher && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
-                    <span style={{ width: 38, height: 38, borderRadius: "50%", background: gradient, color: "white", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {next.teacher.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
-                    </span>
-                    <span>
-                      <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{next.teacher}</span>
-                      {next.subject && <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>{next.subject}</span>}
-                    </span>
-                  </div>
-                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+                  <span style={{ width: 40, height: 40, borderRadius: "50%", background: gradient, color: "white", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {teacher.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                  </span>
+                  <span>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{teacher}</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)" }}>{cls.subject ? `${cls.subject} Expert` : "Faculty"}</span>
+                  </span>
+                </div>
                 {countdown && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginTop: 14 }}>
                     {[["Days", countdown.days], ["Hours", countdown.hours], ["Minutes", countdown.minutes]].map(([l, v]) => (
-                      <div key={l} style={{ background: "var(--app-bg)", borderRadius: 12, padding: "10px 4px", textAlign: "center" }}>
+                      <div key={l} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 4px", textAlign: "center" }}>
                         <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "var(--ink-primary)" }}>{v}</p>
                         <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>{l}</p>
                       </div>
                     ))}
                   </div>
                 )}
-                <button onClick={() => onJoinClass(next.id)} disabled={next.status !== "live"} style={{ ...primaryBtn, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, opacity: next.status === "live" ? 1 : 0.55, cursor: next.status === "live" ? "pointer" : "not-allowed" }}>
-                  {next.status === "live" ? <><AppIcon name="play" size={13} color="white" fill="white" />Join Live Class</> : "Join opens when the class starts"}
+                <button onClick={() => (isDemo ? onDemoClass?.("live") : onJoinClass(cls.id))} disabled={!canJoin} style={{ ...primaryBtn, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: canJoin ? 1 : 0.55, cursor: canJoin ? "pointer" : "not-allowed" }}>
+                  <AppIcon name="video" size={16} color="white" />{canJoin ? "Join Live Class" : "Join opens when the class starts"}
                 </button>
-                {next.status !== "live" && (
-                  <button onClick={() => window.open(calendarUrl(next), "_blank", "noopener")} style={{ ...outlineBtn, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><AppIcon name="calendar" size={15} />Add to Calendar</button>
-                )}
+                <button onClick={() => window.open(calendarUrl(cls), "_blank", "noopener")} style={{ ...outlineBtn, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                  <AppIcon name="calendar" size={15} />Add to Calendar
+                </button>
+                {isDemo && <p style={{ margin: "10px 0 0", display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-muted)" }}><AppIcon name="info" size={13} />Sample class — tap Join to see how a live class works.</p>}
               </div>
-            ) : (
-              <div style={card}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 44, height: 44, borderRadius: 12, background: "#FFE4E6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="users" size={21} color="#E03131" /></span>
-                  <span>
-                    <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>No live class scheduled yet</span>
-                    <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Join the demo to see how a live class works in the app.</span>
-                  </span>
-                </div>
-                {onJoinDemoLive && (
-                  <button onClick={onJoinDemoLive} style={{ ...primaryBtn, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-                    <AppIcon name="play" size={13} color="white" fill="white" />Join demo live class
-                  </button>
-                )}
-              </div>
-            )}
 
-            <p style={sectionTitle}>Previous Live Classes</p>
-            {recordings.length === 0 ? (
-              <Empty icon="video" title="No recordings yet" text="Recordings of past classes appear here." />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {recordings.map((c) => (
-                  <div key={c.id} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="video" size={20} color="var(--blue)" /></span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{c.title}</span>
-                      <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{fmtIST(c.startAt, { day: "numeric", month: "short", year: "numeric" })}  •  {c.durationMin} min</span>
-                    </span>
-                    <button onClick={() => onWatchRecording(c)} style={smallBtn}>Watch</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+              <p style={sectionTitle}>Previous Live Classes</p>
+              {pastList.length === 0 ? (
+                <Empty icon="video" title="No recordings yet" text="Recordings of past classes appear here." />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {pastList.map((c) => (
+                    <div key={c.id} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <span style={{ width: 48, height: 48, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="video" size={22} color="var(--blue)" /></span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{c.title}</span>
+                        <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{fmtIST(c.startAt, { day: "numeric", month: "short", year: "numeric" })}  •  {c.durationMin} min</span>
+                        <button onClick={() => (c.id === "demo-rec" ? onDemoClass?.("recording") : onWatchRecording(c))} style={{ ...smallBtn, marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <AppIcon name="play" size={11} color="var(--blue)" fill="var(--blue)" />Watch Recording
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* ── 9 · NOTES ── */}
         {tab === "notes" && (
@@ -552,12 +554,6 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
               </>
             )}
 
-            {topic.notes && (
-              <div style={{ ...card, marginTop: topic.notesUrl ? 10 : 0 }}>
-                <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>Topic notes</p>
-                <div style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>{topic.notes}</div>
-              </div>
-            )}
 
             {topic.test && (
               <>

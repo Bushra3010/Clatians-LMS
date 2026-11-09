@@ -221,15 +221,15 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
     openDetail("watch-class");
   };
 
-  /** A sample live class for a topic that has none scheduled — shows how joining works. */
-  const openDemoLive = (title: string, subject: string) => {
+  /** A sample live class or recording for a topic that has none — shows how joining and watching work. */
+  const openDemoClass = (title: string, subject: string, kind: "live" | "recording") => {
     setWatchTarget({
-      title: `${title} — Live Class`,
+      title: kind === "live" ? `${title} — Live Session` : `${title} — Doubt Session`,
       subtitle: [subject, "CLATians Faculty"].filter(Boolean).join(" · "),
       ytId: "",
       videoUrl: DEMO_VIDEO,
       demo: true,
-      isLive: true,
+      isLive: kind === "live",
     });
     openDetail("watch-class");
   };
@@ -506,7 +506,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onToggleSave={() => handleToggleSave("topic", topic.id, topic.title, `${topic.chapter} · ${topic.subject}`)}
               onBack={closeDetail}
               onStartTest={(testId) => handleStartTest(testId, "topic")}
-              onJoinDemoLive={() => openDemoLive(topic.title, topic.subject)}
+              onDemoClass={(kind) => openDemoClass(topic.title, topic.subject, kind)}
               onAskDoubt={async (body, attachmentUrl) => {
                 const res = await askTopicDoubtAction(topic.id, body, attachmentUrl ?? "");
                 if (res.ok) await reloadTopic(topic.id);
