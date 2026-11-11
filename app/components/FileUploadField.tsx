@@ -98,7 +98,7 @@ export default function FileUploadField({ accept, hint, name = "fileUrl" }: { ac
       )}
       {state.kind === "done" && (
         <p className="mt-2 text-xs text-green-700">
-          ✓ Uploaded <span className="font-medium">{state.name}</span> ·{" "}
+          Uploaded <span className="font-medium">{state.name}</span> ·{" "}
           <a href={state.url} target="_blank" rel="noreferrer" className="underline">preview</a> ·{" "}
           <button type="button" onClick={() => setState({ kind: "idle" })} className="underline text-slate-500">remove</button>
         </p>

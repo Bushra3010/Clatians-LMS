@@ -514,7 +514,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                         <span style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, background: isMe ? "var(--blue-tint)" : "var(--surface-dim)", color: isMe ? "var(--blue)" : "var(--ink-primary)" }}>{i + 1}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ display: "block", fontSize: 13, fontWeight: isMe ? 800 : 600, color: s.locked ? "var(--text-muted)" : "var(--ink-primary)" }}>{s.title}{isMe ? " (Now playing)" : ""}</span>
-                          {s.durationMin > 0 && <span style={{ display: "block", fontSize: 11, color: "var(--text-disabled)", marginTop: 1 }}>⏱ {s.durationMin} min</span>}
+                          {s.durationMin > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-disabled)", marginTop: 1 }}><AppIcon name="clock" size={11} />{s.durationMin} min</span>}
                         </span>
                         <TopicState topic={s} current={isMe} />
                       </button>

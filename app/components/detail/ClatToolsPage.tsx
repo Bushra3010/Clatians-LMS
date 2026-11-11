@@ -4,9 +4,10 @@ import { useState } from "react";
 import { CATEGORIES, type Category } from "../../lib/clat-data";
 import type { VocabItem, CAItem, NLUItem } from "../../lib/resource-types";
 import { generateVocabAction } from "../../lib/ai-actions";
+import { AppIcon, type IconName } from "../AppIcon";
+import { ScreenHeader, IconTile, EmptyState, Pill, card as cardStyle, page, primaryBtn, outlineBtn, goldBtn, input, gradient } from "../ui/kit";
 
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
-const input: React.CSSProperties = { width: "100%", border: "1.5px solid var(--border)", borderRadius: 12, background: "var(--surface-input)", padding: "12px 14px", fontSize: 15, outline: "none", color: "var(--ink-primary)" };
+const TABS: readonly (readonly [Tab, string, IconName])[] = [["predictor", "Predictor", "graduation"], ["quiz", "CA Quiz", "newspaper"], ["vocab", "Vocab", "book"]];
 
 type Tab = "predictor" | "quiz" | "vocab";
 
@@ -14,24 +15,22 @@ export default function ClatToolsPage({ onBack, vocab, caq, nlus, savedVocabKeys
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--blue)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        CLAT Tools
-      </button>
+    <div style={page}>
+      <ScreenHeader title="CLAT Tools" onBack={onBack} />
 
-      <div style={{ padding: "14px 14px 0" }}>
-        <div style={{ display: "flex", gap: 6, background: "white", padding: 5, borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-          {([["predictor", "🎓 Predictor"], ["quiz", "🗞 CA Quiz"], ["vocab", "📖 Vocab"]] as const).map(([id, l]) => (
+      <div style={{ padding: "14px 16px 0" }}>
+        <div style={{ ...cardStyle, display: "flex", gap: 6, padding: 5, borderRadius: 16 }}>
+          {TABS.map(([id, l, icon]) => (
             <button key={id} onClick={() => setTab(id)} style={{
-              flex: 1, padding: "9px 4px", borderRadius: 10, fontSize: 12, fontWeight: 800, border: "none", cursor: "pointer",
-              background: tab === id ? "var(--blue)" : "transparent", color: tab === id ? "white" : "var(--text-muted)",
-            }}>{l}</button>
+              flex: 1, padding: "9px 4px", borderRadius: 11, fontSize: 12.5, fontWeight: 800, border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              background: tab === id ? gradient : "transparent", color: tab === id ? "white" : "var(--ink-soft)",
+            }}><AppIcon name={icon} size={15} />{l}</button>
           ))}
         </div>
       </div>
 
-      <div style={{ padding: "16px 14px 0" }}>
+      <div style={{ padding: "14px 16px 0" }}>
         {tab === "predictor" && <Predictor nlus={nlus} />}
         {tab === "quiz" && <Quiz caq={caq} />}
         {tab === "vocab" && <VocabCards vocab={vocab} savedWords={savedVocabKeys} onToggleSave={onToggleSave} />}
@@ -58,40 +57,40 @@ function Predictor({ nlus }: { nlus: NLUItem[] }) {
 
   return (
     <div>
-      <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-        <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>NLU College Predictor</p>
-        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Your expected CLAT rank</label>
+      <div style={{ ...cardStyle, padding: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <IconTile icon="graduation" size={38} />
+          <p style={{ margin: 0, fontSize: 15.5, fontWeight: 800, color: "var(--ink)" }}>NLU College Predictor</p>
+        </div>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", marginBottom: 6 }}>Your expected CLAT rank</label>
         <input value={rank} onChange={(e) => setRank(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="e.g. 850" style={{ ...input, marginBottom: 12 }} />
-        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Category</label>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", marginBottom: 6 }}>Category</label>
         <select value={cat} onChange={(e) => setCat(e.target.value as Category)} style={{ ...input, marginBottom: 14 }}>
           {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <button onClick={predict} style={{ width: "100%", background: gradient, color: "white", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>Predict my colleges</button>
+        <button onClick={predict} style={{ ...primaryBtn, width: "100%", fontSize: 15 }}>Predict my colleges</button>
       </div>
 
       {result !== null && (
         <div style={{ marginTop: 14 }}>
           {result.length === 0 ? (
-            <div style={{ background: "white", borderRadius: 16, padding: "20px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <div style={{ fontSize: 30, marginBottom: 6 }}>💪</div>
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)" }}>Aim a bit higher</p>
-              <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)" }}>This rank is beyond the listed NLU cut-offs for your category. Keep practising — or explore private law schools.</p>
-            </div>
+            <EmptyState icon="target" title="Aim a bit higher" text="This rank is beyond the listed NLU cut-offs for your category. Keep practising — or explore private law schools." />
           ) : (
             <>
-              <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--text-muted)" }}>You have a strong shot at <strong style={{ color: "var(--ink-primary)" }}>{result.length}</strong> NLUs:</p>
+              <p style={{ margin: "0 2px 10px", fontSize: 13, color: "var(--ink-soft)" }}>You have a strong shot at <strong style={{ color: "var(--ink)" }}>{result.length}</strong> NLUs:</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.map((n) => (
-                  <div key={n.name} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{n.name}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-disabled)" }}>{n.city} · closes ~{n.close.toLocaleString("en-IN")}</p>
+                  <div key={n.name} style={{ ...cardStyle, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <IconTile icon="landmark" tone={n.tag === "Safe" ? "green" : "gold"} size={40} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{n.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>{n.city} · closes ~{n.close.toLocaleString("en-IN")}</p>
                     </div>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 20, background: n.tag === "Safe" ? "var(--success)" : "var(--warning)", color: n.tag === "Safe" ? "var(--success-text)" : "#B45309" }}>{n.tag}</span>
+                    <Pill tone={n.tag === "Safe" ? "green" : "gold"}>{n.tag}</Pill>
                   </div>
                 ))}
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>Indicative, based on recent closing ranks. Actual cut-offs vary year to year.</p>
+              <p style={{ margin: "10px 2px 0", fontSize: 11, color: "var(--ink-mute)" }}>Indicative, based on recent closing ranks. Actual cut-offs vary year to year.</p>
             </>
           )}
         </div>
@@ -107,7 +106,7 @@ function Quiz({ caq }: { caq: CAItem[] }) {
   const [submitted, setSubmitted] = useState(false);
 
   if (CA_QUIZ.length === 0) {
-    return <p style={{ margin: "8px 0", fontSize: 13, color: "var(--text-disabled)" }}>No quiz questions published yet.</p>;
+    return <EmptyState icon="newspaper" title="No quiz questions published yet." />;
   }
 
   const score = CA_QUIZ.reduce((s, q, i) => s + (answers[i] === q.correct ? 1 : 0), 0);
@@ -115,7 +114,7 @@ function Quiz({ caq }: { caq: CAItem[] }) {
   if (submitted) {
     return (
       <div>
-        <div style={{ background: gradient, borderRadius: 18, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
+        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Daily Current Affairs Quiz</p>
           <p style={{ margin: "6px 0 0", fontSize: 38, fontWeight: 900 }}>{score}<span style={{ fontSize: 18, color: "rgba(255,255,255,0.7)" }}>/{CA_QUIZ.length}</span></p>
         </div>
@@ -123,40 +122,43 @@ function Quiz({ caq }: { caq: CAItem[] }) {
           {CA_QUIZ.map((q, i) => {
             const chosen = answers[i];
             return (
-              <div key={i} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>Q{i + 1}. {q.q}</p>
+              <div key={i} style={{ ...cardStyle, padding: "13px 14px" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>Q{i + 1}. {q.q}</p>
                 {q.options.map((o, oi) => {
                   const isCorrect = oi === q.correct, isChosen = oi === chosen;
                   return (
-                    <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, marginBottom: 3, fontSize: 12.5, background: isCorrect ? "var(--success)" : isChosen ? "#FEF2F2" : "transparent", color: isCorrect ? "var(--success-text)" : isChosen ? "var(--error-text)" : "var(--text-muted)", fontWeight: isCorrect || isChosen ? 700 : 400 }}>
+                    <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, marginBottom: 3, fontSize: 12.5, background: isCorrect ? "var(--success)" : isChosen ? "var(--error)" : "transparent", color: isCorrect ? "var(--success-text)" : isChosen ? "var(--error-text)" : "var(--text-muted)", fontWeight: isCorrect || isChosen ? 700 : 400 }}>
                       <span>{String.fromCharCode(65 + oi)}.</span><span style={{ flex: 1 }}>{o}</span>
-                      {isCorrect && <span style={{ fontSize: 11 }}>✓</span>}
+                      {isCorrect && <AppIcon name="check" size={14} strokeWidth={2.6} />}
                     </div>
                   );
                 })}
-                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5 }}>💡 {q.explain}</p>
+                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--ink-soft)", lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                  <AppIcon name="bulb" size={14} color="var(--gold-dark)" style={{ marginTop: 1 }} />
+                  <span>{q.explain}</span>
+                </p>
               </div>
             );
           })}
         </div>
-        <button onClick={() => { setAnswers({}); setSubmitted(false); }} style={{ width: "100%", marginTop: 14, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 12, padding: "13px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Try again</button>
+        <button onClick={() => { setAnswers({}); setSubmitted(false); }} style={{ ...outlineBtn, width: "100%", marginTop: 14, fontSize: 14 }}><AppIcon name="refresh" size={15} /> Try again</button>
       </div>
     );
   }
 
   return (
     <div>
-      <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)" }}>Today&apos;s quiz · {CA_QUIZ.length} questions · <strong style={{ color: "var(--ink-primary)" }}>{Object.keys(answers).length}</strong> answered</p>
+      <p style={{ margin: "0 2px 12px", fontSize: 13, color: "var(--ink-soft)" }}>Today&apos;s quiz · {CA_QUIZ.length} questions · <strong style={{ color: "var(--ink)" }}>{Object.keys(answers).length}</strong> answered</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {CA_QUIZ.map((q, i) => (
-          <div key={i} style={{ background: "white", borderRadius: 16, padding: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-            <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>Q{i + 1}. {q.q}</p>
+          <div key={i} style={{ ...cardStyle, padding: "14px" }}>
+            <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>Q{i + 1}. {q.q}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {q.options.map((o, oi) => {
                 const sel = answers[i] === oi;
                 return (
-                  <button key={oi} onClick={() => setAnswers((a) => ({ ...a, [i]: oi }))} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", border: `1.5px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--info-border)" : "white", borderRadius: 12, padding: "10px 12px", cursor: "pointer", fontSize: 13, color: "var(--text-secondary)" }}>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "#D1D5DB"}`, background: sel ? "var(--blue)" : "white", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{String.fromCharCode(65 + oi)}</span>
+                  <button key={oi} onClick={() => setAnswers((a) => ({ ...a, [i]: oi }))} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", border: `1.5px solid ${sel ? "var(--blue)" : "var(--line-strong)"}`, background: sel ? "var(--blue-tint)" : "white", borderRadius: 12, padding: "10px 12px", cursor: "pointer", fontSize: 13, color: "var(--text-secondary)" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "var(--line-strong)"}`, background: sel ? "var(--blue)" : "white", color: sel ? "white" : "var(--ink-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{String.fromCharCode(65 + oi)}</span>
                     {o}
                   </button>
                 );
@@ -165,7 +167,7 @@ function Quiz({ caq }: { caq: CAItem[] }) {
           </div>
         ))}
       </div>
-      <button onClick={() => setSubmitted(true)} disabled={Object.keys(answers).length === 0} style={{ width: "100%", marginTop: 14, background: Object.keys(answers).length ? gradient : "var(--border)", color: Object.keys(answers).length ? "white" : "var(--text-disabled)", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 800, cursor: Object.keys(answers).length ? "pointer" : "default" }}>Submit quiz</button>
+      <button onClick={() => setSubmitted(true)} disabled={Object.keys(answers).length === 0} style={{ ...primaryBtn, width: "100%", marginTop: 14, fontSize: 15, ...(Object.keys(answers).length ? {} : { background: "var(--surface-dim)", color: "var(--ink-mute)", boxShadow: "none", cursor: "default" }) }}>Submit quiz</button>
     </div>
   );
 }
@@ -209,25 +211,31 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
   };
 
   const generator = (
-    <div style={{ background: gradient, borderRadius: 18, padding: "14px", color: "white", marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 17 }}>⚡</span>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>AI Vocabulary Builder</p>
+    <div style={{ background: gradient, borderRadius: 20, padding: "16px", color: "white", marginBottom: 14, boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <AppIcon name="sparkle" size={17} color="white" />
+        </span>
+        <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800 }}>AI Vocabulary Builder</p>
       </div>
-      <p style={{ margin: "3px 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.78)" }}>Generate fresh CLAT word cards — leave the theme blank for a mix.</p>
+      <p style={{ margin: "6px 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.8)" }}>Generate fresh CLAT word cards — leave the theme blank for a mix.</p>
       <div style={{ display: "flex", gap: 8 }}>
         <input
           value={theme}
           onChange={(e) => setTheme(e.target.value)}
           disabled={busy}
           placeholder="Optional theme — e.g. legal terms, hard adjectives"
-          style={{ flex: 1, border: "none", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--ink-primary)", outline: "none" }}
+          style={{ ...input, flex: 1, minWidth: 0, width: "auto", border: "none", borderRadius: 12, padding: "10px 12px", fontSize: 14 }}
         />
-        <button onClick={generate} disabled={busy} style={{ flexShrink: 0, background: "var(--gold)", color: "var(--blue)", border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
-          {busy ? "Generating…" : "⚡ Generate"}
+        <button onClick={generate} disabled={busy} style={{ ...goldBtn, flexShrink: 0, borderRadius: 12, padding: "10px 14px", fontSize: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.8 : 1 }}>
+          {busy ? "Generating…" : <><AppIcon name="sparkle" size={15} /> Generate</>}
         </button>
       </div>
-      {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#FFD489" }}>⚠️ {err}</p>}
+      {err && (
+        <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "var(--gold-100)", display: "flex", alignItems: "flex-start", gap: 6 }}>
+          <AppIcon name="alert" size={14} style={{ marginTop: 1 }} /> {err}
+        </p>
+      )}
     </div>
   );
 
@@ -235,7 +243,7 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
     return (
       <div>
         {generator}
-        <p style={{ margin: "8px 0", fontSize: 13, color: "var(--text-disabled)" }}>No vocabulary words yet — generate some with AI above to start a deck.</p>
+        <EmptyState icon="book" title="No vocabulary words yet — generate some with AI above to start a deck." />
       </div>
     );
   }
@@ -249,9 +257,9 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
   return (
     <div>
       {generator}
-      <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)" }}>Word {i + 1} of {VOCAB.length} · <strong style={{ color: "var(--success-text)" }}>{learnedCount} learned</strong></p>
+      <p style={{ margin: "0 2px 12px", fontSize: 13, color: "var(--ink-soft)" }}>Word {i + 1} of {VOCAB.length} · <strong style={{ color: "var(--success-text)" }}>{learnedCount} learned</strong></p>
 
-      <div onClick={() => setFlipped((f) => !f)} style={{ background: flipped ? "white" : gradient, color: flipped ? "var(--ink-primary)" : "white", borderRadius: 20, padding: "32px 22px", minHeight: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer", boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
+      <div onClick={() => setFlipped((f) => !f)} style={{ ...(flipped ? cardStyle : { background: gradient, boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }), color: flipped ? "var(--ink)" : "white", borderRadius: 20, padding: "32px 22px", minHeight: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer" }}>
         {!flipped ? (
           <>
             <p style={{ margin: 0, fontSize: 28, fontWeight: 900 }}>{card.word}</p>
@@ -260,15 +268,15 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
         ) : (
           <>
             <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{card.meaning}</p>
-            <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>“{card.example}”</p>
+            <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--ink-soft)", fontStyle: "italic" }}>“{card.example}”</p>
           </>
         )}
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-        <button onClick={() => go(-1)} style={{ flex: 1, background: "white", color: "var(--text-secondary)", border: "1.5px solid var(--border)", borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>← Prev</button>
-        <button onClick={() => onToggleSave(card.word, card.meaning)} style={{ flex: 1, background: isKnown ? "var(--success)" : "var(--info-border)", color: isKnown ? "var(--success-text)" : "var(--blue)", border: "none", borderRadius: 12, padding: "12px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>{isKnown ? "✓ Learned" : "Mark learned"}</button>
-        <button onClick={() => go(1)} style={{ flex: 1, background: gradient, color: "white", border: "none", borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Next →</button>
+        <button onClick={() => go(-1)} style={{ ...outlineBtn, flex: 1, padding: "12px 8px", fontSize: 14 }}><AppIcon name="arrowRight" size={15} style={{ transform: "rotate(180deg)" }} /> Prev</button>
+        <button onClick={() => onToggleSave(card.word, card.meaning)} style={{ ...primaryBtn, flex: 1, padding: "12px 8px", fontSize: 13, boxShadow: "none", background: isKnown ? "var(--success)" : "var(--blue-tint)", color: isKnown ? "var(--success-text)" : "var(--blue)" }}>{isKnown ? <><AppIcon name="check" size={15} strokeWidth={2.6} /> Learned</> : "Mark learned"}</button>
+        <button onClick={() => go(1)} style={{ ...primaryBtn, flex: 1, padding: "12px 8px", fontSize: 14 }}>Next <AppIcon name="arrowRight" size={15} color="white" /></button>
       </div>
     </div>
   );

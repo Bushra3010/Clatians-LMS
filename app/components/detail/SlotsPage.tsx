@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { bookSlotAction, cancelBookingAction } from "../../lib/slot-actions";
 import { fmtIST } from "../../lib/dates";
+import { AppIcon } from "../AppIcon";
+import { card, gradient, primaryBtn, outlineBtn, input, page, body, ScreenHeader, IconTile, EmptyState, Pill } from "../ui/kit";
 
 export type SlotOpen = { id: string; startAt: string; durationMin: number; teacher: string };
 export type SlotBooking = { id: string; startAt: string; durationMin: number; teacher: string; topic: string };
-
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
 function fmt(iso: string) {
   return fmtIST(iso, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
@@ -68,59 +68,62 @@ export default function SlotsPage({ onBack, openSlots, myBookings }: { onBack: (
   };
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        1:1 Slots
-      </button>
+    <div style={page}>
+      <ScreenHeader title="1:1 Slots" onBack={onBack} />
 
-      <div style={{ padding: "12px 14px 0" }}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "16px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>◷</span>
+      <div style={body}>
+        <div style={{ background: gradient, borderRadius: 20, padding: "16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="clock" size={20} color="white" />
+          </span>
+          <div>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>1:1 Doubt &amp; Mentorship Slots</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Book a personal session with your faculty.</p>
           </div>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Book a personal session with your faculty.</p>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, padding: "14px 14px 0" }}>
-        {([["open", `Open slots (${open.length})`], ["mine", `My bookings (${mine.length})`]] as const).map(([key, label]) => (
-          <button key={key} onClick={() => { setTab(key); setBookingId(null); setErr(null); }} style={{
-            flex: 1, padding: "10px", borderRadius: 12, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer",
-            background: tab === key ? "var(--blue)" : "var(--bg-secondary)", color: tab === key ? "white" : "var(--text-secondary)",
-          }}>{label}</button>
-        ))}
-      </div>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 6, background: "white", border: "1px solid var(--line)", borderRadius: 14, padding: 4 }}>
+          {([["open", `Open slots (${open.length})`], ["mine", `My bookings (${mine.length})`]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => { setTab(key); setBookingId(null); setErr(null); }} style={{
+              flex: 1, padding: "9px", borderRadius: 10, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer",
+              background: tab === key ? gradient : "transparent", color: tab === key ? "white" : "var(--ink-soft)",
+            }}>{label}</button>
+          ))}
+        </div>
 
-      {err && <p style={{ margin: "12px 14px 0", fontSize: 12.5, color: "var(--warning-text)", background: "var(--warning)", border: "1px solid var(--orange-border)", borderRadius: 10, padding: "10px 12px" }}>⚠️ {err}</p>}
+        {err && (
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--error-text)", background: "var(--error)", borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <AppIcon name="alert" size={16} color="var(--error-text)" />
+            {err}
+          </p>
+        )}
 
-      <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {tab === "open" && open.length === 0 && (
-          <p style={{ margin: "10px 0", fontSize: 13, color: "var(--text-disabled)", textAlign: "center" }}>No open slots right now — check back soon.</p>
+          <EmptyState icon="calendar" title="No open slots right now" text="Check back soon." />
         )}
         {tab === "mine" && mine.length === 0 && (
-          <p style={{ margin: "10px 0", fontSize: 13, color: "var(--text-disabled)", textAlign: "center" }}>You have no upcoming bookings.</p>
+          <EmptyState icon="calendar" title="You have no upcoming bookings." />
         )}
 
         {tab === "open" && open.map((s) => (
-          <div key={s.id} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{fmt(s.startAt)}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{s.teacher} · {s.durationMin} min</p>
+          <div key={s.id} style={{ ...card, padding: "13px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <IconTile icon="calendar" size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{fmt(s.startAt)}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--ink-soft)" }}>{s.teacher} · {s.durationMin} min</p>
               </div>
               {bookingId !== s.id && (
-                <button onClick={() => { setBookingId(s.id); setTopic(""); setErr(null); }} style={{ background: gradient, color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Book</button>
+                <button onClick={() => { setBookingId(s.id); setTopic(""); setErr(null); }} style={{ ...primaryBtn, flexShrink: 0, padding: "9px 18px", fontSize: 13, borderRadius: 12 }}>Book</button>
               )}
             </div>
             {bookingId === s.id && (
-              <div style={{ marginTop: 10, borderTop: "1px solid #F0EADD", paddingTop: 10 }}>
-                <input value={topic} onChange={(e) => setTopic(e.target.value)} disabled={busy} placeholder="What do you want to cover? (optional)" style={{ width: "100%", border: "1.5px solid var(--border)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--ink-primary)", outline: "none", boxSizing: "border-box" }} />
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button onClick={() => setBookingId(null)} disabled={busy} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
-                  <button onClick={() => book(s)} disabled={busy} style={{ flex: 2, background: gradient, color: "white", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? "Booking…" : "Confirm booking"}</button>
+              <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                <input value={topic} onChange={(e) => setTopic(e.target.value)} disabled={busy} placeholder="What do you want to cover? (optional)" style={input} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => setBookingId(null)} disabled={busy} style={{ ...outlineBtn, flex: 1, padding: "10px" }}>Cancel</button>
+                  <button onClick={() => book(s)} disabled={busy} style={{ ...primaryBtn, flex: 2, padding: "10px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? "Booking…" : "Confirm booking"}</button>
                 </div>
               </div>
             )}
@@ -128,16 +131,17 @@ export default function SlotsPage({ onBack, openSlots, myBookings }: { onBack: (
         ))}
 
         {tab === "mine" && mine.map((s) => (
-          <div key={s.id} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ background: "var(--success)", color: "var(--success-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>BOOKED</span>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{fmt(s.startAt)}</p>
+          <div key={s.id} style={{ ...card, padding: "13px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <IconTile icon="checkCircle" tone="green" size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <Pill tone="green">BOOKED</Pill>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{fmt(s.startAt)}</p>
                 </div>
-                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{s.teacher} · {s.durationMin} min{s.topic ? ` · “${s.topic}”` : ""}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)" }}>{s.teacher} · {s.durationMin} min{s.topic ? ` · “${s.topic}”` : ""}</p>
               </div>
-              <button onClick={() => cancel(s.id)} disabled={busy} style={{ flexShrink: 0, background: "white", color: "var(--warning-text)", border: "1px solid var(--orange-border)", borderRadius: 10, padding: "9px 14px", fontSize: 12.5, fontWeight: 700, cursor: busy ? "default" : "pointer" }}>Cancel</button>
+              <button onClick={() => cancel(s.id)} disabled={busy} style={{ flexShrink: 0, background: "white", color: "var(--error-text)", border: "1.5px solid var(--error)", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 800, cursor: busy ? "default" : "pointer" }}>Cancel</button>
             </div>
           </div>
         ))}

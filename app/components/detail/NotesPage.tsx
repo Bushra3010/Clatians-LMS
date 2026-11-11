@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { addNoteAction, updateNoteAction, deleteNoteAction, type Note } from "../../lib/note-actions";
-
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
+import { AppIcon } from "../AppIcon";
+import { card, primaryBtn, input, page, body as bodyStyle, ScreenHeader, IconTile, EmptyState } from "../ui/kit";
 
 type Editor = { note: Note | null } | null; // {note:null} = new note; null = list view
 
@@ -45,17 +45,13 @@ export default function NotesPage({ onBack, initialNotes }: { onBack: () => void
   // ── Editor ──
   if (editor) {
     return (
-      <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
-        <div style={{ padding: "14px 14px 0" }}>
-          <button onClick={() => setEditor(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-            {editor.note ? "Edit note" : "New note"}
-          </button>
-        </div>
-        <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ border: "none", borderRadius: 16, padding: "13px 14px", fontSize: 17, fontWeight: 700, color: "var(--ink-primary)", background: "white", outline: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }} />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your note…" rows={14} style={{ border: "none", borderRadius: 16, padding: "13px 14px", fontSize: 14.5, lineHeight: 1.6, color: "var(--ink-primary)", background: "white", outline: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", resize: "vertical", fontFamily: "inherit" }} />
-          <button onClick={save} disabled={busy || (!title.trim() && !body.trim())} style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", color: "white", border: "none", borderRadius: 16, padding: "14px", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer", opacity: busy || (!title.trim() && !body.trim()) ? 0.6 : 1, boxShadow: "0 6px 20px rgba(61,36,17,0.28)" }}>
+      <div style={page}>
+        <ScreenHeader title={editor.note ? "Edit note" : "New note"} onBack={() => setEditor(null)} />
+        <div style={bodyStyle}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ ...input, fontSize: 17, fontWeight: 700, padding: "13px 14px", borderRadius: 16 }} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your note…" rows={14} style={{ ...input, fontSize: 15, lineHeight: 1.6, padding: "13px 14px", borderRadius: 16, resize: "vertical" }} />
+          <button onClick={save} disabled={busy || (!title.trim() && !body.trim())} style={{ ...primaryBtn, padding: "14px", fontSize: 15, cursor: busy ? "default" : "pointer", opacity: busy || (!title.trim() && !body.trim()) ? 0.6 : 1 }}>
+            {!busy && <AppIcon name="check" size={17} color="white" strokeWidth={2.6} />}
             {busy ? "Saving…" : "Save note"}
           </button>
         </div>
@@ -65,28 +61,28 @@ export default function NotesPage({ onBack, initialNotes }: { onBack: () => void
 
   // ── List ──
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        My Notes
-      </button>
+    <div style={page}>
+      <ScreenHeader title="My Notes" onBack={onBack} />
 
-      <div style={{ padding: "12px 14px 0" }}>
-        <button onClick={openNew} style={{ width: "100%", background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", color: "white", border: "none", borderRadius: 16, padding: "14px", fontSize: 14.5, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
-          ✎ New note
+      <div style={bodyStyle}>
+        <button onClick={openNew} style={{ ...primaryBtn, width: "100%", padding: "14px", fontSize: 14.5 }}>
+          <AppIcon name="pen" size={17} color="white" strokeWidth={2.4} />
+          New note
         </button>
 
-        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          {notes.length === 0 && (
-            <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-disabled)", margin: "16px 0" }}>No notes yet — jot down anything you want to remember.</p>
-          )}
-          {notes.map((n) => (
-            <button key={n.id} onClick={() => openEdit(n)} style={{ textAlign: "left", background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", border: "none", cursor: "pointer" }}>
-              <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</p>
-              {n.body && <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.body}</p>}
-            </button>
-          ))}
-        </div>
+        {notes.length === 0 && (
+          <EmptyState icon="file" title="No notes yet" text="Jot down anything you want to remember." />
+        )}
+        {notes.map((n) => (
+          <button key={n.id} onClick={() => openEdit(n)} style={{ ...card, textAlign: "left", padding: "13px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}>
+            <IconTile icon="file" size={38} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+              {n.body && <span style={{ marginTop: 4, fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.body}</span>}
+            </span>
+            <AppIcon name="chevronRight" size={17} color="var(--text-muted)" />
+          </button>
+        ))}
       </div>
     </div>
   );

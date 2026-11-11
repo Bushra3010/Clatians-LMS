@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { youtubeId } from "../../lib/youtube";
 import { getMyClassChatAction, sendClassQuestionAction, type ClassChatMessage } from "../../lib/class-chat-actions";
 import { AppIcon } from "../AppIcon";
+import { ScreenHeader } from "../ui/kit";
 
 export { youtubeId };
 
@@ -187,10 +188,7 @@ export default function ClassWatchPage({
 }) {
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        {target.isLive ? "Live Class" : "Recording"}
-      </button>
+      <ScreenHeader title={target.isLive ? "Live Class" : "Recording"} onBack={onBack} />
 
       {/* 16:9 player: YouTube embed, or the video file */}
       <div style={{ padding: "14px 14px 0" }}>

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { addTaskAction, toggleTaskAction, deleteTaskAction, type StudyTask } from "../../lib/study-actions";
-
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
+import { AppIcon } from "../AppIcon";
+import { card, gradient, primaryBtn, input, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
 
 function dueLabel(due: string): { text: string; color: string } | null {
   if (!due) return null;
@@ -15,7 +15,7 @@ function dueLabel(due: string): { text: string; color: string } | null {
   if (days < 0) return { text: `Overdue · ${nice}`, color: "var(--error-text)" };
   if (days === 0) return { text: "Due today", color: "var(--warning-text)" };
   if (days === 1) return { text: "Due tomorrow", color: "var(--warning-text)" };
-  return { text: `Due ${nice}`, color: "var(--text-muted)" };
+  return { text: `Due ${nice}`, color: "var(--ink-soft)" };
 }
 
 export default function StudyPlannerPage({ onBack, initialTasks }: { onBack: () => void; initialTasks: StudyTask[] }) {
@@ -56,62 +56,67 @@ export default function StudyPlannerPage({ onBack, initialTasks }: { onBack: () 
   const row = (t: StudyTask) => {
     const d = dueLabel(t.dueDate);
     return (
-      <div key={t.id} style={{ background: "white", borderRadius: 12, padding: "11px 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: 11 }}>
-        <button onClick={() => toggle(t)} aria-label={t.done ? "Mark not done" : "Mark done"} style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, cursor: "pointer", border: `2px solid ${t.done ? "var(--green)" : "var(--border)"}`, background: t.done ? "var(--green)" : "white", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1 }}>
-          {t.done ? "✓" : ""}
+      <div key={t.id} style={{ ...card, borderRadius: 14, padding: "11px 12px", display: "flex", alignItems: "center", gap: 11 }}>
+        <button onClick={() => toggle(t)} aria-label={t.done ? "Mark not done" : "Mark done"} style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, cursor: "pointer", border: `2px solid ${t.done ? "var(--green)" : "var(--line-strong)"}`, background: t.done ? "var(--green)" : "white", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+          {t.done && <AppIcon name="check" size={13} color="white" strokeWidth={3} />}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 13.5, color: t.done ? "var(--text-disabled)" : "var(--ink-primary)", textDecoration: t.done ? "line-through" : "none" }}>{t.title}</p>
+          <p style={{ margin: 0, fontSize: 13.5, color: t.done ? "var(--text-muted)" : "var(--ink)", textDecoration: t.done ? "line-through" : "none" }}>{t.title}</p>
           {d && !t.done && <p style={{ margin: "2px 0 0", fontSize: 11, fontWeight: 600, color: d.color }}>{d.text}</p>}
         </div>
-        <button onClick={() => remove(t.id)} aria-label="Delete task" style={{ flexShrink: 0, background: "none", border: "none", color: "var(--text-disabled)", fontSize: 16, cursor: "pointer", padding: 4 }}>✕</button>
+        <button onClick={() => remove(t.id)} aria-label="Delete task" style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
+          <AppIcon name="close" size={16} color="var(--text-muted)" />
+        </button>
       </div>
     );
   };
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        Study Planner
-      </button>
+    <div style={page}>
+      <ScreenHeader title="Study Planner" onBack={onBack} />
 
-      <div style={{ padding: "12px 14px 0" }}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 20 }}>📋</span>
-            <p style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Study Planner</p>
+      <div style={body}>
+        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="clipboard" size={20} color="white" />
+          </span>
+          <div>
+            <p style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Your study goals</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>
+              {pending.length} to do{done.length > 0 ? ` · ${done.length} done` : ""}
+            </p>
           </div>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>
-            {pending.length} to do{done.length > 0 ? ` · ${done.length} done` : ""}
-          </p>
         </div>
 
         {/* Add task */}
-        <form onSubmit={add} style={{ marginTop: 14, background: "white", borderRadius: 16, padding: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 10 }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy} placeholder="Add a study task — e.g. Revise Article 21" style={{ border: "1.5px solid var(--border)", borderRadius: 12, padding: "11px 13px", fontSize: 14, color: "var(--ink-primary)", outline: "none" }} />
+        <form onSubmit={add} style={{ ...card, padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy} placeholder="Add a study task — e.g. Revise Article 21" style={input} />
           <div style={{ display: "flex", gap: 10 }}>
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} disabled={busy} aria-label="Due date (optional)" style={{ flex: 1, border: "1.5px solid var(--border)", borderRadius: 12, padding: "10px 12px", fontSize: 13.5, color: "var(--ink-primary)", outline: "none" }} />
-            <button type="submit" disabled={busy || !title.trim()} style={{ flexShrink: 0, background: gradient, color: "white", border: "none", borderRadius: 12, padding: "11px 20px", fontSize: 14, fontWeight: 800, cursor: busy || !title.trim() ? "default" : "pointer", opacity: busy || !title.trim() ? 0.6 : 1 }}>Add</button>
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} disabled={busy} aria-label="Due date (optional)" style={{ ...input, flex: 1, width: "auto", minWidth: 0 }} />
+            <button type="submit" disabled={busy || !title.trim()} style={{ ...primaryBtn, flexShrink: 0, padding: "11px 20px", cursor: busy || !title.trim() ? "default" : "pointer", opacity: busy || !title.trim() ? 0.6 : 1 }}>
+              <AppIcon name="plus" size={16} color="white" strokeWidth={2.6} />
+              Add
+            </button>
           </div>
         </form>
 
         {/* Pending */}
-        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-          {pending.length === 0 && done.length === 0 && (
-            <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-disabled)", margin: "16px 0" }}>No tasks yet — add your first study goal above.</p>
-          )}
-          {pending.length === 0 && done.length > 0 && (
-            <p style={{ textAlign: "center", fontSize: 13, color: "var(--green)", fontWeight: 700, margin: "8px 0" }}>🎉 All done! Add a new task or take a break.</p>
-          )}
-          {pending.map(row)}
-        </div>
+        {pending.length === 0 && done.length === 0 && (
+          <EmptyState icon="clipboard" title="No tasks yet" text="Add your first study goal above." />
+        )}
+        {pending.length === 0 && done.length > 0 && (
+          <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <IconTile icon="checkCircle" tone="green" size={34} />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--success-text)", fontWeight: 700 }}>All done! Add a new task or take a break.</p>
+          </div>
+        )}
+        {pending.map(row)}
 
         {/* Completed */}
         {done.length > 0 && (
           <>
-            <p style={{ margin: "20px 0 8px", fontSize: 12, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Completed ({done.length})</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{done.map(row)}</div>
+            <SectionTitle title={`Completed (${done.length})`} />
+            {done.map(row)}
           </>
         )}
       </div>

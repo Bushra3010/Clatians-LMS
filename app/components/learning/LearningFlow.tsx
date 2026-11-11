@@ -41,10 +41,10 @@ function Chevron({ color = "var(--text-muted)" }: { color?: string }) {
 function Header({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 6px" }}>
-      <button onClick={onBack} aria-label="Back" style={{ background: "none", border: "none", padding: 4, margin: -4, cursor: "pointer", display: "flex" }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+      <button onClick={onBack} aria-label="Back" style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--app-bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <AppIcon name="chevronRight" size={19} color="var(--ink)" strokeWidth={2.5} style={{ transform: "rotate(180deg)" }} />
       </button>
-      <h2 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 16.5, fontWeight: 800, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
+      <h2 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 17, fontWeight: 800, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
       {right}
     </div>
   );
@@ -771,7 +771,7 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav, onStartTest 
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
       <div style={{ background: "white" }}>
         <Header title={subject} onBack={onBack} right={<Pill {...subjectState(done, topics.length)} />} />
-        <div style={{ padding: "4px 16px 8px 48px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ padding: "4px 16px 8px 62px", display: "flex", flexDirection: "column", gap: 6 }}>
           {meta.map((m) => (
             <p key={m.text} style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
               <AppIcon name={m.icon} size={14} color="var(--blue)" />{m.text}

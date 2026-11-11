@@ -1,6 +1,8 @@
 "use client";
 
 import { fmtIST } from "../../lib/dates";
+import { AppIcon } from "../AppIcon";
+import { ScreenHeader, IconTile, EmptyState, Pill, card, primaryBtn, gradient, page, body } from "../ui/kit";
 
 export type CertificateItem = {
   courseId: string;
@@ -13,6 +15,12 @@ export type CertificateItem = {
 };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+
+// Line-art marks for the printed certificate (the app never prints emoji).
+const svg = (size: number, paths: string) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="#0847c7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+const scalePaths = `<path d="M12 3v18"/><path d="M7 21h10"/><path d="M5 7h14"/><path d="m5 7-3 7a3 3 0 0 0 6 0z"/><path d="m19 7-3 7a3 3 0 0 0 6 0z"/>`;
+const gradPaths = `<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>`;
 
 const fmtDate = (iso: string | null) =>
   iso ? fmtIST(iso, { day: "numeric", month: "long", year: "numeric" }) : "";
@@ -27,27 +35,27 @@ export default function CertificatePage({ onBack, certificates, studentName }: {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Certificate — ${esc(c.course)}</title>
 <style>
   *{box-sizing:border-box} @page{size:A4 landscape;margin:0}
-  body{font-family:Georgia,'Times New Roman',serif;color:#231911;margin:0;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
-  .sheet{width:1000px;max-width:96vw;padding:14px;background:linear-gradient(135deg,var(--blue-dark),var(--blue))}
-  .inner{background:var(--surface);border:3px double #93C5FD;padding:52px 64px;text-align:center;position:relative}
+  body{font-family:Georgia,'Times New Roman',serif;color:#0f1729;margin:0;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .sheet{width:1000px;max-width:96vw;padding:14px;background:linear-gradient(135deg,#0847c7,#0b5cff)}
+  .inner{background:#ffffff;border:3px double #93C5FD;padding:52px 64px;text-align:center;position:relative}
   .crest{font-size:44px;line-height:1}
-  .brand{font-size:24px;font-weight:700;color:var(--blue-dark);letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
-  .brand small{display:block;font-size:11px;letter-spacing:.3em;color:#5B7299;margin-top:4px}
-  h1{font-size:40px;font-weight:400;margin:30px 0 6px;color:var(--blue-dark);letter-spacing:.06em}
-  .sub{font-size:13px;color:#5B7299;letter-spacing:.2em;text-transform:uppercase}
-  .certify{margin-top:34px;font-size:15px;color:var(--text-secondary)}
-  .name{font-size:34px;color:#1A1A2E;margin:12px 0;font-style:italic;border-bottom:2px solid #93C5FD;display:inline-block;padding:0 34px 8px}
-  .course{font-size:20px;font-weight:700;color:var(--blue-dark);margin-top:14px}
-  .meta{display:flex;justify-content:space-between;align-items:flex-end;margin-top:58px;font-size:12px;color:var(--text-secondary)}
+  .brand{font-size:24px;font-weight:700;color:#0847c7;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+  .brand small{display:block;font-size:11px;letter-spacing:.3em;color:#5b6478;margin-top:4px}
+  h1{font-size:40px;font-weight:400;margin:30px 0 6px;color:#0847c7;letter-spacing:.06em}
+  .sub{font-size:13px;color:#5b6478;letter-spacing:.2em;text-transform:uppercase}
+  .certify{margin-top:34px;font-size:15px;color:#374151}
+  .name{font-size:34px;color:#0f1729;margin:12px 0;font-style:italic;border-bottom:2px solid #93C5FD;display:inline-block;padding:0 34px 8px}
+  .course{font-size:20px;font-weight:700;color:#0847c7;margin-top:14px}
+  .meta{display:flex;justify-content:space-between;align-items:flex-end;margin-top:58px;font-size:12px;color:#374151}
   .sig{border-top:1.5px solid #93C5FD;padding-top:8px;min-width:190px}
   .certno{font-family:ui-monospace,monospace;letter-spacing:.05em}
-  .seal{position:absolute;right:56px;top:46px;width:92px;height:92px;border-radius:50%;border:3px solid #93C5FD;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--blue-dark);font-size:10px;letter-spacing:.1em;transform:rotate(8deg)}
-  .seal b{font-size:22px}
+  .seal{position:absolute;right:56px;top:46px;width:92px;height:92px;border-radius:50%;border:3px solid #93C5FD;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#0847c7;font-size:10px;letter-spacing:.1em;transform:rotate(8deg)}
+  .seal svg{margin-bottom:2px}
   @media print{body{min-height:0}.sheet{max-width:none}}
 </style></head><body>
 <div class="sheet"><div class="inner">
-  <div class="seal"><b>⚖️</b>VERIFIED<span style="font-size:9px">${esc(c.certNo.slice(-6))}</span></div>
-  <div class="crest">🎓</div>
+  <div class="seal">${svg(26, scalePaths)}VERIFIED<span style="font-size:9px">${esc(c.certNo.slice(-6))}</span></div>
+  <div class="crest">${svg(48, gradPaths)}</div>
   <div class="brand">CLATians<small>Learn · Practice · Achieve</small></div>
   <h1>Certificate of Completion</h1>
   <div class="sub">CLAT Coaching &amp; Test Preparation</div>
@@ -67,58 +75,57 @@ export default function CertificatePage({ onBack, certificates, studentName }: {
   }
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        Certificates
-      </button>
+    <div style={page}>
+      <ScreenHeader title="Certificates" onBack={onBack} />
 
-      <div style={{ padding: "12px 14px 0" }}>
-        <div style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", borderRadius: 20, padding: "18px", color: "white", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>🎓 Course Certificates</p>
-          <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)", lineHeight: 1.5 }}>
-            Finish 100% of a course&apos;s study material to unlock its completion certificate.
-          </p>
+      <div style={body}>
+        <div style={{ background: gradient, borderRadius: 20, padding: 18, color: "white", boxShadow: "0 8px 24px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ width: 48, height: 48, borderRadius: 15, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="graduation" size={24} color="white" />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Course Certificates</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+              Finish 100% of a course&apos;s study material to unlock its completion certificate.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {certificates.length === 0 && (
-          <p style={{ margin: "10px 0", fontSize: 13, color: "var(--text-disabled)", textAlign: "center" }}>Enrol in a batch to start working towards a certificate.</p>
+          <EmptyState icon="award" title="Enrol in a batch to start working towards a certificate." />
         )}
         {certificates.map((c) => {
           const pct = c.total > 0 ? Math.round((c.done / c.total) * 100) : 0;
           return (
-            <div key={c.courseId} style={{ background: "white", borderRadius: 16, padding: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{c.course}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--text-disabled)" }}>
+            <div key={c.courseId} style={{ ...card, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <IconTile icon="award" tone={c.eligible ? "green" : "blue"} size={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{c.course}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--ink-soft)" }}>
                     {c.total === 0 ? "No study material yet" : `${c.done}/${c.total} items completed`}
                   </p>
                 </div>
-                <span style={{
-                  flexShrink: 0, fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20,
-                  background: c.eligible ? "var(--success)" : "var(--warning)",
-                  color: c.eligible ? "var(--success-text)" : "#92400E",
-                }}>{c.eligible ? "✓ Earned" : "In progress"}</span>
+                {c.eligible
+                  ? <Pill tone="green"><AppIcon name="check" size={11} strokeWidth={3} />Earned</Pill>
+                  : <Pill tone="gold">In progress</Pill>}
               </div>
 
               {/* Progress bar */}
-              <div style={{ marginTop: 10, height: 8, borderRadius: 6, background: "var(--info-border)", overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", borderRadius: 6, background: c.eligible ? "linear-gradient(90deg,var(--success-text),#22C55E)" : "linear-gradient(90deg,var(--blue-dark),var(--blue))", transition: "width .3s" }} />
+              <div style={{ marginTop: 12, height: 8, borderRadius: 6, background: "var(--blue-tint)", overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", borderRadius: 6, background: c.eligible ? "linear-gradient(90deg,var(--success-text),var(--green-500))" : gradient, transition: "width .3s" }} />
               </div>
 
-              <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <span style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>
                   {c.eligible ? `Completed ${fmtDate(c.completedAt)}` : `${pct}% done`}
                 </span>
                 {c.eligible ? (
-                  <button onClick={() => printCertificate(c)} style={{ background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", color: "white", border: "none", borderRadius: 16, padding: "8px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", boxShadow: "0 3px 10px rgba(6,53,154,0.35)" }}>
-                    🎓 Download Certificate
+                  <button onClick={() => printCertificate(c)} style={{ ...primaryBtn, padding: "9px 14px", fontSize: 12.5, borderRadius: 12 }}>
+                    <AppIcon name="download" size={15} color="white" />Download Certificate
                   </button>
                 ) : (
-                  <span style={{ fontSize: 11, color: "var(--text-disabled)" }}>Keep going! 💪</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--blue)" }}>Keep going!</span>
                 )}
               </div>
             </div>

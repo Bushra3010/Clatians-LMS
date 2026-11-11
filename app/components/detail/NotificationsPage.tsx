@@ -1,6 +1,8 @@
 "use client";
 
 import { parseServerDate } from "../../lib/dates";
+import type { IconName } from "../AppIcon";
+import { ScreenHeader, IconTile, EmptyState, card, page, body, type Tone } from "../ui/kit";
 
 export type NotificationItem = {
   id: string;
@@ -11,8 +13,11 @@ export type NotificationItem = {
   createdAt: string;
 };
 
-const icon: Record<string, string> = {
-  doubt: "💬", class: "🎥", payment: "🧾", content: "📚", announcement: "📢", info: "🔔",
+const icon: Record<string, IconName> = {
+  doubt: "chat", class: "video", payment: "receipt", content: "book", announcement: "megaphone", info: "bell",
+};
+const tone: Record<string, Tone> = {
+  doubt: "purple", class: "red", payment: "green", content: "blue", announcement: "gold", info: "blue",
 };
 
 function ago(iso: string): string {
@@ -29,35 +34,26 @@ function ago(iso: string): string {
 
 export default function NotificationsPage({ onBack, items }: { onBack: () => void; items: NotificationItem[] }) {
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        Notifications
-      </button>
+    <div style={page}>
+      <ScreenHeader title="Notifications" onBack={onBack} />
 
-      <div style={{ padding: "16px 14px 0" }}>
+      <div style={body}>
         {items.length === 0 && (
-          <div style={{ background: "white", borderRadius: 16, padding: "26px 18px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>🔔</div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>You&apos;re all caught up</p>
-            <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)" }}>Doubt replies, class reminders and receipts show up here.</p>
-          </div>
+          <EmptyState icon="bell" title="You're all caught up" text="Doubt replies, class reminders and receipts show up here." />
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((n) => (
-            <div key={n.id} style={{ background: n.read ? "white" : "var(--gold-tint)", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", border: n.read ? "1px solid transparent" : "1px solid var(--gold-100)", display: "flex", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--info-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon[n.type] ?? "🔔"}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {!n.read && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", flexShrink: 0 }} />}
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{n.title}</p>
-                </div>
-                {n.body && <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{n.body}</p>}
-                <p style={{ margin: "5px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>{ago(n.createdAt)}</p>
+        {items.map((n) => (
+          <div key={n.id} style={{ ...card, background: n.read ? "white" : "var(--blue-tint)", border: n.read ? "1px solid var(--line)" : "1px solid var(--blue-ghost)", padding: "13px 14px", display: "flex", gap: 12 }}>
+            <IconTile icon={icon[n.type] ?? "bell"} tone={tone[n.type] ?? "blue"} size={40} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {!n.read && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", flexShrink: 0 }} />}
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{n.title}</p>
               </div>
+              {n.body && <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.5 }}>{n.body}</p>}
+              <p style={{ margin: "5px 0 0", fontSize: 10.5, color: "var(--ink-mute)" }}>{ago(n.createdAt)}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateQuestionsAction } from "@/app/lib/ai-actions";
+import { AppIcon } from "./AppIcon";
+import { primaryBtn } from "./ui/kit";
 
 const inputCls =
-  "w-full rounded-lg border border-(--line) px-3 py-2 text-sm text-(--ink) focus:border-(--gold) focus:ring-1 focus:ring-(--gold) outline-none";
+  "w-full rounded-lg border border-(--line) px-3 py-2 text-sm text-(--ink) focus:border-(--blue) focus:ring-1 focus:ring-(--blue) outline-none";
 
 const SUBJECTS = ["Legal Reasoning", "English", "GK & Current Affairs", "Logical Reasoning", "Quantitative"];
 
@@ -72,18 +74,18 @@ export default function AiGenerateForm({ testId }: { testId: string }) {
         <button
           type="submit"
           disabled={busy || !topic.trim()}
-          className="rounded-lg text-white text-sm font-medium py-2 px-4 disabled:opacity-60"
-          style={{ background: "var(--blue)" }}
+          className="disabled:opacity-60"
+          style={{ ...primaryBtn, borderRadius: 10, padding: "9px 16px", fontSize: 13.5 }}
         >
-          {busy ? "Generating…" : "⚡ Generate & add"}
+          {busy ? "Generating…" : <><AppIcon name="bolt" size={15} strokeWidth={2.4} />Generate &amp; add</>}
         </button>
         {busy && <span className="text-xs text-slate-500">This can take up to ~40s — hang tight.</span>}
       </div>
 
       {msg && (
-        <p className={`text-xs mt-1 ${msg.kind === "ok" ? "text-green-700" : "text-amber-700"}`}>
-          {msg.kind === "ok" ? "✅ " : "⚠️ "}
-          {msg.text}
+        <p className={`text-xs mt-1 ${msg.kind === "ok" ? "text-green-700" : "text-amber-700"}`} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+          <AppIcon name={msg.kind === "ok" ? "checkCircle" : "alert"} size={14} style={{ marginTop: 0.5 }} />
+          <span>{msg.text}</span>
         </p>
       )}
       <p className="text-[11px] text-slate-400">Questions are drafted by AI — review each one before publishing the test.</p>

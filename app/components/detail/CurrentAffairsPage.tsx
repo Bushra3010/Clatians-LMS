@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppIcon } from "../AppIcon";
 import { listBlogPostsAction, getBlogPostAction, type BlogPost } from "../../lib/blog-actions";
 import { shareText } from "../../lib/share";
+import { ScreenHeader } from "../ui/kit";
 
 // ─────────────────────────────────────────────────────────────
 // Current Affairs = the website's blog (The CLATians Journal,
@@ -22,15 +23,7 @@ function monthLabel(key: string) {
 }
 
 function BackBar({ label, onBack, right }: { label: string; onBack: () => void; right?: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: 0 }}>
-        <AppIcon name="chevronRight" size={20} strokeWidth={2.5} style={{ transform: "rotate(180deg)" }} />
-        {label}
-      </button>
-      {right}
-    </div>
-  );
+  return <ScreenHeader title={label} onBack={onBack} right={right} />;
 }
 
 function CategoryPill({ post }: { post: BlogPost }) {

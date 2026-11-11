@@ -1,6 +1,8 @@
 "use client";
 
 import { fmtIST } from "../../lib/dates";
+import { AppIcon, type IconName } from "../AppIcon";
+import { ScreenHeader, SectionTitle, EmptyState, card, page, smallBtn, gradient } from "../ui/kit";
 
 export type LiveClassItem = {
   id: string;
@@ -16,13 +18,17 @@ export type LiveClassItem = {
   notes?: string;
 };
 
-export function subjectStyle(subject: string): { emoji: string; bg: string; color: string } {
+/**
+ * A subject's colours and icon. `emoji` is kept for older callers but is never
+ * rendered here — screens show `icon` (an AppIcon) instead.
+ */
+export function subjectStyle(subject: string): { emoji: string; bg: string; color: string; icon: IconName } {
   const s = (subject || "").toLowerCase();
-  if (s.includes("legal")) return { emoji: "⚖️", bg: "linear-gradient(135deg,var(--blue),var(--blue-dark))", color: "var(--blue)" };
-  if (s.includes("english") || s.includes("gk")) return { emoji: "📖", bg: "linear-gradient(135deg,var(--cyan),#0E7490)", color: "var(--cyan)" };
-  if (s.includes("quant") || s.includes("math")) return { emoji: "🔢", bg: "linear-gradient(135deg,var(--purple),#6D28D9)", color: "var(--purple)" };
-  if (s.includes("logic")) return { emoji: "🧩", bg: "linear-gradient(135deg,var(--green),#047857)", color: "var(--green)" };
-  return { emoji: "🎓", bg: "linear-gradient(135deg,var(--blue),var(--blue-dark))", color: "var(--gold)" };
+  if (s.includes("legal")) return { emoji: "⚖️", icon: "scale", bg: "linear-gradient(135deg,var(--blue),var(--blue-dark))", color: "var(--blue)" };
+  if (s.includes("english") || s.includes("gk")) return { emoji: "📖", icon: "book", bg: "linear-gradient(135deg,var(--cyan),#0E7490)", color: "var(--cyan)" };
+  if (s.includes("quant") || s.includes("math")) return { emoji: "🔢", icon: "calculator", bg: "linear-gradient(135deg,var(--purple),#6D28D9)", color: "var(--purple)" };
+  if (s.includes("logic")) return { emoji: "🧩", icon: "puzzle", bg: "linear-gradient(135deg,var(--green),#047857)", color: "var(--green)" };
+  return { emoji: "🎓", icon: "graduation", bg: "linear-gradient(135deg,var(--blue),var(--blue-dark))", color: "var(--gold)" };
 }
 
 export function fmtTime(iso: string): string {
@@ -50,13 +56,6 @@ function groupByDay(items: LiveClassItem[]): [string, LiveClassItem[]][] {
   return order.map((l) => [l, map.get(l)!]);
 }
 
-const BackArrow = ({ onBack }: { onBack: () => void }) => (
-  <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-    Live Classes
-  </button>
-);
-
 export default function LiveClassesPage({
   onBack,
   upcoming,
@@ -73,102 +72,102 @@ export default function LiveClassesPage({
   onWatchRecording: (cls: LiveClassItem) => void;
 }) {
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <BackArrow onBack={onBack} />
+    <div style={page}>
+      <ScreenHeader title="Live Classes" onBack={onBack} />
 
-      {/* Attendance summary */}
-      <div style={{ padding: "14px 14px 0" }}>
+      <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Attendance summary */}
         <div style={{
-          background: "linear-gradient(135deg,var(--blue-dark) 0%,var(--blue-dark) 100%)",
-          borderRadius: 18, padding: "16px 18px", color: "white",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          boxShadow: "0 6px 20px rgba(11,92,255,0.28)",
+          background: gradient, borderRadius: 18, padding: "16px 18px", color: "white",
+          display: "flex", alignItems: "center", gap: 12,
+          boxShadow: "0 8px 22px rgba(11,92,255,0.25)",
         }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.72)" }}>My attendance</p>
-            <p style={{ margin: "2px 0 0", fontSize: 14, fontWeight: 700 }}>Live classes</p>
+          <span style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="checkCircle" size={21} color="white" />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.78)" }}>My attendance</p>
+            <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 800 }}>Live classes</p>
           </div>
           <div style={{ fontSize: 30, fontWeight: 900, color: "var(--gold)" }}>
             {attendancePct === null ? "—" : `${attendancePct}%`}
           </div>
         </div>
-      </div>
 
-      {/* Timetable — upcoming & live, grouped by day */}
-      <div style={{ padding: "20px 14px 0" }}>
-        <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>Timetable</h3>
+        {/* Timetable — upcoming & live, grouped by day */}
+        <SectionTitle title="Timetable" />
         {upcoming.length === 0 && (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-disabled)" }}>No classes scheduled for your batch right now.</p>
+          <EmptyState icon="calendar" title="No classes scheduled for your batch right now." />
         )}
         {groupByDay(upcoming).map(([day, dayItems]) => (
-        <div key={day} style={{ marginBottom: 6 }}>
-          <p style={{ margin: "6px 0 8px", fontSize: 12, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{day}</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {dayItems.map((c) => {
-            const st = subjectStyle(c.subject);
-            const isLive = c.status === "live";
-            return (
-              <div key={c.id} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex" }}>
-                <div style={{ width: 5, background: st.bg, flexShrink: 0 }} />
-                <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 50, height: 50, borderRadius: 16, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{st.emoji}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{c.subject || "Class"}</span>
-                      {isLive && (
-                        <span style={{ background: "var(--error)", color: "var(--error-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20, display: "flex", alignItems: "center", gap: 3 }}>
-                          <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--error-text)" }} />LIVE
+          <div key={day}>
+            <p style={{ margin: "2px 2px 8px", fontSize: 12, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{day}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {dayItems.map((c) => {
+                const st = subjectStyle(c.subject);
+                const isLive = c.status === "live";
+                return (
+                  <div key={c.id} style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ width: 46, height: 46, borderRadius: 14, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <AppIcon name={st.icon} size={21} color="white" />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{c.subject || "Class"}</span>
+                        {isLive && (
+                          <span style={{ background: "var(--error)", color: "var(--error-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20, display: "flex", alignItems: "center", gap: 3 }}>
+                            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--error-text)" }} />LIVE
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>{c.title}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap", fontSize: 11, color: "var(--ink-mute)" }}>
+                        <span>{c.teacher ?? "Faculty"}</span>
+                        <span>•</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <AppIcon name="clock" size={12} color="var(--ink-mute)" />
+                          {fmtTime(c.startAt)}
                         </span>
-                      )}
+                      </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{c.title}</p>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 10.5, color: "var(--text-disabled)" }}>{c.teacher ?? "Faculty"}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-disabled)" }}>•</span>
-                      <span style={{ fontSize: 10.5, color: "var(--text-disabled)" }}>⏰ {fmtTime(c.startAt)}</span>
-                    </div>
+                    <button
+                      onClick={() => onJoin(c.id)}
+                      style={isLive
+                        ? { ...smallBtn, background: "linear-gradient(135deg,var(--error-text),#B91C1C)", color: "white", whiteSpace: "nowrap" }
+                        : { ...smallBtn, whiteSpace: "nowrap" }}
+                    >
+                      {isLive ? <>Join <AppIcon name="arrowRight" size={14} /></> : <><AppIcon name="bell" size={14} /> Remind</>}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => onJoin(c.id)}
-                    style={{
-                      background: isLive ? "linear-gradient(135deg,var(--error-text),#B91C1C)" : "linear-gradient(135deg,var(--blue-dark),var(--blue))",
-                      color: "white", border: "none", borderRadius: 12, padding: "8px 14px",
-                      fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isLive ? "Join →" : "Remind"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
           </div>
-        </div>
         ))}
-      </div>
 
-      {/* Past & recordings */}
-      <div style={{ padding: "22px 14px 0" }}>
-        <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>Past classes &amp; recordings</h3>
+        {/* Past & recordings */}
+        <SectionTitle title="Past classes & recordings" />
         {past.length === 0 && (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-disabled)" }}>No past classes yet.</p>
+          <EmptyState icon="video" title="No past classes yet." />
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {past.map((c) => {
             const st = subjectStyle(c.subject);
             return (
-              <div key={c.id} style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, opacity: 0.9 }}>{st.emoji}</div>
+              <div key={c.id} style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ width: 42, height: 42, borderRadius: 13, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 0.9 }}>
+                  <AppIcon name={st.icon} size={19} color="white" />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{c.title}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--text-disabled)" }}>{c.subject} · {fmtTime(c.startAt)}</p>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{c.title}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>{c.subject} · {fmtTime(c.startAt)}</p>
                 </div>
                 {c.recordingUrl ? (
-                  <button onClick={() => onWatchRecording(c)} style={{ border: "none", cursor: "pointer", background: "var(--info-border)", color: "var(--blue)", borderRadius: 12, padding: "8px 12px", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap" }}>
-                    ▶ Recording
+                  <button onClick={() => onWatchRecording(c)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
+                    <AppIcon name="play" size={13} /> Recording
                   </button>
                 ) : (
-                  <span style={{ fontSize: 10.5, color: "var(--text-disabled)" }}>No recording</span>
+                  <span style={{ fontSize: 11, color: "var(--ink-mute)" }}>No recording</span>
                 )}
               </div>
             );

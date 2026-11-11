@@ -349,8 +349,9 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
               )
             )}
             {(c.overview || c.curriculum.length > 0 || c.features.length > 0) && (
-              <button onClick={() => setShowAbout(!showAbout)} style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "var(--blue)" }}>
-                {showAbout ? "Hide course info ▲" : "About this course ▼"}
+              <button onClick={() => setShowAbout(!showAbout)} style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "var(--blue)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                {showAbout ? "Hide course info" : "About this course"}
+                <AppIcon name="chevronDown" size={14} color="var(--blue)" strokeWidth={2.5} style={showAbout ? { transform: "rotate(180deg)" } : undefined} />
               </button>
             )}
             {showAbout && (

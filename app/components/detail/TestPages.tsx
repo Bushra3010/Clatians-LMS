@@ -5,6 +5,8 @@ import type { StartResult, SubmitResult, TakeQuestion, ReviewItem } from "../../
 import { explainAnswerAction } from "../../lib/ai-actions";
 import AiText from "../AiText";
 import { pushBack } from "../../lib/back-stack";
+import { AppIcon } from "../AppIcon";
+import { ScreenHeader, SectionTitle, IconTile, EmptyState, Pill, card, page, primaryBtn, outlineBtn, smallBtn, gradient } from "../ui/kit";
 
 export type TestListItem = {
   id: string;
@@ -20,26 +22,18 @@ export type TestListItem = {
   bestTotal: number | null;
 };
 
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 const typeLabel: Record<string, string> = { mock: "Full Mock", sectional: "Sectional", pyq: "Previous Year", practice: "Practice" };
 
 /** Passages are shared by consecutive questions — render one only when it changes. */
 function PassageBlock({ passage }: { passage: string }) {
   if (!passage) return null;
   return (
-    <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--gold-100)", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
-      <p style={{ margin: "0 0 6px", fontSize: 10.5, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Passage</p>
+    <div style={{ background: "var(--app-bg)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 10.5, fontWeight: 800, color: "var(--ink-mute)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Passage</p>
       <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{passage}</p>
     </div>
   );
 }
-
-const Back = ({ onBack, label }: { onBack: () => void; label: string }) => (
-  <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 0" }}>
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-    {label}
-  </button>
-);
 
 // ── Test list ──────────────────────────────────────────────
 export function TestSeriesPage({ onBack, tests, onStart }: { onBack: () => void; tests: TestListItem[]; onStart: (id: string) => Promise<StartResult> }) {
@@ -48,28 +42,32 @@ export function TestSeriesPage({ onBack, tests, onStart }: { onBack: () => void;
   const start = async (id: string) => { setErr(""); setBusy(id); const r = await onStart(id); if (!r.ok) setErr(r.error); setBusy(null); };
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <Back onBack={onBack} label="Test Series" />
-      <div style={{ padding: "16px 14px 0" }}>
-        {err && <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--error-text)", background: "var(--error)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "10px 12px" }}>{err}</p>}
+    <div style={page}>
+      <ScreenHeader title="Test Series" onBack={onBack} />
+      <div style={{ padding: "14px 16px 0" }}>
+        {err && <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--error-text)", background: "var(--error)", borderRadius: 12, padding: "10px 12px" }}>{err}</p>}
         {tests.length === 0 && (
-          <div style={{ background: "white", borderRadius: 18, padding: "28px 18px", textAlign: "center", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>📝</div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>No tests yet</p>
-            <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)" }}>Published mock tests for your batch will appear here.</p>
-          </div>
+          <EmptyState icon="clipboard" title="No tests yet" text="Published mock tests for your batch will appear here." />
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {tests.map((t) => (
-            <div key={t.id} style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <span style={{ background: "var(--info-border)", color: "var(--blue)", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>{typeLabel[t.type] ?? t.type}</span>
-                {t.bestScore !== null && <span style={{ background: "var(--success)", color: "var(--success-text)", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>Best {t.bestScore}/{t.bestTotal}</span>}
+            <div key={t.id} style={{ ...card, padding: "15px 16px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <IconTile icon="clipboard" size={42} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+                    <Pill tone="blue">{typeLabel[t.type] ?? t.type}</Pill>
+                    {t.bestScore !== null && <Pill tone="green">Best {t.bestScore}/{t.bestTotal}</Pill>}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{t.title}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                    <AppIcon name="clock" size={13} color="var(--ink-mute)" />
+                    {t.questionCount} questions · {t.durationMin} min{t.myAttempts > 0 ? ` · ${t.myAttempts} attempt${t.myAttempts > 1 ? "s" : ""}` : ""}
+                  </p>
+                </div>
               </div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>{t.title}</p>
-              <p style={{ margin: "3px 0 10px", fontSize: 12, color: "var(--text-muted)" }}>{t.questionCount} questions · {t.durationMin} min{t.myAttempts > 0 ? ` · ${t.myAttempts} attempt${t.myAttempts > 1 ? "s" : ""}` : ""}</p>
-              <button onClick={() => start(t.id)} disabled={busy === t.id} style={{ width: "100%", background: gradient, color: "white", border: "none", borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 800, cursor: busy === t.id ? "default" : "pointer", opacity: busy === t.id ? 0.7 : 1 }}>
-                {busy === t.id ? "Loading…" : t.myAttempts > 0 ? "Re-attempt →" : "Start test →"}
+              <button onClick={() => start(t.id)} disabled={busy === t.id} style={{ ...primaryBtn, width: "100%", marginTop: 12, cursor: busy === t.id ? "default" : "pointer", opacity: busy === t.id ? 0.7 : 1 }}>
+                {busy === t.id ? "Loading…" : <>{t.myAttempts > 0 ? "Re-attempt" : "Start test"} <AppIcon name="arrowRight" size={16} color="white" /></>}
               </button>
             </div>
           ))}
@@ -89,10 +87,10 @@ type QStatus = "answered" | "marked" | "answered-marked" | "skipped" | "unseen";
 
 const STATUS_STYLE: Record<QStatus, { bg: string; fg: string; border: string; label: string }> = {
   answered: { bg: "#16A34A", fg: "white", border: "#16A34A", label: "Answered" },
-  "answered-marked": { bg: "#7C3AED", fg: "white", border: "#16A34A", label: "Answered & marked" },
-  marked: { bg: "#7C3AED", fg: "white", border: "#7C3AED", label: "Marked for review" },
-  skipped: { bg: "#FEE2E2", fg: "#B91C1C", border: "#FCA5A5", label: "Not answered" },
-  unseen: { bg: "white", fg: "var(--text-secondary)", border: "var(--border)", label: "Not visited" },
+  "answered-marked": { bg: "var(--purple)", fg: "white", border: "#16A34A", label: "Answered & marked" },
+  marked: { bg: "var(--purple)", fg: "white", border: "var(--purple)", label: "Marked for review" },
+  skipped: { bg: "var(--error)", fg: "#B91C1C", border: "#FCA5A5", label: "Not answered" },
+  unseen: { bg: "white", fg: "var(--ink-soft)", border: "var(--line-strong)", label: "Not visited" },
 };
 
 export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<StartResult, { ok: true }>; onSubmit: (answers: Record<string, string>) => Promise<void>; onExit: () => void }) {
@@ -199,22 +197,24 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", display: "flex", flexDirection: "column" }}>
       {/* Header: title, progress, timer, map */}
-      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "white", borderBottom: "1px solid var(--border)", padding: "10px 14px" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "white", borderBottom: "1px solid var(--line)", padding: "12px 16px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => setSheet("exit")} aria-label="Exit test" style={{ background: "none", border: "none", padding: 4, cursor: "pointer", display: "flex", flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          <button onClick={() => setSheet("exit")} aria-label="Exit test" style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--app-bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="close" size={18} color="var(--ink)" strokeWidth={2.5} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.title}</p>
-            <p style={{ margin: 0, fontSize: 11, color: "var(--text-disabled)" }}>{answered}/{total} answered</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.title}</p>
+            <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "var(--ink-soft)" }}>{answered}/{total} answered</p>
           </div>
           {timed ? (
-            <div style={{ background: low ? "var(--error)" : "var(--info-border)", color: low ? "var(--error-text)" : "var(--blue)", borderRadius: 10, padding: "6px 10px", fontSize: 14, fontWeight: 900, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>⏱ {mm}:{ss}</div>
+            <div style={{ background: low ? "var(--error)" : "var(--blue-tint)", color: low ? "var(--error-text)" : "var(--blue)", borderRadius: 10, padding: "6px 10px", fontSize: 14, fontWeight: 900, fontVariantNumeric: "tabular-nums", flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>
+              <AppIcon name="clock" size={15} strokeWidth={2.4} />{mm}:{ss}
+            </div>
           ) : (
             <div style={{ background: "var(--success)", color: "var(--success-text)", borderRadius: 10, padding: "6px 10px", fontSize: 11.5, fontWeight: 800, flexShrink: 0 }}>Untimed</div>
           )}
-          <button onClick={() => setSheet("map")} aria-label="Question map" style={{ background: "var(--bg-secondary)", border: "1px solid var(--gold-100)", borderRadius: 10, padding: "6px 9px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, fontSize: 12, fontWeight: 800, color: "var(--ink-primary)" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+          <button onClick={() => setSheet("map")} aria-label="Question map" style={{ ...smallBtn, padding: "7px 10px", borderRadius: 10, fontSize: 12 }}>
+            <AppIcon name="layers" size={15} />
             Map
           </button>
         </div>
@@ -232,12 +232,13 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
       <div style={{ flex: 1, padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Comprehension passage — its own panel, scrollable, expandable */}
         {q.passage && (
-          <div style={{ background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", borderTop: "4px solid var(--blue)", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--gold-100)" }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                📖 Comprehension {set?.number ?? ""}{q.subject ? ` · ${q.subject}` : ""}
+          <div style={{ ...card, borderTop: "4px solid var(--blue)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--line)" }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+                <AppIcon name="book" size={14} />
+                Comprehension {set?.number ?? ""}{q.subject ? ` · ${q.subject}` : ""}
               </span>
-              {set && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-disabled)", flexShrink: 0 }}>Q{set.from + 1}–{set.to + 1}</span>}
+              {set && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-mute)", flexShrink: 0 }}>Q{set.from + 1}–{set.to + 1}</span>}
             </div>
             <div style={{
               maxHeight: passageOpen ? "none" : "38vh", overflowY: passageOpen ? "visible" : "auto",
@@ -246,57 +247,59 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
             }}>
               {q.passage}
             </div>
-            <button onClick={() => setPassageOpen(!passageOpen)} style={{ width: "100%", background: "var(--bg-secondary)", border: "none", borderTop: "1px solid var(--gold-100)", padding: "8px", fontSize: 12, fontWeight: 800, color: "var(--blue)", cursor: "pointer" }}>
-              {passageOpen ? "▲ Collapse passage" : "▼ Show full passage"}
+            <button onClick={() => setPassageOpen(!passageOpen)} style={{ width: "100%", background: "var(--blue-tint)", border: "none", borderTop: "1px solid var(--line)", padding: "9px", fontSize: 12, fontWeight: 800, color: "var(--blue)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <AppIcon name="chevronDown" size={15} strokeWidth={2.5} style={passageOpen ? { transform: "rotate(180deg)" } : undefined} />
+              {passageOpen ? "Collapse passage" : "Show full passage"}
             </button>
           </div>
         )}
 
         {/* The one question on screen */}
-        <div style={{ background: "white", borderRadius: 16, padding: "14px 15px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ ...card, padding: "14px 15px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: "var(--blue)" }}>Question {index + 1} of {total}</span>
-            {!q.passage && q.subject && <span style={{ fontSize: 10.5, color: "var(--text-disabled)", fontWeight: 700 }}>{q.subject}</span>}
+            {!q.passage && q.subject && <span style={{ fontSize: 10.5, color: "var(--ink-mute)", fontWeight: 700 }}>{q.subject}</span>}
           </div>
-          <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, color: "var(--ink-primary)", lineHeight: 1.55 }}>{q.text}</p>
+          <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, color: "var(--ink)", lineHeight: 1.55 }}>{q.text}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(["a", "b", "c", "d"] as const).map((opt) => {
               const sel = answers[q.id] === opt;
               return (
                 <button key={opt} onClick={() => choose(opt)} style={{
                   display: "flex", alignItems: "flex-start", gap: 10, textAlign: "left",
-                  border: `1.5px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--info-border)" : "white",
+                  border: `1.5px solid ${sel ? "var(--blue)" : "var(--line-strong)"}`, background: sel ? "var(--blue-tint)" : "white",
                   borderRadius: 12, padding: "11px 12px", cursor: "pointer", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5,
                 }}>
-                  <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "var(--border)"}`, background: sel ? "var(--blue)" : "white", color: sel ? "white" : "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{opt.toUpperCase()}</span>
+                  <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, border: `2px solid ${sel ? "var(--blue)" : "var(--line-strong)"}`, background: sel ? "var(--blue)" : "white", color: sel ? "white" : "var(--ink-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{opt.toUpperCase()}</span>
                   <span style={{ paddingTop: 1 }}>{q[opt]}</span>
                 </button>
               );
             })}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-            <button onClick={toggleMark} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: marked.has(q.id) ? "#7C3AED" : "var(--text-muted)" }}>
-              {marked.has(q.id) ? "★ Marked for review" : "☆ Mark for review"}
+            <button onClick={toggleMark} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: marked.has(q.id) ? "var(--purple)" : "var(--ink-soft)", display: "flex", alignItems: "center", gap: 5 }}>
+              <AppIcon name="star" size={15} fill={marked.has(q.id) ? "var(--purple)" : "none"} />
+              {marked.has(q.id) ? "Marked for review" : "Mark for review"}
             </button>
             {answers[q.id] && (
-              <button onClick={clear} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--text-muted)" }}>Clear answer</button>
+              <button onClick={clear} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--ink-soft)" }}>Clear answer</button>
             )}
           </div>
         </div>
       </div>
 
       {/* Previous / Next */}
-      <div style={{ position: "sticky", bottom: 0, zIndex: 5, background: "white", borderTop: "1px solid var(--border)", padding: "10px 14px", display: "flex", gap: 10, boxShadow: "0 -4px 16px rgba(0,0,0,0.06)" }}>
-        <button onClick={() => goTo(index - 1)} disabled={index === 0} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: index === 0 ? "default" : "pointer", opacity: index === 0 ? 0.45 : 1 }}>
-          ‹ Previous
+      <div style={{ position: "sticky", bottom: 0, zIndex: 5, background: "white", borderTop: "1px solid var(--line)", padding: "10px 16px", display: "flex", gap: 10, boxShadow: "0 -4px 16px rgba(15,23,41,0.06)" }}>
+        <button onClick={() => goTo(index - 1)} disabled={index === 0} style={{ ...outlineBtn, flex: 1, padding: "12px 10px", cursor: index === 0 ? "default" : "pointer", opacity: index === 0 ? 0.45 : 1 }}>
+          <AppIcon name="chevronRight" size={16} strokeWidth={2.5} style={{ transform: "rotate(180deg)" }} /> Previous
         </button>
         {isLast ? (
-          <button onClick={() => setSheet("confirm")} disabled={submitting} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+          <button onClick={() => setSheet("confirm")} disabled={submitting} style={{ ...primaryBtn, flex: 1.4, opacity: submitting ? 0.7 : 1 }}>
             {submitting ? "Submitting…" : timed ? "Submit test" : "Check answers"}
           </button>
         ) : (
-          <button onClick={() => goTo(index + 1)} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-            {answers[q.id] ? "Save & Next ›" : "Next ›"}
+          <button onClick={() => goTo(index + 1)} style={{ ...primaryBtn, flex: 1.4 }}>
+            {answers[q.id] ? "Save & Next" : "Next"} <AppIcon name="chevronRight" size={16} color="white" strokeWidth={2.5} />
           </button>
         )}
       </div>
@@ -309,28 +312,28 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
 
             {sheet === "exit" ? (
               <>
-                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>Leave this test?</p>
-                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em" }}>Leave this test?</p>
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5 }}>
                   Your {answered} answer{answered === 1 ? "" : "s"} won&apos;t be saved. To keep them, submit the test instead.
                 </p>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={leave} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--error-text)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Leave</button>
-                  <button onClick={() => setSheet("none")} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Continue test</button>
+                  <button onClick={leave} style={{ ...outlineBtn, flex: 1, color: "var(--error-text)", borderColor: "var(--error)", background: "var(--error)" }}>Leave</button>
+                  <button onClick={() => setSheet("none")} style={{ ...primaryBtn, flex: 1.4 }}>Continue test</button>
                 </div>
               </>
             ) : sheet === "map" ? (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>Question map</p>
-                  <button onClick={() => setSheet("none")} style={{ background: "none", border: "none", fontSize: 13, fontWeight: 800, color: "var(--blue)", cursor: "pointer" }}>Close</button>
+                  <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em" }}>Question map</p>
+                  <button onClick={() => setSheet("none")} style={{ ...smallBtn, padding: "6px 12px" }}>Close</button>
                 </div>
 
                 {/* Legend with counts */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 14 }}>
                   {(["answered", "skipped", "marked", "unseen"] as QStatus[]).map((k) => (
-                    <div key={k} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--text-secondary)" }}>
+                    <div key={k} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--ink-soft)" }}>
                       <span style={{ width: 16, height: 16, borderRadius: 5, background: STATUS_STYLE[k].bg, border: `1.5px solid ${STATUS_STYLE[k].border}`, flexShrink: 0 }} />
-                      {STATUS_STYLE[k].label} <b style={{ color: "var(--ink-primary)" }}>{k === "marked" ? counts.marked + counts["answered-marked"] : k === "answered" ? counts.answered + counts["answered-marked"] : counts[k]}</b>
+                      {STATUS_STYLE[k].label} <b style={{ color: "var(--ink)" }}>{k === "marked" ? counts.marked + counts["answered-marked"] : k === "answered" ? counts.answered + counts["answered-marked"] : counts[k]}</b>
                     </div>
                   ))}
                 </div>
@@ -347,14 +350,14 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
                   });
                   return blocks.map((b, bi) => (
                     <div key={bi} style={{ marginBottom: 12 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.label}</p>
+                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: "var(--ink-mute)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.label}</p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
                         {b.items.map((i) => {
                           const st = STATUS_STYLE[statusOf(questions[i])];
                           return (
                             <button key={i} onClick={() => goTo(i)} style={{
                               aspectRatio: "1", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 800,
-                              background: st.bg, color: st.fg, border: `2px solid ${i === index ? "var(--ink-primary)" : st.border}`,
+                              background: st.bg, color: st.fg, border: `2px solid ${i === index ? "var(--blue)" : st.border}`,
                             }}>{i + 1}</button>
                           );
                         })}
@@ -363,29 +366,29 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
                   ));
                 })()}
 
-                <button onClick={() => setSheet("confirm")} style={{ width: "100%", marginTop: 4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+                <button onClick={() => setSheet("confirm")} style={{ ...primaryBtn, width: "100%", marginTop: 4 }}>
                   {timed ? "Submit test" : "Check answers"}
                 </button>
               </>
             ) : (
               <>
-                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)" }}>{timed ? "Submit the test?" : "Check your answers?"}</p>
-                <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}>You can&apos;t change answers after this.</p>
+                <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em" }}>{timed ? "Submit the test?" : "Check your answers?"}</p>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--ink-soft)" }}>You can&apos;t change answers after this.</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 16 }}>
                   {[
                     { n: answered, label: "Answered", c: "#16A34A" },
                     { n: total - answered, label: "Not answered", c: "#B91C1C" },
-                    { n: marked.size, label: "Marked", c: "#7C3AED" },
+                    { n: marked.size, label: "Marked", c: "var(--purple)" },
                   ].map((x) => (
-                    <div key={x.label} style={{ background: "var(--bg-secondary)", borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
+                    <div key={x.label} style={{ background: "var(--app-bg)", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
                       <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: x.c }}>{x.n}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--text-muted)" }}>{x.label}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--ink-soft)" }}>{x.label}</p>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setSheet("map")} style={{ flex: 1, background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>Review</button>
-                  <button onClick={doSubmit} disabled={submitting} style={{ flex: 1.4, background: gradient, color: "white", border: "none", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+                  <button onClick={() => setSheet("map")} style={{ ...outlineBtn, flex: 1 }}>Review</button>
+                  <button onClick={doSubmit} disabled={submitting} style={{ ...primaryBtn, flex: 1.4, opacity: submitting ? 0.7 : 1 }}>
                     {submitting ? "Submitting…" : "Yes, submit"}
                   </button>
                 </div>
@@ -421,9 +424,9 @@ function ReviewCard({ r, index, showPassage }: { r: ReviewItem; index: number; s
   };
 
   return (
-    <div style={{ background: "white", borderRadius: 16, padding: "13px 14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+    <div style={{ ...card, padding: "13px 14px" }}>
       {showPassage && <PassageBlock passage={r.passage} />}
-      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>Q{index + 1}. {r.text}</p>
+      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>Q{index + 1}. {r.text}</p>
       {(["a", "b", "c", "d"] as const).map((opt) => {
         const isCorrect = r.correct === opt;
         const isChosen = r.chosen === opt;
@@ -433,12 +436,12 @@ function ReviewCard({ r, index, showPassage }: { r: ReviewItem; index: number; s
           <div key={opt} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: bg, fontSize: 12.5, color: col, fontWeight: isCorrect || isChosen ? 700 : 400 }}>
             <span style={{ fontWeight: 800 }}>{opt.toUpperCase()}.</span>
             <span style={{ flex: 1 }}>{optText(opt)}</span>
-            {isCorrect && <span style={{ fontSize: 11 }}>✓ correct</span>}
+            {isCorrect && <span style={{ fontSize: 11, display: "inline-flex", alignItems: "center", gap: 3 }}><AppIcon name="check" size={12} strokeWidth={2.6} />correct</span>}
             {isChosen && !isCorrect && <span style={{ fontSize: 11 }}>your answer</span>}
           </div>
         );
       })}
-      {!r.chosen && <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-disabled)" }}>Not attempted</p>}
+      {!r.chosen && <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>Not attempted</p>}
 
       {/* The paper's own solution, when the author wrote one. */}
       {r.explanation && (
@@ -449,16 +452,20 @@ function ReviewCard({ r, index, showPassage }: { r: ReviewItem; index: number; s
       )}
 
       {explanation ? (
-        <div style={{ marginTop: 10, background: "var(--bg-secondary)", border: "1px solid #EFE2CC", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#3A2A17", lineHeight: 1.55 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "var(--ink-primary)", fontSize: 11.5 }}>⚡ AI explanation</div>
+        <div style={{ marginTop: 10, background: "var(--purple-tint)", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "var(--ink)", lineHeight: 1.55 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 800, color: "var(--purple)", fontSize: 11.5 }}><AppIcon name="sparkle" size={14} /> AI explanation</div>
           <AiText text={explanation} />
         </div>
       ) : (
-        <button onClick={explain} disabled={busy} style={{ marginTop: 10, background: busy ? "var(--info-border)" : "var(--info-border)", color: "var(--ink-primary)", border: "1px solid #E7D6BA", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: busy ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {busy ? "Thinking…" : r.explanation ? "⚡ Explain further with AI" : "⚡ Explain with AI"}
+        <button onClick={explain} disabled={busy} style={{ ...smallBtn, marginTop: 10, fontSize: 12, cursor: busy ? "default" : "pointer", opacity: busy ? 0.75 : 1 }}>
+          {busy ? "Thinking…" : <><AppIcon name="sparkle" size={14} /> {r.explanation ? "Explain further with AI" : "Explain with AI"}</>}
         </button>
       )}
-      {err && <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#B45309" }}>⚠️ {err}</p>}
+      {err && (
+        <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "var(--warning-text)", display: "flex", alignItems: "flex-start", gap: 6 }}>
+          <AppIcon name="alert" size={14} style={{ marginTop: 1 }} /> {err}
+        </p>
+      )}
     </div>
   );
 }
@@ -468,11 +475,11 @@ export function TestResultPage({ title, result, onBack }: { title: string; resul
   const pct = result.total > 0 ? Math.round((result.score / result.total) * 100) : 0;
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <Back onBack={onBack} label="Test Series" />
+    <div style={page}>
+      <ScreenHeader title="Test Series" onBack={onBack} />
 
-      <div style={{ padding: "14px 14px 0" }}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 24px rgba(61,36,17,0.3)" }}>
+      <div style={{ padding: "14px 16px 0" }}>
+        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>{title}</p>
           <p style={{ margin: "8px 0 0", fontSize: 40, fontWeight: 900 }}>{result.score}<span style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>/{result.total}</span></p>
           <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 14 }}>
@@ -491,19 +498,22 @@ export function TestResultPage({ title, result, onBack }: { title: string; resul
 
         <div style={{ display: "flex", gap: 8, margin: "12px 0" }}>
           {[
-            { v: result.correct, l: "Correct", c: "var(--green)", bg: "var(--success)" },
-            { v: result.wrong, l: "Wrong", c: "var(--error-text)", bg: "var(--error)" },
-            { v: result.unattempted, l: "Skipped", c: "var(--text-muted)", bg: "var(--bg-secondary)" },
+            { v: result.correct, l: "Correct", c: "var(--success-text)", icon: "checkCircle" as const },
+            { v: result.wrong, l: "Wrong", c: "var(--error-text)", icon: "xCircle" as const },
+            { v: result.unattempted, l: "Skipped", c: "var(--text-muted)", icon: "more" as const },
           ].map((s, i) => (
-            <div key={i} style={{ flex: 1, background: s.bg, borderRadius: 12, padding: "10px", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: s.c }}>{s.v}</p>
-              <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>{s.l}</p>
+            <div key={i} style={{ ...card, flex: 1, padding: "10px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <AppIcon name={s.icon} size={17} color={s.c} />
+              <p style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 900, color: s.c }}>{s.v}</p>
+              <p style={{ margin: 0, fontSize: 11, color: "var(--ink-soft)" }}>{s.l}</p>
             </div>
           ))}
         </div>
-        <p style={{ margin: "0 0 8px", fontSize: 11, color: "var(--text-disabled)", textAlign: "center" }}>{result.takers} student{result.takers > 1 ? "s" : ""} have taken this test</p>
+        <p style={{ margin: "0 0 8px", fontSize: 11, color: "var(--ink-mute)", textAlign: "center" }}>{result.takers} student{result.takers > 1 ? "s" : ""} have taken this test</p>
 
-        <h3 style={{ margin: "12px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Review answers</h3>
+        <div style={{ margin: "4px 0 12px" }}>
+          <SectionTitle title="Review answers" />
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {result.review.map((r, i) => (
             <ReviewCard key={r.id} r={r} index={i} showPassage={!!r.passage && r.passage !== result.review[i - 1]?.passage} />

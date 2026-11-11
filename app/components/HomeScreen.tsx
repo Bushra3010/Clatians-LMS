@@ -1,6 +1,6 @@
 "use client";
 
-import { AppIcon } from "./AppIcon";
+import { AppIcon, type IconName } from "./AppIcon";
 import { ChevronRight, CalendarIcon } from "./icons";
 import ClatLogo from "./ClatLogo";
 import { HeroCarousel, RecommenderStack } from "./HomeHero";
@@ -106,11 +106,11 @@ const toppers = [
   { name: "Rohan Mehta", rank: "AIR 4", score: "99.6%ile", city: "Mumbai", initials: "RM" },
 ];
 
-const knowMore = [
-  { emoji: "✏️", label: "CLAT\nStudy Tools", color: "var(--purple)", id: "study-tools" },
-  { emoji: "🏆", label: "CLATians\nToppers", color: "var(--gold)", id: "toppers" },
-  { emoji: "✨", label: "What's\nNew", color: "var(--blue)", id: "whats-new" },
-  { emoji: "💡", label: "Tips &\nTricks", color: "var(--green)", id: "tips" },
+const knowMore: { icon: IconName; label: string; color: string; id: string }[] = [
+  { icon: "pen", label: "CLAT\nStudy Tools", color: "var(--purple)", id: "study-tools" },
+  { icon: "trophy", label: "CLATians\nToppers", color: "var(--gold)", id: "toppers" },
+  { icon: "sparkle", label: "What's\nNew", color: "var(--blue)", id: "whats-new" },
+  { icon: "bulb", label: "Tips &\nTricks", color: "var(--green)", id: "tips" },
 ];
 
 
@@ -274,7 +274,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
             <div style={{ zIndex: 1 }}>
               <div style={{ display: "inline-block", background: "var(--gold)", color: "var(--blue-dark)", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, marginBottom: 8 }}>
-                🇮🇳 FIRST TIME IN INDIA!
+                <AppIcon name="flag" size={11} color="var(--blue-dark)" strokeWidth={2.4} style={{ display: "inline-block", verticalAlign: "-1.5px", marginRight: 4 }} />FIRST TIME IN INDIA!
               </div>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "white", lineHeight: 1.35 }}>
                 Online CLAT Coaching<br />Produces a 99.9%iler!
@@ -365,7 +365,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
                   position: "absolute", inset: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 27, lineHeight: 1,
-                }}>{item.emoji}</span>
+                }}><AppIcon name={item.icon} size={27} color={item.color} /></span>
               </div>
               <span style={{
                 fontSize: 12.5, fontWeight: 500, color: "var(--ink)",
@@ -396,7 +396,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22,
               boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
-            }}>📝</div>
+            }}><AppIcon name="clipboard" size={22} color="var(--blue-dark)" /></div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>Daily Mock Test</p>
@@ -420,7 +420,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
       <div style={{ padding: "26px 16px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--ink-primary)", letterSpacing: "-0.2px" }}>AI-Powered Prep</h3>
-          <span style={{ background: "linear-gradient(135deg,var(--blue),var(--blue))", color: "#FFD489", fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.04em" }}>⚡ SMART</span>
+          <span style={{ background: "linear-gradient(135deg,var(--blue),var(--blue))", color: "#FFD489", fontSize: 9.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.04em", display: "inline-flex", alignItems: "center", gap: 3 }}><AppIcon name="bolt" size={10} color="#FFD489" strokeWidth={2.6} />SMART</span>
         </div>
         <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--text-disabled)" }}>Your personal AI toolkit — practice, doubts & more</p>
         <button onClick={() => onToolClick?.("ai-practice")} className="press" style={{
@@ -443,7 +443,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22,
               boxShadow: "0 4px 12px rgba(245,166,35,0.3)",
-            }}>⚡</div>
+            }}><AppIcon name="bolt" size={22} color="var(--blue-dark)" /></div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--surface)" }}>AI Practice</p>
@@ -483,7 +483,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
               background: "linear-gradient(135deg,var(--blue),var(--blue))",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, boxShadow: "0 4px 12px rgba(11,92,255,0.25)",
-            }}>🤖</div>
+            }}><AppIcon name="chat" size={22} color="white" /></div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>AI Tutor</p>

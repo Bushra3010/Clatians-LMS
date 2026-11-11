@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, Send, Clock } from "./icons";
 import type { DoubtMessage } from "../lib/doubt-actions";
 import { AppIcon } from "./AppIcon";
+import { card, input, primaryBtn, IconTile, EmptyState, Pill, type Tone } from "./ui/kit";
 import { AttachmentPicker, AttachmentPreview, type Attachment } from "./DoubtAttachment";
 
 export type DoubtItem = {
@@ -28,13 +29,13 @@ interface DoubtsScreenProps {
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const statusBadge = (s: string) => {
-  const m: Record<string, { bg: string; c: string; label: string }> = {
-    answered: { bg: "var(--success)", c: "var(--success-text)", label: "✓ Answered" },
-    open: { bg: "var(--warning)", c: "var(--warning-text)", label: "⏳ Awaiting reply" },
-    closed: { bg: "var(--surface-dim)", c: "var(--text-muted)", label: "Closed" },
+  const m: Record<string, { tone: Tone; icon?: "check" | "hourglass"; label: string }> = {
+    answered: { tone: "green", icon: "check", label: "Answered" },
+    open: { tone: "gold", icon: "hourglass", label: "Awaiting reply" },
+    closed: { tone: "grey", label: "Closed" },
   };
   const b = m[s] ?? m.open;
-  return <span style={{ background: b.bg, color: b.c, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>{b.label}</span>;
+  return <Pill tone={b.tone}>{b.icon && <AppIcon name={b.icon} size={10} strokeWidth={2.6} />}{b.label}</Pill>;
 };
 
 export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsScreenProps) {
@@ -63,56 +64,58 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
 
   return (
     <div style={{ background: "var(--app-bg)", padding: "16px 16px 80px" }}>
-      <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>Doubts</h2>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>Ask questions · get help from mentors</p>
+      <div style={{ margin: "0 2px 14px" }}>
+        <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>Ask questions · get help from mentors</p>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>Doubts</h2>
+      </div>
 
       {/* Ask a new doubt */}
-      <div style={{ background: "var(--surface)", borderRadius: 18, padding: 16, marginBottom: 16, border: "1px solid var(--border)", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Ask a new doubt</p>
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g., Legal Reasoning)" style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", padding: "10px 14px", fontSize: 14, marginBottom: 8, outline: "none", color: "var(--text-primary)", background: "var(--surface-input)" }} />
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your question here…" rows={3} style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", padding: "10px 14px", fontSize: 14, marginBottom: 8, outline: "none", resize: "vertical", color: "var(--text-primary)", background: "var(--surface-input)" }} />
-        <div style={{ marginBottom: 8 }}>
+      <div style={{ ...card, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <IconTile icon="pen" size={34} />
+          <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>Ask a new doubt</p>
+        </div>
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g., Legal Reasoning)" style={{ ...input, marginBottom: 8 }} />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your question here…" rows={3} style={{ ...input, marginBottom: 8, resize: "vertical" }} />
+        <div style={{ marginBottom: 10 }}>
           <AttachmentPicker value={attachment} onChange={setAttachment} disabled={busy} />
         </div>
-        <button onClick={ask} disabled={busy} style={{ width: "100%", background: "var(--blue)", color: "white", border: "none", borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
+        <button onClick={ask} disabled={busy} style={{ ...primaryBtn, width: "100%", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
           {busy ? "Submitting…" : "Post Doubt"}
         </button>
       </div>
 
       {/* Doubts list */}
       {sorted.length === 0 ? (
-        <div style={{ background: "var(--surface)", borderRadius: 18, padding: "28px 18px", textAlign: "center", border: "1px solid var(--border)" }}>
-          <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--blue-tint)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}><AppIcon name="chat" size={24} color="var(--blue)" /></span>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>No doubts yet. Ask one above!</p>
-        </div>
+        <EmptyState icon="chat" title="No doubts yet. Ask one above!" />
       ) : sorted.map((d) => (
-        <div key={d.id} style={{ background: "var(--surface)", borderRadius: 18, border: "1px solid var(--border)", marginBottom: 10, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+        <div key={d.id} style={{ ...card, marginBottom: 10, overflow: "hidden" }}>
           <button onClick={() => setOpenId(openId === d.id ? null : d.id)} style={{ width: "100%", textAlign: "left", padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start", background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="chat" size={18} color="var(--blue)" /></div>
+            <IconTile icon="chat" size={38} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{d.subject}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{d.subject}</span>
                 {statusBadge(d.status)}
               </div>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.body}</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.body}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                <Clock size={12} style={{ color: "var(--text-disabled)" }} />
-                <span style={{ fontSize: 10, color: "var(--text-disabled)" }}>{fmt(d.createdAt)}</span>
-                {d.teacher && <span style={{ fontSize: 10, color: "var(--text-disabled)" }}>· {d.teacher}</span>}
+                <Clock size={12} style={{ color: "var(--text-muted)" }} />
+                <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{fmt(d.createdAt)}</span>
+                {d.teacher && <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>· {d.teacher}</span>}
               </div>
             </div>
             <span style={{ color: "var(--text-muted)", padding: 4 }}>{openId === d.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
           </button>
 
           {openId === d.id && (
-            <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--border)" }}>
-              <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{d.body}</p>
+            <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--line)" }}>
+              <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--ink)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{d.body}</p>
               {d.attachmentUrl && <AttachmentPreview url={d.attachmentUrl} />}
               <div style={{ height: 8 }} />
               {d.answer && (
-                <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: 12, padding: "10px 12px", marginBottom: 8 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "var(--info-text)" }}>Answer{d.teacher ? ` by ${d.teacher}` : ""}</p>
-                  <p style={{ margin: 0, fontSize: 12.5, color: "#1E3A8A" }}>{d.answer}</p>
+                <div style={{ background: "var(--blue-tint)", borderRadius: 12, padding: "10px 12px", marginBottom: 8 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 800, color: "var(--blue)", display: "flex", alignItems: "center", gap: 4 }}><AppIcon name="checkCircle" size={12} strokeWidth={2.4} />Answer{d.teacher ? ` by ${d.teacher}` : ""}</p>
+                  <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink)", lineHeight: 1.55 }}>{d.answer}</p>
                 </div>
               )}
               {/* Thread */}
@@ -124,17 +127,17 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
                       <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
                         <div style={{
                           maxWidth: "85%",
-                          background: mine ? "var(--blue)" : "var(--surface-dim)",
-                          border: mine ? "none" : "1px solid var(--border)",
+                          background: mine ? "var(--blue)" : "var(--app-bg)",
+                          border: mine ? "none" : "1px solid var(--line)",
                           borderRadius: 12,
                           borderBottomRightRadius: mine ? 4 : 12,
                           borderBottomLeftRadius: mine ? 12 : 4,
                           padding: "8px 11px",
                         }}>
-                          <p style={{ margin: "0 0 3px", fontSize: 10, fontWeight: 700, color: mine ? "rgba(255,255,255,0.75)" : "var(--text-disabled)" }}>
+                          <p style={{ margin: "0 0 3px", fontSize: 10, fontWeight: 700, color: mine ? "rgba(255,255,255,0.75)" : "var(--text-muted)" }}>
                             {mine ? "You" : m.sender ?? "Faculty"}
                           </p>
-                          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: mine ? "white" : "var(--text-primary)", whiteSpace: "pre-wrap" }}>{m.body}</p>
+                          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: mine ? "white" : "var(--ink)", whiteSpace: "pre-wrap" }}>{m.body}</p>
                         </div>
                       </div>
                     );
@@ -142,8 +145,8 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
                 </div>
               )}
               <div style={{ display: "flex", gap: 8 }}>
-                <input value={replyMap[d.id] || ""} onChange={(e) => setReplyMap((m) => ({ ...m, [d.id]: e.target.value }))} placeholder="Reply…" style={{ flex: 1, borderRadius: 10, border: "1px solid var(--border)", padding: "8px 12px", fontSize: 13, outline: "none", background: "var(--surface-input)" }} />
-                <button onClick={() => reply(d.id)} style={{ background: "var(--blue)", color: "white", border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}><Send size={16} /></button>
+                <input value={replyMap[d.id] || ""} onChange={(e) => setReplyMap((m) => ({ ...m, [d.id]: e.target.value }))} placeholder="Reply…" style={{ ...input, flex: 1, width: "auto", minWidth: 0, borderRadius: 10, padding: "8px 12px" }} />
+                <button onClick={() => reply(d.id)} aria-label="Send reply" style={{ ...primaryBtn, borderRadius: 10, padding: "8px 14px", boxShadow: "none" }}><Send size={16} /></button>
               </div>
             </div>
           )}
