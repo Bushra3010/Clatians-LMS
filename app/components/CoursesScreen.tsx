@@ -642,7 +642,7 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
           </div>
 
           {active && (
-            <div style={{ padding: "10px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ padding: "10px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
 
               {courseAccess && (
                 <div style={{ ...kit.card, background: "var(--success)", border: "1px solid var(--success-border)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -664,70 +664,86 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
 
               {activeBatches.map((b) => {
                 const left = seatsLeft(b);
-                const seatText = left === null ? "" : left === 0 ? "Batch full" : b.filled === 0 ? `Only ${b.seats} Students` : left <= 5 ? `Only ${left} Seats Left!` : `${left} Seats Left`;
                 const urgent = left !== null && left <= 5 && b.filled > 0;
                 const off = pctOff(b);
-                const validity = [b.startDate, b.endDate].filter(Boolean).join(" – ");
+                const seatVal = b.enrolled ? "Yours" : left === null ? "Open" : left === 0 ? "Full" : `${left} left`;
+                const seatColor = b.enrolled ? "var(--success-text)" : urgent || left === 0 ? "var(--error-text)" : "var(--ink)";
+                const info: { icon: IconName; label: string; value: string; color?: string }[] = [
+                  { icon: "calendar", label: "Starts", value: b.startDate || "—" },
+                  { icon: "flag", label: "Valid till", value: (b.endDate || "—").replace(/^Till\s+/i, "") },
+                  { icon: "users", label: "Seats", value: seatVal, color: seatColor },
+                ];
                 return (
-                  <div key={b.id} onClick={() => openBatch(active, b)} className="press" style={{ ...kit.card, padding: 12, cursor: "pointer" }}>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      {/* Visual — a small Home-blue tile */}
-                      <div style={{ position: "relative", width: 78, height: 78, borderRadius: 18, flexShrink: 0, overflow: "hidden", background: kit.heroBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <div style={{ position: "absolute", right: -24, top: -24, width: 70, height: 70, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.45), transparent 70%)" }} />
-                        <AppIcon name={courseIconName(active)} size={32} color="white" strokeWidth={1.7} style={{ position: "relative" }} />
-                        {off > 0 && !b.enrolled && (
-                          <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, textAlign: "center", background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 9.5, fontWeight: 800, padding: "2px 0" }}>{off}% OFF</span>
-                        )}
+                  <div key={b.id} onClick={() => openBatch(active, b)} className="press" style={{ ...kit.card, borderRadius: 22, overflow: "hidden", cursor: "pointer" }}>
+                    {/* Header — Home's blue, carrying the batch name */}
+                    <div style={{ ...kit.heroSurface, borderRadius: 0, boxShadow: "none", padding: "14px 16px 15px" }}>
+                      <AppIcon name={courseIconName(active)} size={74} color="rgba(255,255,255,0.08)" strokeWidth={1.3} style={{ position: "absolute", right: -6, bottom: -14 }} />
+                      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        {b.batchType && <span style={{ background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 6 }}>{b.batchType}</span>}
+                        {b.enrolled && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "white", color: "var(--success-text)", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 20 }}><AppIcon name="check" size={10} strokeWidth={3.5} />Enrolled</span>}
+                        {!b.enrolled && b.status === "filling-fast" && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "white", color: "#EA580C", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 20 }}><AppIcon name="flame" size={10} />Filling fast</span>}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 4 }}>
-                          {b.enrolled && <kit.Pill tone="green"><AppIcon name="check" size={10} strokeWidth={3} />Enrolled</kit.Pill>}
-                          {!b.enrolled && b.status === "filling-fast" && <kit.Pill tone="gold"><AppIcon name="flame" size={10} />Filling fast</kit.Pill>}
-                          {b.batchType && <kit.Pill tone="blue">{b.batchType}</kit.Pill>}
-                        </div>
-                        <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{b.name}</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--ink-soft)", display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
-                          {b.language && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="language" size={12} color="var(--blue)" />{b.language}</span>}
-                          {validity && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="calendar" size={12} color="var(--blue)" />{validity}</span>}
-                        </p>
-                      </div>
+                      <p style={{ position: "relative", margin: "9px 0 0", fontSize: 16.5, fontWeight: 700, lineHeight: 1.3, paddingRight: 30 }}>{b.name}</p>
+                      <p style={{ position: "relative", margin: "3px 0 0", fontSize: 12, color: "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", gap: 5 }}>
+                        <AppIcon name={courseIconName(active)} size={12} color="var(--gold)" />{active.name}
+                        {b.language && <><span style={{ opacity: 0.5 }}>•</span><AppIcon name="language" size={12} color="var(--gold)" />{b.language}</>}
+                      </p>
                     </div>
 
-                    {b.chips.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 10 }}>
-                        {b.chips.slice(0, 4).map((x, i) => (
-                          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
-                            <AppIcon name="check" size={12} strokeWidth={3} color="var(--green)" />{x}
-                          </span>
+                    <div style={{ padding: "14px 14px 14px" }}>
+                      {/* Key facts at a glance */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                        {info.map((x) => (
+                          <div key={x.label} style={{ background: "var(--app-bg)", border: "1px solid var(--line)", borderRadius: 14, padding: "9px 8px", minWidth: 0 }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 600 }}>
+                              <AppIcon name={x.icon} size={11} color="var(--blue)" strokeWidth={2.4} />{x.label}
+                            </span>
+                            <span style={{ display: "block", marginTop: 3, fontSize: 12.5, fontWeight: 800, color: x.color ?? "var(--ink)", lineHeight: 1.25, overflowWrap: "anywhere" }}>{x.value}</span>
+                          </div>
                         ))}
                       </div>
-                    )}
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
-                      {b.enrolled ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}>
-                          <AppIcon name="checkCircle" size={15} />Full access
-                        </span>
-                      ) : (
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 17, fontWeight: 800, color: b.fee === 0 ? "var(--green)" : "var(--ink)" }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</span>
-                            {b.originalFee > b.fee && <span style={{ fontSize: 11.5, color: "var(--text-disabled)", textDecoration: "line-through" }}>{inr(b.originalFee)}</span>}
-                          </div>
-                          {seatText && (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: urgent || left === 0 ? "var(--error-text)" : "var(--success-text)" }}>
-                              <AppIcon name="users" size={11} strokeWidth={2.4} />{seatText}{b.filled > 0 ? ` · ${b.filled} enrolled` : ""}
+                      {/* What's included */}
+                      {b.chips.length > 0 && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "7px 10px", marginTop: 12 }}>
+                          {b.chips.slice(0, 4).map((x, i) => (
+                            <span key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", minWidth: 0 }}>
+                              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <AppIcon name="check" size={10} strokeWidth={3.5} color="var(--success-text)" />
+                              </span>
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x}</span>
                             </span>
-                          )}
+                          ))}
                         </div>
                       )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openBatch(active, b); }}
-                        className="press"
-                        style={{ ...kit.primaryBtn, padding: "9px 14px", fontSize: 12.5, borderRadius: 12, flexShrink: 0 }}
-                      >
-                        View Details<AppIcon name="arrowRight" size={14} strokeWidth={2.4} />
-                      </button>
+
+                      {/* Price + action */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--line-strong)" }}>
+                        {b.enrolled ? (
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: "var(--success-text)" }}><AppIcon name="checkCircle" size={16} />Full access</span>
+                            <span style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginTop: 2 }}>Study it in My Learning</span>
+                          </span>
+                        ) : (
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 20, fontWeight: 800, color: b.fee === 0 ? "var(--green)" : "var(--ink)", letterSpacing: "-0.01em" }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</span>
+                              {off > 0 && <span style={{ background: "var(--success)", color: "var(--success-text)", fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 6 }}>{off}% OFF</span>}
+                            </span>
+                            <span style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginTop: 1 }}>
+                              {b.originalFee > b.fee && <span style={{ textDecoration: "line-through", marginRight: 6 }}>{inr(b.originalFee)}</span>}
+                              {b.emi && b.fee > 0 ? `or ${b.emi}` : ""}
+                            </span>
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openBatch(active, b); }}
+                          className="press"
+                          style={{ ...kit.primaryBtn, padding: "11px 16px", fontSize: 13, borderRadius: 14, flexShrink: 0 }}
+                        >
+                          View Details<AppIcon name="arrowRight" size={15} strokeWidth={2.4} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
