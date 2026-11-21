@@ -6,7 +6,7 @@ import { explainAnswerAction } from "../../lib/ai-actions";
 import AiText from "../AiText";
 import { pushBack } from "../../lib/back-stack";
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, SectionTitle, IconTile, EmptyState, Pill, card, page, primaryBtn, outlineBtn, smallBtn, gradient } from "../ui/kit";
+import { ScreenHeader, SectionTitle, IconTile, EmptyState, Pill, card, page, primaryBtn, outlineBtn, smallBtn, HeroCard, heroStrip } from "../ui/kit";
 
 export type TestListItem = {
   id: string;
@@ -41,33 +41,62 @@ export function TestSeriesPage({ onBack, tests, onStart }: { onBack: () => void;
   const [busy, setBusy] = useState<string | null>(null);
   const start = async (id: string) => { setErr(""); setBusy(id); const r = await onStart(id); if (!r.ok) setErr(r.error); setBusy(null); };
 
+  const attempted = tests.filter((t) => t.myAttempts > 0).length;
+  const best = tests.filter((t) => t.bestScore !== null && t.bestTotal).map((t) => Math.round(((t.bestScore ?? 0) / (t.bestTotal || 1)) * 100));
+
   return (
     <div style={page}>
-      <ScreenHeader title="Test Series" onBack={onBack} />
-      <div style={{ padding: "14px 16px 0" }}>
+      <ScreenHeader title="Test Series" subtitle="Practice like the real CLAT" onBack={onBack} />
+      <div style={{ padding: "8px 16px 0" }}>
+        {tests.length > 0 && (
+          <HeroCard padding={16} style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 46, height: 46, borderRadius: 14, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AppIcon name="trophy" size={22} color="var(--gold)" />
+              </span>
+              <span>
+                <span style={{ display: "block", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>Test yourself, <span style={{ color: "var(--gold)" }}>rank up</span></span>
+                <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>Timed papers with All-India rank</span>
+              </span>
+            </div>
+            <div style={{ ...heroStrip, display: "flex", padding: "10px 4px", marginTop: 14 }}>
+              {[
+                { v: String(tests.length), l: "Tests" },
+                { v: String(attempted), l: "Attempted" },
+                { v: best.length ? `${Math.max(...best)}%` : "—", l: "Best score" },
+              ].map((x, i) => (
+                <div key={x.l} style={{ flex: 1, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--gold)", lineHeight: 1.2 }}>{x.v}</p>
+                  <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.68)" }}>{x.l}</p>
+                </div>
+              ))}
+            </div>
+          </HeroCard>
+        )}
         {err && <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--error-text)", background: "var(--error)", borderRadius: 12, padding: "10px 12px" }}>{err}</p>}
         {tests.length === 0 && (
           <EmptyState icon="clipboard" title="No tests yet" text="Published mock tests for your batch will appear here." />
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {tests.length > 0 && <div style={{ marginBottom: 12 }}><SectionTitle kicker="Pick a paper" title="All tests" /></div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {tests.map((t) => (
-            <div key={t.id} style={{ ...card, padding: "15px 16px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <IconTile icon="clipboard" size={42} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-                    <Pill tone="blue">{typeLabel[t.type] ?? t.type}</Pill>
-                    {t.bestScore !== null && <Pill tone="green">Best {t.bestScore}/{t.bestTotal}</Pill>}
-                  </div>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{t.title}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                    <AppIcon name="clock" size={13} color="var(--ink-mute)" />
-                    {t.questionCount} questions · {t.durationMin} min{t.myAttempts > 0 ? ` · ${t.myAttempts} attempt${t.myAttempts > 1 ? "s" : ""}` : ""}
-                  </p>
+            <div key={t.id} style={{ ...card, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <IconTile icon="clipboard" size={44} tone={t.myAttempts > 0 ? "green" : "blue"} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
+                  <Pill tone="blue">{typeLabel[t.type] ?? t.type}</Pill>
+                  {t.bestScore !== null && <Pill tone="green">Best {t.bestScore}/{t.bestTotal}</Pill>}
                 </div>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{t.title}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                  <AppIcon name="clock" size={12} color="var(--ink-mute)" />
+                  {t.questionCount} Qs · {t.durationMin} min{t.myAttempts > 0 ? ` · ${t.myAttempts} attempt${t.myAttempts > 1 ? "s" : ""}` : ""}
+                </p>
               </div>
-              <button onClick={() => start(t.id)} disabled={busy === t.id} style={{ ...primaryBtn, width: "100%", marginTop: 12, cursor: busy === t.id ? "default" : "pointer", opacity: busy === t.id ? 0.7 : 1 }}>
-                {busy === t.id ? "Loading…" : <>{t.myAttempts > 0 ? "Re-attempt" : "Start test"} <AppIcon name="arrowRight" size={16} color="white" /></>}
+              <button onClick={() => start(t.id)} disabled={busy === t.id} className="press" style={t.myAttempts > 0
+                ? { ...smallBtn, borderRadius: 12, padding: "9px 12px", opacity: busy === t.id ? 0.7 : 1 }
+                : { ...primaryBtn, borderRadius: 12, padding: "9px 14px", fontSize: 12.5, flexShrink: 0, cursor: busy === t.id ? "default" : "pointer", opacity: busy === t.id ? 0.7 : 1 }}>
+                {busy === t.id ? "…" : t.myAttempts > 0 ? "Retake" : <>Start <AppIcon name="arrowRight" size={14} color="white" /></>}
               </button>
             </div>
           ))}
@@ -479,7 +508,7 @@ export function TestResultPage({ title, result, onBack }: { title: string; resul
       <ScreenHeader title="Test Series" onBack={onBack} />
 
       <div style={{ padding: "14px 16px 0" }}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
+        <HeroCard style={{ textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>{title}</p>
           <p style={{ margin: "8px 0 0", fontSize: 40, fontWeight: 900 }}>{result.score}<span style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>/{result.total}</span></p>
           <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 14 }}>
@@ -494,7 +523,7 @@ export function TestResultPage({ title, result, onBack }: { title: string; resul
               </div>
             ))}
           </div>
-        </div>
+        </HeroCard>
 
         <div style={{ display: "flex", gap: 8, margin: "12px 0" }}>
           {[

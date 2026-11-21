@@ -9,7 +9,7 @@ import type { LiveClassItem } from "./detail/LiveClassesPage";
 import { fmtTime, subjectStyle } from "./detail/LiveClassesPage";
 import { ChevronRight, CheckCircle2 } from "./icons";
 import { AppIcon, subjectIconName } from "./AppIcon";
-import { gradient, card, primaryBtn, smallBtn, goldBtn, ScreenHeader, SectionTitle, IconTile, EmptyState, Pill } from "./ui/kit";
+import { gradient, card, primaryBtn, smallBtn, goldBtn, ScreenHeader, SectionTitle, IconTile, EmptyState, Pill, PageTitle, HeroCard, heroStrip, Progress } from "./ui/kit";
 
 const baseTabs = ["Videos", "Notes", "Tests", "Current Affairs"] as const;
 type Tab = "Syllabus" | typeof baseTabs[number];
@@ -136,33 +136,31 @@ export default function StudyScreen({ videos, notes, currentAffairs, tests, prog
 
   return (
     <div style={{ background: "var(--app-bg)", paddingBottom: 90 }}>
-      {/* Header */}
-      <div style={{ background: "white", padding: "16px 16px 0", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>Everything for your batch, in one place</p>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>Study Material</h2>
-        </div>
-
-        <div style={{ ...card, borderRadius: 16, padding: "12px 14px", marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>Course Progress</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>{pct}%</span>
+      {/* Header — Home's title, blue progress card and pill tabs */}
+      <PageTitle kicker="Everything for your batch, in one place" title="Study Material" />
+      <div style={{ padding: "12px 16px 0" }}>
+        <HeroCard padding={16}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AppIcon name="book" size={21} color="white" />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 17, fontWeight: 700 }}>Course progress</span>
+              <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 1 }}>{progress.contentDone} of {progress.contentTotal} items · {progress.testsTaken} test{progress.testsTaken === 1 ? "" : "s"} taken</span>
+            </span>
+            <span style={{ fontSize: 24, fontWeight: 800, color: "var(--gold)" }}>{pct}%</span>
           </div>
-          <div style={{ height: 8, background: "var(--line)", borderRadius: 20, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: gradient, borderRadius: 20, transition: "width 0.3s" }} />
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--ink-soft)" }}>{progress.contentDone} of {progress.contentTotal} items done · {progress.testsTaken} test{progress.testsTaken === 1 ? "" : "s"} taken</p>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, paddingBottom: 14, overflowX: "auto" }} className="no-scroll">
-          {studyTabs.map((tab) => (
-            <button key={tab} onClick={() => { if (tab !== activeTab && subjectId) goBack(closeSubject); setActiveTab(tab); }} style={{
-              padding: "9px 16px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap",
-              background: activeTab === tab ? gradient : "var(--app-bg)",
-              color: activeTab === tab ? "white" : "var(--ink-soft)",
-            }}>{tab}</button>
-          ))}
-        </div>
+          <div style={{ ...heroStrip, padding: 10, marginTop: 12 }}><Progress pct={pct} onDark /></div>
+        </HeroCard>
+      </div>
+      <div className="no-scroll" style={{ display: "flex", gap: 4, margin: "14px 16px 0", background: "white", borderRadius: 999, padding: 4, border: "1px solid var(--line)", boxShadow: "var(--shadow-md)", overflowX: "auto" }}>
+        {studyTabs.map((tab) => (
+          <button key={tab} onClick={() => { if (tab !== activeTab && subjectId) goBack(closeSubject); setActiveTab(tab); }} style={{
+            flex: "1 0 auto", padding: "9px 14px", borderRadius: 999, fontSize: 12.5, fontWeight: activeTab === tab ? 700 : 600, border: "none", cursor: "pointer", whiteSpace: "nowrap",
+            background: activeTab === tab ? gradient : "transparent", boxShadow: activeTab === tab ? "0 4px 12px rgba(11,92,255,0.25)" : "none",
+            color: activeTab === tab ? "white" : "var(--ink-soft)",
+          }}>{tab}</button>
+        ))}
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>

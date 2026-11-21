@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppIcon } from "../AppIcon";
 import { listBlogPostsAction, getBlogPostAction, type BlogPost } from "../../lib/blog-actions";
 import { shareText } from "../../lib/share";
-import { ScreenHeader } from "../ui/kit";
+import { heroSurface, ScreenHeader } from "../ui/kit";
 
 // ─────────────────────────────────────────────────────────────
 // Current Affairs = the website's blog (The CLATians Journal,
@@ -199,12 +199,11 @@ export default function CurrentAffairsPage({ onBack, banner }: {
 
       <div style={{ padding: "14px 14px 0" }}>
         {/* Journal header, as on clatians.com/blogs */}
-        <div style={{ borderRadius: 18, padding: "16px", marginBottom: 14, background: "linear-gradient(135deg,#060d1f,#0D1837)", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -60, right: -50, width: 170, height: 170, borderRadius: "50%", background: "#08BD80", opacity: 0.16, filter: "blur(30px)" }} />
-          <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#08BD80", background: "rgba(8,189,128,0.12)", border: "1px solid rgba(8,189,128,0.3)", padding: "4px 10px", borderRadius: 20 }}>
-            <AppIcon name="newspaper" size={12} color="#08BD80" />The CLATians Journal
+        <div style={{ ...heroSurface, padding: "16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
+          <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--blue-dark)", background: "#CFFB6B", padding: "4px 10px", borderRadius: 8 }}>
+            <AppIcon name="newspaper" size={12} color="var(--blue-dark)" />The CLATians Journal
           </span>
-          <p style={{ position: "relative", margin: "10px 0 4px", fontSize: 18, fontWeight: 900, color: "white" }}>CLAT Prep Insights</p>
+          <p style={{ position: "relative", margin: "10px 0 4px", fontSize: 20, fontWeight: 700, color: "white" }}>CLAT Prep <span style={{ color: "var(--gold)" }}>Insights</span></p>
           <p style={{ position: "relative", margin: 0, fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>Daily current affairs notes and expert articles from CLATians faculty, updated regularly.</p>
         </div>
 

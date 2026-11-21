@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { Update } from "../../lib/resource-types";
 import { AppIcon, featureIconName, type IconName } from "../AppIcon";
-import { ScreenHeader, EmptyState, Pill, card, gradient, page, body } from "../ui/kit";
+import { heroSurface, ScreenHeader, EmptyState, Pill, card, page, body } from "../ui/kit";
 
 // The update's own `icon` is an emoji from the CMS, so the line icon is picked from its tag and title instead.
 function updateIconName(u: Update): IconName {
@@ -21,7 +21,7 @@ export default function WhatsNewPage({ onBack, updates }: { onBack: () => void; 
       <ScreenHeader title="What's New" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 24px rgba(11,92,255,0.22)" }}>
+        <div style={{ ...heroSurface, padding: "18px 16px", }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.2)", color: "white", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 20 }}>
             <AppIcon name="sparkle" size={11} color="white" strokeWidth={2.5} />LATEST UPDATES
           </span>

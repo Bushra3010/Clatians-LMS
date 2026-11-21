@@ -2,7 +2,7 @@
 
 import { fmtIST } from "../../lib/dates";
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, IconTile, EmptyState, Pill, card, primaryBtn, gradient, page, body } from "../ui/kit";
+import { heroSurface, ScreenHeader, IconTile, EmptyState, Pill, card, primaryBtn, gradient, page, body } from "../ui/kit";
 
 export type CertificateItem = {
   courseId: string;
@@ -79,7 +79,7 @@ export default function CertificatePage({ onBack, certificates, studentName }: {
       <ScreenHeader title="Certificates" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: 18, color: "white", boxShadow: "0 8px 24px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ ...heroSurface, padding: 18, color: "white", display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ width: 48, height: 48, borderRadius: 15, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AppIcon name="graduation" size={24} color="white" />
           </span>

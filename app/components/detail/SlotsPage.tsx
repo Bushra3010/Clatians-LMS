@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { bookSlotAction, cancelBookingAction } from "../../lib/slot-actions";
 import { fmtIST } from "../../lib/dates";
 import { AppIcon } from "../AppIcon";
-import { card, gradient, primaryBtn, outlineBtn, input, page, body, ScreenHeader, IconTile, EmptyState, Pill } from "../ui/kit";
+import { heroSurface, card, gradient, primaryBtn, outlineBtn, input, page, body, ScreenHeader, IconTile, EmptyState, Pill } from "../ui/kit";
 
 export type SlotOpen = { id: string; startAt: string; durationMin: number; teacher: string };
 export type SlotBooking = { id: string; startAt: string; durationMin: number; teacher: string; topic: string };
@@ -72,7 +72,7 @@ export default function SlotsPage({ onBack, openSlots, myBookings }: { onBack: (
       <ScreenHeader title="1:1 Slots" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ ...heroSurface, padding: "16px", color: "white", display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AppIcon name="clock" size={20} color="white" />
           </span>

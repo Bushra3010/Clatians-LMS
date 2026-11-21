@@ -8,6 +8,7 @@ import PdfViewer, { isPdfUrl } from "../PdfViewer";
 import { TopicState } from "../learning/LearningFlow";
 import { fmtIST, parseServerDate } from "../../lib/dates";
 import { AppIcon, type IconName } from "../AppIcon";
+import * as kit from "../ui/kit";
 import { shareText } from "../../lib/share";
 import { AttachmentPicker, AttachmentPreview, type Attachment } from "../DoubtAttachment";
 import { DEMO_VIDEO, DEMO_NOTES, DEMO_POSTER } from "../../lib/demo-media";
@@ -16,19 +17,10 @@ const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
 
 type Tab = "content" | "live" | "notes" | "doubt";
 
-const card: React.CSSProperties = {
-  background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 10px rgba(15,23,41,0.06)",
-};
-const iconBtn: React.CSSProperties = { background: "none", border: "none", padding: 6, margin: "-4px -2px", cursor: "pointer", display: "flex", flexShrink: 0 };
-const sectionTitle: React.CSSProperties = { margin: "18px 2px 10px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" };
-const primaryBtn: React.CSSProperties = {
-  background: gradient, color: "white", border: "none", borderRadius: 12, padding: "12px",
-  fontSize: 14, fontWeight: 800, cursor: "pointer", width: "100%",
-};
-const outlineBtn: React.CSSProperties = {
-  background: "white", color: "var(--blue)", border: "1.5px solid var(--blue)", borderRadius: 12, padding: "11px",
-  fontSize: 13.5, fontWeight: 800, cursor: "pointer", width: "100%",
-};
+const card: React.CSSProperties = { ...kit.card, padding: "16px" };
+const sectionTitle: React.CSSProperties = { margin: "20px 2px 10px", fontSize: 17, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" };
+const primaryBtn: React.CSSProperties = { ...kit.primaryBtn, width: "100%" };
+const outlineBtn: React.CSSProperties = { ...kit.outlineBtn, width: "100%" };
 const smallBtn: React.CSSProperties = {
   background: "var(--blue-tint)", color: "var(--blue)", border: "none", borderRadius: 10, padding: "8px 14px",
   fontSize: 12.5, fontWeight: 800, cursor: "pointer", flexShrink: 0,
@@ -408,39 +400,38 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{ background: "white" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "14px 16px 4px" }}>
-          <button onClick={onBack} aria-label="Back" style={{ background: "none", border: "none", padding: 4, margin: -4, cursor: "pointer", display: "flex" }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.3 }}>{topic.title}</h2>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-              {topic.durationMin > 0 && <><AppIcon name="clock" size={12} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} />{topic.durationMin} min  •  </>}
-              <span style={{ color: topic.completed ? "var(--success-text)" : "var(--text-muted)", fontWeight: topic.completed ? 700 : 500 }}>{topic.completed ? "Completed" : "Not Completed"}</span>
+      {/* Header — shared back bar, then a Home-style blue card for the topic */}
+      <kit.ScreenHeader
+        title="Lesson"
+        subtitle={topic.completed ? "Completed" : "In progress"}
+        onBack={onBack}
+        right={
+          <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {shareNote && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--success-text)" }}>{shareNote}</span>}
+            {onToggleSave && (
+              <button onClick={onToggleSave} aria-label={saved ? "Remove from saved" : "Save topic"} className="press" style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--line)", background: "white", boxShadow: "var(--shadow-md)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AppIcon name="heart" size={18} color={saved ? "#E03131" : "var(--ink)"} fill={saved ? "#E03131" : "none"} />
+              </button>
+            )}
+            <kit.RoundBtn icon="share" label="Share topic" onClick={share} />
+          </span>
+        }
+      />
+      <div style={{ padding: "8px 16px 0" }}>
+        <kit.HeroCard padding={16}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: topic.completed ? "#CFFB6B" : "rgba(255,255,255,0.16)", color: topic.completed ? "var(--blue-dark)" : "white", fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 8 }}>
+            <AppIcon name={topic.completed ? "checkCircle" : "play"} size={11} />{topic.completed ? "Completed" : "Not completed"}
+          </span>
+          <h2 style={{ margin: "10px 0 0", fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>{topic.title}</h2>
+          {topic.durationMin > 0 && (
+            <p style={{ margin: "5px 0 0", fontSize: 12, color: "rgba(255,255,255,0.72)", display: "flex", alignItems: "center", gap: 5 }}>
+              <AppIcon name="clock" size={12} color="var(--gold)" />{topic.durationMin} min
             </p>
-          </div>
-          {onToggleSave && (
-            <button onClick={onToggleSave} aria-label={saved ? "Remove from saved" : "Save topic"} style={iconBtn}>
-              <AppIcon name="heart" size={21} color={saved ? "#E03131" : "var(--ink-primary)"} fill={saved ? "#E03131" : "none"} />
-            </button>
           )}
-          <button onClick={share} aria-label="Share topic" style={iconBtn}>
-            <AppIcon name="share" size={20} color="var(--ink-primary)" />
-          </button>
-          {shareNote && <span style={{ alignSelf: "center", fontSize: 11, fontWeight: 700, color: "var(--success-text)" }}>{shareNote}</span>}
-        </div>
-        <div style={{ display: "flex", borderBottom: "1px solid var(--line)", margin: "6px 16px 0" }}>
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => switchTab(t.key)} style={{
-              flex: 1, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap",
-              padding: "11px 4px 10px", fontSize: 13, fontWeight: tab === t.key ? 800 : 600,
-              color: tab === t.key ? "var(--blue)" : "var(--text-muted)",
-              borderBottom: `2.5px solid ${tab === t.key ? "var(--blue)" : "transparent"}`, marginBottom: -1,
-            }}>{t.label}</button>
-          ))}
-        </div>
+        </kit.HeroCard>
+      </div>
+      <div style={{ padding: "14px 16px 0" }}>
+        <kit.Segmented tabs={tabs} active={tab} onChange={switchTab} />
       </div>
 
       <div style={{ flex: 1, padding: "14px 16px 18px" }}>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { addTaskAction, toggleTaskAction, deleteTaskAction, type StudyTask } from "../../lib/study-actions";
 import { AppIcon } from "../AppIcon";
-import { card, gradient, primaryBtn, input, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
+import { heroSurface, card, primaryBtn, input, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
 
 function dueLabel(due: string): { text: string; color: string } | null {
   if (!due) return null;
@@ -76,7 +76,7 @@ export default function StudyPlannerPage({ onBack, initialTasks }: { onBack: () 
       <ScreenHeader title="Study Planner" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ ...heroSurface, padding: "18px 16px", color: "white", display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AppIcon name="clipboard" size={20} color="white" />
           </span>

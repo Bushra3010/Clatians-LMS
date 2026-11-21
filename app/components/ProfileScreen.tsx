@@ -2,7 +2,7 @@
 
 import type { StudentProfile } from "../StudentApp";
 import { AppIcon, type IconName } from "./AppIcon";
-import { card, ScreenHeader, IconTile, type Tone } from "./ui/kit";
+import { card, ScreenHeader, IconTile, HeroCard, heroStrip, SectionTitle, type Tone } from "./ui/kit";
 
 export type ProfileMenuKey = "progress" | "planner" | "notes" | "ai-tutor" | "refer" | "courses" | "browse-courses" | "tests" | "saved" | "payments" | "certificates" | "achievements" | "notifications" | "help" | "settings";
 
@@ -67,52 +67,47 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
     >
       <ScreenHeader title="Your Profile" onBack={onClose} />
 
-      {/* Identity card */}
-      <div style={{ padding: "14px 16px 0" }}>
-        <div style={{ ...card, padding: "18px 16px" }}>
+      {/* Identity — Home's blue card with the stats strip */}
+      <div style={{ padding: "8px 16px 0" }}>
+        <HeroCard>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <IconTile icon="user" size={58} solid />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em" }}>{profile.name}</p>
-              <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--ink-soft)", wordBreak: "break-word" }}>{profile.email}</p>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", flexWrap: "wrap" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <span style={{
-                display: "inline-block",
-                background: enrolled ? "var(--success)" : "var(--surface-dim)",
-                color: enrolled ? "var(--success-text)" : "var(--text-muted)",
-                fontSize: 10.5, fontWeight: 800,
-                padding: "4px 9px", borderRadius: 20, letterSpacing: "0.02em", flexShrink: 0,
-              }}>{enrolled ? "ENROLLED" : "FREE PLAN"}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-                {enrolled ? profile.batches.join(" | ") : "No batch yet"}
-              </span>
+            <span style={{ width: 58, height: 58, borderRadius: 18, background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 14px rgba(4,36,107,0.25)", fontSize: 20, fontWeight: 800, color: "var(--blue)" }}>
+              {profile.name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || <AppIcon name="user" size={26} color="var(--blue)" />}
             </span>
-            <button onClick={() => onMenu("browse-courses")} style={{
-              background: "var(--blue-tint)", border: "none", borderRadius: 10, padding: "6px 12px", cursor: "pointer",
-              color: "var(--blue)", fontSize: 12, fontWeight: 800, letterSpacing: "0.03em",
-            }}>CHANGE</button>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, fontSize: 19, fontWeight: 700, letterSpacing: "-0.01em" }}>{profile.name}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "rgba(255,255,255,0.72)", wordBreak: "break-word" }}>{profile.email}</p>
+            </div>
           </div>
-        </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+            <span style={{ flexShrink: 0, background: enrolled ? "#CFFB6B" : "rgba(255,255,255,0.16)", color: enrolled ? "var(--blue-dark)" : "white", fontSize: 10.5, fontWeight: 800, padding: "4px 9px", borderRadius: 8, letterSpacing: "0.02em" }}>
+              {enrolled ? "ENROLLED" : "FREE PLAN"}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {enrolled ? profile.batches.join(" · ") : "No batch yet"}
+            </span>
+            <button onClick={() => onMenu("browse-courses")} className="press" style={{
+              flexShrink: 0, background: "linear-gradient(135deg,var(--gold),var(--gold-dark))", border: "none", borderRadius: 10, padding: "7px 12px", cursor: "pointer",
+              color: "var(--blue-dark)", fontSize: 12, fontWeight: 800,
+            }}>Change</button>
+          </div>
+
+          <div style={{ ...heroStrip, display: "flex", padding: "10px 4px", marginTop: 14 }}>
+            {stats.map((x, i) => (
+              <div key={x.label} style={{ flex: 1, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--gold)", lineHeight: 1.2 }}>{x.val}</p>
+                <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.68)" }}>{x.label}</p>
+              </div>
+            ))}
+          </div>
+        </HeroCard>
       </div>
 
-      {/* Snapshot strip */}
-      <div style={{ padding: "12px 16px 0" }}>
-        <div style={{ ...card, padding: "14px 16px", display: "flex" }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center", borderRight: i < 2 ? "1px solid var(--line)" : "none" }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--blue)" }}>{s.val}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--ink-soft)" }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <div style={{ padding: "18px 16px 10px" }}><SectionTitle kicker="Everything in one place" title="Your account" /></div>
 
       {/* Menu — one card, rows split by hairlines */}
-      <div style={{ padding: "12px 16px 0" }}>
+      <div style={{ padding: "0 16px" }}>
         <div style={{ ...card, padding: "4px 14px" }}>
           {MENU.map((item, i) => (
             <button key={item.key} onClick={() => onMenu(item.key)} className="press" style={{

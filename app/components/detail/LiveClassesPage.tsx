@@ -2,7 +2,7 @@
 
 import { fmtIST } from "../../lib/dates";
 import { AppIcon, type IconName } from "../AppIcon";
-import { ScreenHeader, SectionTitle, EmptyState, card, page, smallBtn, gradient } from "../ui/kit";
+import { heroSurface, ScreenHeader, SectionTitle, EmptyState, card, page, smallBtn } from "../ui/kit";
 
 export type LiveClassItem = {
   id: string;
@@ -78,7 +78,7 @@ export default function LiveClassesPage({
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Attendance summary */}
         <div style={{
-          background: gradient, borderRadius: 18, padding: "16px 18px", color: "white",
+          ...heroSurface, padding: "16px 18px", color: "white",
           display: "flex", alignItems: "center", gap: 12,
           boxShadow: "0 8px 22px rgba(11,92,255,0.25)",
         }}>

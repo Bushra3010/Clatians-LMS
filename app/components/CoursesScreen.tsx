@@ -5,6 +5,7 @@ import { pushBack, goBack } from "../lib/back-stack";
 import type { BatchDetails } from "../lib/catalog/batches";
 import { WebsiteBatchHero, WebsiteBatchBody, WebsiteBatchStickyBar } from "./WebsiteBatch";
 import { AppIcon, courseIconName, type IconName } from "./AppIcon";
+import * as kit from "./ui/kit";
 
 /** A cohort of a course — what a student actually joins and pays for. */
 export type CatalogBatch = {
@@ -75,19 +76,6 @@ export type CatalogItem = {
 };
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
-/** Darkens a "#rrggbb" color for a gradient's second stop; passes through anything else unchanged. */
-function shade(hex: string, amt: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  const ch = (shift: number) => Math.max(0, Math.round(((n >> shift) & 0xff) * (1 - amt)));
-  return `rgb(${ch(16)}, ${ch(8)}, ${ch(0)})`;
-}
-/** A small icon that sits inline with text (badges, notes). */
-const II = (name: IconName, size = 11) => <AppIcon name={name} size={size} strokeWidth={2.6} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} />;
-/** A tiny status dot, used in front of seat counts. */
-const Dot = ({ color }: { color: string }) => <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: color, marginRight: 5, verticalAlign: "1px" }} />;
-
 const METHODS = [
   { id: "upi", icon: "smartphone" as IconName, label: "UPI / GPay / PhonePe", sub: "Instant" },
   { id: "card", icon: "card" as IconName, label: "Credit / Debit Card", sub: "Visa, Mastercard, Rupay" },
@@ -117,15 +105,6 @@ const liveBatches = (c: CatalogItem) => c.batches.filter((b) => b.status !== "ar
 /** Seats still open. 500+ seats means "unlimited" (mentorship, mock tests), so there is no count to show. */
 const seatsLeft = (b: CatalogBatch) => (b.seats > 0 && b.seats < 500 ? Math.max(0, b.seats - b.filled) : null);
 const pctOff = (b: CatalogBatch) => (b.originalFee > b.fee && b.originalFee > 0 ? Math.round(((b.originalFee - b.fee) / b.originalFee) * 100) : 0);
-
-function BackBar({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "var(--ink-primary)", fontSize: 14, fontWeight: 700, padding: "14px 16px 4px", maxWidth: "100%" }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-primary)" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="15 18 9 12 15 6" /></svg>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-    </button>
-  );
-}
 
 function Tick({ children }: { children: React.ReactNode }) {
   return (
@@ -241,38 +220,42 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
     const t = view.target;
     const instructor = t.kind === "batch" ? t.batch.faculty[0] : undefined;
     const sub = [t.kind === "batch" ? t.batch.name : "", t.kind === "batch" ? t.batch.duration : t.course.duration].filter(Boolean).join(" · ");
-    const confetti = ["#F5A623", "#0B5CFF", "#2F9E76", "#E03131", "#7C3AED", "#0891B2"];
+    const confetti = ["var(--gold)", "var(--blue)", "var(--green)", "#CFFB6B", "var(--purple)", "white"];
     return (
-      <div style={{ background: "white", minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center", padding: "36px 20px 28px", textAlign: "center" }}>
-        <div style={{ position: "relative", width: 180, height: 150, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {confetti.flatMap((c, i) => [0, 1].map((j) => {
-            const a = ((i * 2 + j) / 12) * Math.PI * 2;
-            return <span key={`${i}-${j}`} style={{ position: "absolute", left: 90 + Math.cos(a) * 78 - 4, top: 75 + Math.sin(a) * 66 - 2, width: 9, height: 4, borderRadius: 2, background: c, transform: `rotate(${(a * 180) / Math.PI + 45}deg)` }} />;
-          }))}
-          <div style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#34C759,#1E9E4A)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(30,158,74,0.35)" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+      <div style={{ ...kit.page, padding: "4px 16px 28px", minHeight: "100vh", boxSizing: "border-box" }}>
+        {/* Celebration card — Home's hero gradient */}
+        <div style={{ position: "relative", overflow: "hidden", borderRadius: 24, padding: "26px 18px 22px", background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 55%,var(--blue) 100%)", boxShadow: "0 10px 28px rgba(11,92,255,0.28)", textAlign: "center" }}>
+          <div style={{ position: "absolute", right: -50, top: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.30), transparent 70%)" }} />
+          <div style={{ position: "absolute", left: -40, bottom: -70, width: 170, height: 170, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.14), transparent 70%)" }} />
+          <div style={{ position: "relative", width: 170, height: 130, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {confetti.flatMap((c, i) => [0, 1].map((j) => {
+              const a = ((i * 2 + j) / 12) * Math.PI * 2;
+              return <span key={`${i}-${j}`} style={{ position: "absolute", left: 85 + Math.cos(a) * 74 - 4, top: 65 + Math.sin(a) * 58 - 2, width: 9, height: 4, borderRadius: 2, background: c, transform: `rotate(${(a * 180) / Math.PI + 45}deg)` }} />;
+            }))}
+            <div style={{ width: 88, height: 88, borderRadius: "50%", background: "linear-gradient(135deg,var(--gold),var(--gold-dark))", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(245,166,35,0.45)" }}>
+              <AppIcon name="check" size={44} color="var(--blue-dark)" strokeWidth={3} />
+            </div>
           </div>
+          <h2 style={{ position: "relative", margin: "8px 0 6px", fontSize: 23, fontWeight: 700, color: "white" }}>Payment <span style={{ color: "var(--gold)" }}>Successful!</span></h2>
+          <p style={{ position: "relative", margin: 0, fontSize: 13.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.55 }}>Welcome to your learning journey.<br />You now have access to the course.</p>
         </div>
-        <h2 style={{ margin: "10px 0 6px", fontSize: 24, fontWeight: 900, color: "var(--ink-primary)" }}>Payment Successful!</h2>
-        <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>Welcome to your learning journey</p>
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--text-muted)" }}>You now have access to the course.</p>
 
-        <div style={{ width: "100%", maxWidth: 360, marginTop: 22, background: "white", border: "1px solid var(--line)", borderRadius: 16, padding: 12, display: "flex", gap: 12, alignItems: "center", textAlign: "left", boxShadow: "0 2px 10px rgba(15,23,41,0.06)" }}>
-          <div style={{ width: 72, height: 72, borderRadius: 12, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={courseIconName(t.course)} size={32} color="white" strokeWidth={1.7} /></div>
+        <div style={{ ...kit.card, marginTop: 14, padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
+          <kit.IconTile icon={courseIconName(t.course)} size={60} solid />
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{t.course.name}</p>
-            {instructor && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>Instructor: {instructor}</p>}
-            {sub && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{sub}</p>}
-            <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--text-disabled)" }}>{view.amount > 0 ? inr(view.amount) : "Free"}{view.invoiceNo ? ` · ${view.invoiceNo}` : ""}</p>
+            <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{t.course.name}</p>
+            {instructor && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)" }}>Instructor: {instructor}</p>}
+            {sub && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink-soft)" }}>{sub}</p>}
+            <span style={{ display: "inline-block", marginTop: 6 }}><kit.Pill tone="green"><AppIcon name="receipt" size={11} />{view.amount > 0 ? inr(view.amount) : "Free"}{view.invoiceNo ? ` · ${view.invoiceNo}` : ""}</kit.Pill></span>
           </div>
         </div>
 
-        <div style={{ width: "100%", maxWidth: 360, marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={() => { show({ name: "list" }); onOpenStudy?.(); }} style={{ ...primaryBtn, width: "100%", padding: "15px", fontSize: 15 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>Go to My Learning<AppIcon name="arrowRight" size={17} /></span>
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={() => { show({ name: "list" }); onOpenStudy?.(); }} className="press" style={{ ...kit.primaryBtn, width: "100%", padding: 15, fontSize: 15 }}>
+            Go to My Learning<AppIcon name="arrowRight" size={17} />
           </button>
           {onViewOrder && (
-            <button onClick={() => { show({ name: "list" }); onViewOrder(); }} style={{ width: "100%", background: "var(--blue-tint)", color: "var(--blue)", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+            <button onClick={() => { show({ name: "list" }); onViewOrder(); }} className="press" style={{ ...kit.outlineBtn, width: "100%", padding: 14 }}>
               View Order Details
             </button>
           )}
@@ -290,9 +273,9 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
       else startCheckout({ kind: "batch", course: c, batch: b });
     };
     return (
-      <div style={{ background: "#F8FAFC", minHeight: "100vh" }}>
+      <div style={{ background: "var(--app-bg)", minHeight: "100vh" }}>
         <WebsiteBatchHero b={b} courseName={c.name} onBack={back} enrolled={b.enrolled} />
-        <div style={{ padding: "20px 16px 16px" }}>
+        <div style={{ padding: "16px 16px 16px" }}>
           <WebsiteBatchBody b={b} onEnroll={enroll} enrolled={b.enrolled} />
         </div>
         <WebsiteBatchStickyBar b={b} onEnroll={enroll} enrolled={b.enrolled} />
@@ -307,127 +290,148 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
     // Once the course is bought it's theirs: show only their batch, never prices.
     const owned = c.enrolled || myBatches.length > 0;
     const batches = owned ? myBatches : liveBatches(c);
-    const facts = [
-      { label: "Duration", value: c.duration },
-      { label: "Batch size", value: c.batchSize },
-      { label: "Mode", value: c.mode },
+    const facts: { label: string; value: string; icon: IconName }[] = [
+      { label: "Duration", value: c.duration, icon: "clock" as IconName },
+      { label: "Batch size", value: c.batchSize, icon: "users" as IconName },
+      { label: "Mode", value: c.mode, icon: "laptop" as IconName },
     ].filter((f) => f.value);
 
     return (
-      <div style={{ background: "var(--app-bg)", minHeight: "100vh", paddingBottom: 28 }}>
-        <BackBar label="Courses" onClick={back} />
+      <div style={{ ...kit.page, minHeight: "100vh" }}>
+        <kit.ScreenHeader title={c.name} subtitle="Courses" onBack={back} />
 
-        <div style={{ padding: "0 16px" }}>
-          <div style={{ background: "white", borderRadius: 18, padding: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 52, height: 52, borderRadius: 15, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={courseIconName(c)} size={26} color="white" strokeWidth={1.8} /></div>
+        <div style={kit.body}>
+          {/* Course card — Home's hero gradient */}
+          <div style={{ position: "relative", overflow: "hidden", borderRadius: 24, padding: 18, background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 55%,var(--blue) 100%)", boxShadow: "0 10px 28px rgba(11,92,255,0.28)" }}>
+            <div style={{ position: "absolute", right: -50, top: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.30), transparent 70%)" }} />
+            <div style={{ position: "absolute", left: -40, bottom: -70, width: 170, height: 170, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.14), transparent 70%)" }} />
+            <div style={{ position: "relative", display: "flex", gap: 12, alignItems: "center" }}>
+              <span style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AppIcon name={courseIconName(c)} size={26} color="white" strokeWidth={1.8} />
+              </span>
               <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 10.5, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{MODES.find((m) => m.key === c.category)?.label ?? c.category}</p>
-                <h2 style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 900, color: "var(--ink-primary)" }}>{c.name}</h2>
+                <span style={{ display: "inline-block", background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 6 }}>{MODES.find((m) => m.key === c.category)?.label ?? c.category}</span>
+                <h2 style={{ margin: "5px 0 0", fontSize: 20, fontWeight: 700, color: "white", lineHeight: 1.25 }}>{c.name}</h2>
               </div>
             </div>
-            {c.tagline && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.55 }}>{c.tagline}</p>}
+            {c.tagline && <p style={{ position: "relative", margin: "12px 0 0", fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.55 }}>{c.tagline}</p>}
             {facts.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 10, fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>
-                {facts.map((f) => <span key={f.label}>{f.label}: <b style={{ color: "var(--ink-primary)" }}>{f.value}</b></span>)}
+              <div style={{ position: "relative", display: "flex", marginTop: 14, background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 16, padding: "10px 4px" }}>
+                {facts.map((f, i) => (
+                  <div key={f.label} style={{ flex: "1 1 0", minWidth: 0, textAlign: "center", padding: "0 6px", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                    <AppIcon name={f.icon} size={15} color="var(--gold)" />
+                    <p style={{ margin: "3px 0 0", fontSize: 12.5, fontWeight: 800, color: "white", overflowWrap: "anywhere", lineHeight: 1.25 }}>{f.value}</p>
+                    <p style={{ margin: "1px 0 0", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{f.label}</p>
+                  </div>
+                ))}
               </div>
             )}
             {/* Make this the course that heads the home screen */}
             {onSelectCourse && (
               selectedCourseId === c.id ? (
-                <p style={{ margin: "12px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--success-text)", background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "8px 12px", display: "inline-block" }}>
-                  {II("check", 13)}This is your course
+                <p style={{ position: "relative", margin: "14px 0 0", fontSize: 12.5, fontWeight: 800, color: "var(--success-text)", background: "var(--success)", borderRadius: 12, padding: "9px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                  <AppIcon name="checkCircle" size={15} />This is your course
                 </p>
               ) : (
                 <button
                   onClick={async () => { setChoosing(true); await onSelectCourse(c.id); setChoosing(false); }}
                   disabled={choosing}
-                  style={{ display: "block", marginTop: 12, width: "100%", background: "var(--info-border)", color: "var(--blue)", border: "1.5px solid var(--blue)", borderRadius: 12, padding: "11px", fontSize: 13.5, fontWeight: 800, cursor: "pointer", opacity: choosing ? 0.6 : 1 }}
+                  className="press"
+                  style={{ ...kit.goldBtn, position: "relative", width: "100%", marginTop: 14, opacity: choosing ? 0.6 : 1 }}
                 >
                   {choosing ? "Saving…" : "Choose this course"}
                 </button>
               )
             )}
-            {(c.overview || c.curriculum.length > 0 || c.features.length > 0) && (
-              <button onClick={() => setShowAbout(!showAbout)} style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "var(--blue)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                {showAbout ? "Hide course info" : "About this course"}
-                <AppIcon name="chevronDown" size={14} color="var(--blue)" strokeWidth={2.5} style={showAbout ? { transform: "rotate(180deg)" } : undefined} />
-              </button>
-            )}
-            {showAbout && (
-              <div style={{ marginTop: 10, borderTop: "1px solid var(--gold-100)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
-                {c.overview && <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.7 }}>{c.overview}</p>}
-                {c.features.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{c.features.map((f, i) => <Tick key={i}>{f}</Tick>)}</div>}
-                {c.curriculum.map((m, i) => (
-                  <div key={i}>
-                    <p style={{ margin: "0 0 4px", fontSize: 12.5, fontWeight: 800, color: "var(--ink-primary)" }}>{m.module}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>{m.topics.join(" · ")}</p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
-          <p style={{ margin: "20px 2px 10px", fontSize: 12, fontWeight: 800, color: "var(--text-disabled)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {owned
-              ? (myBatches.length > 1 ? `Your batches (${myBatches.length})` : "Your batch")
-              : batches.length > 0 ? `Choose your batch (${batches.length})` : "Batches"}
-          </p>
-
-          {/* Students always buy a batch — a course has no price of its own. */}
-          {batches.length === 0 && (
-            <div style={{ ...cardStyle, marginTop: 0 }}>
-              <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                {c.enrolled ? "You have access to this course." : "No batch is open for this course right now. Ask us when the next batch starts."}
-              </p>
-              {c.enrolled
-                ? <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(c.id) : onOpenStudy?.()} style={{ ...primaryBtn, marginTop: 12 }}>Start learning</button>
-                : <a href="/enquiry" style={{ ...primaryBtn, display: "inline-block", marginTop: 12, textDecoration: "none" }}>Enquire about next batch</a>}
+          {/* About — collapsible card */}
+          {(c.overview || c.curriculum.length > 0 || c.features.length > 0) && (
+            <div style={{ ...kit.card, padding: 0, overflow: "hidden" }}>
+              <button onClick={() => setShowAbout(!showAbout)} style={{ width: "100%", background: "none", border: "none", padding: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                <kit.IconTile icon="info" size={36} />
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>About this course</span>
+                <AppIcon name="chevronDown" size={18} color="var(--ink-soft)" strokeWidth={2.5} style={{ transform: showAbout ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+              </button>
+              {showAbout && (
+                <div style={{ borderTop: "1px solid var(--line)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {c.overview && <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7 }}>{c.overview}</p>}
+                  {c.features.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{c.features.map((f, i) => <Tick key={i}>{f}</Tick>)}</div>}
+                  {c.curriculum.map((m, i) => (
+                    <div key={i} style={{ background: "var(--app-bg)", borderRadius: 12, padding: "10px 12px" }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>{m.module}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.55 }}>{m.topics.join(" · ")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {batches.map((b) => {
-              const left = seatsLeft(b);
-              return (
-                <div key={b.id} onClick={() => openBatch(c, b)} style={{ background: "white", borderRadius: 18, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", cursor: "pointer" }}>
-                  <div style={{ background: gradient, padding: "14px 16px", position: "relative" }}>
-                    <div style={{ position: "absolute", right: -18, top: -18, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {b.batchType && <span style={heroChip}>{b.batchType}</span>}
-                      {b.language && <span style={heroChip}>{b.language}</span>}
-                      {b.status === "filling-fast" && <span style={{ ...heroChip, background: "#F97316" }}>{II("flame")}HOT</span>}
-                      {b.enrolled && <span style={{ ...heroChip, background: "var(--green)" }}>{II("check")}ENROLLED</span>}
-                    </div>
-                    <p style={{ margin: "10px 0 0", fontSize: 15.5, fontWeight: 900, color: "white", lineHeight: 1.3 }}>{b.name}</p>
-                    {(b.startDate || b.endDate) && (
-                      <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.78)" }}>{II("calendar", 12)}{[b.startDate, b.endDate].filter(Boolean).join(" · ")}</p>
-                    )}
-                  </div>
-                  {b.enrolled ? (
-                    <div style={{ padding: "13px 16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--success-text)" }}>{II("check", 13)}You have full access</span>
-                      <span style={{ ...primaryBtn, padding: "10px 16px", fontSize: 13 }}>Open</span>
-                    </div>
-                  ) : (
-                  <div style={{ padding: "13px 16px 15px" }}>
-                    {left !== null && (
-                      <p style={{ margin: "0 0 10px", fontSize: 11.5, fontWeight: 700, color: left <= 5 ? "var(--error-text)" : "var(--success-text)" }}>
-                        <Dot color={left <= 5 ? "var(--error-text)" : "var(--green)"} />{left === 0 ? "Batch full" : left <= 5 ? `Only ${left} seats left!` : `${left} seats available`}
-                      </p>
-                    )}
-                    {b.offer && <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "var(--success-text)" }}>{II("gift")}{b.offer}</p>}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--gold-100)", paddingTop: 12 }}>
-                      <Price b={b} />
-                      <span style={{ ...primaryBtn, padding: "10px 16px", fontSize: 13 }}>View details</span>
-                    </div>
-                  </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <kit.SectionTitle
+            kicker={owned ? "Already yours" : "Open for enrolment"}
+            title={owned
+              ? (myBatches.length > 1 ? `Your batches (${myBatches.length})` : "Your batch")
+              : batches.length > 0 ? `Choose your batch (${batches.length})` : "Batches"}
+          />
 
+          {/* Students always buy a batch — a course has no price of its own. */}
+          {batches.length === 0 && (
+            <kit.EmptyState
+              icon={c.enrolled ? "checkCircle" : "calendar"}
+              title={c.enrolled ? "You have access to this course" : "No batch open right now"}
+              text={c.enrolled ? undefined : "Ask us when the next batch starts."}
+              action={c.enrolled
+                ? <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(c.id) : onOpenStudy?.()} className="press" style={kit.primaryBtn}>Start learning</button>
+                : <a href="/enquiry" style={{ ...kit.primaryBtn, textDecoration: "none" }}>Enquire about next batch</a>}
+            />
+          )}
+
+          {batches.map((b) => {
+            const left = seatsLeft(b);
+            const validity = [b.startDate, b.endDate].filter(Boolean).join(" – ");
+            return (
+              <div key={b.id} onClick={() => openBatch(c, b)} className="press" style={{ ...kit.card, borderRadius: 22, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ position: "relative", overflow: "hidden", padding: "14px 16px", background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 45%,var(--blue) 100%)" }}>
+                  <div style={{ position: "absolute", right: -30, top: -50, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.32), transparent 70%)" }} />
+                  <AppIcon name={courseIconName(c)} size={84} color="rgba(255,255,255,0.08)" strokeWidth={1.2} style={{ position: "absolute", right: -8, bottom: -18 }} />
+                  <div style={{ position: "relative", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {b.enrolled && <span style={heroChip}><AppIcon name="check" size={10} strokeWidth={3} />ENROLLED</span>}
+                    {!b.enrolled && b.status === "filling-fast" && <span style={{ ...heroChip, background: "white", color: "#EA580C" }}><AppIcon name="flame" size={10} />FILLING FAST</span>}
+                    {b.batchType && <span style={{ ...heroChip, background: "#CFFB6B", color: "var(--blue-dark)", borderRadius: 6 }}>{b.batchType}</span>}
+                  </div>
+                  <p style={{ position: "relative", margin: "9px 0 0", fontSize: 16, fontWeight: 700, color: "white", lineHeight: 1.3, paddingRight: 40 }}>{b.name}</p>
+                </div>
+                <div style={{ padding: "12px 16px 14px" }}>
+                  {(b.language || validity) && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {b.language && <Meta icon="language">{b.language}</Meta>}
+                      {validity && <Meta icon="calendar">{validity}</Meta>}
+                    </div>
+                  )}
+                  {!b.enrolled && (left !== null || b.offer) && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 10 }}>
+                      {left !== null && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: left <= 5 ? "var(--error-text)" : "var(--success-text)" }}>
+                          <AppIcon name="users" size={12} strokeWidth={2.4} />{left === 0 ? "Batch full" : left <= 5 ? `Only ${left} seats left!` : `${left} seats available`}
+                        </span>
+                      )}
+                      {b.offer && <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--gold-dark)" }}><AppIcon name="gift" size={12} />{b.offer}</span>}
+                    </div>
+                  )}
+                  <div style={{ height: 1, background: "var(--line)", margin: "12px 0" }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    {b.enrolled
+                      ? <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}><AppIcon name="checkCircle" size={16} />You have full access</span>
+                      : <Price b={b} size={20} />}
+                    <span style={{ ...kit.primaryBtn, padding: "11px 16px", fontSize: 13, flexShrink: 0 }}>
+                      {b.enrolled ? "Open" : "View Details"}<AppIcon name="arrowRight" size={15} strokeWidth={2.4} />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -443,81 +447,96 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
       ? [t.course.name, t.batch.duration].filter(Boolean).join(" · ")
       : `${t.course.contentCount} study items · ${t.course.classCount} classes`;
     return (
-      <div style={{ background: "var(--app-bg)", paddingBottom: 30, minHeight: "100vh" }}>
-        <BackBar label="Checkout" onClick={back} />
+      <div style={{ ...kit.page, minHeight: "100vh" }}>
+        <kit.ScreenHeader title="Checkout" subtitle="Review and pay" onBack={back} />
 
-        <div style={{ padding: "0 16px" }}>
-          <div style={{ background: "white", borderRadius: 18, padding: "16px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-            <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Order Summary</p>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid var(--surface-dim)", marginBottom: 12 }}>
-              <div style={{ width: 50, height: 50, borderRadius: 16, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name={courseIconName(t.course)} size={24} color="white" strokeWidth={1.8} /></div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--ink-primary)" }}>{targetName(t)}</p>
-                <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-disabled)" }}>{subtitle}</p>
+        <div style={kit.body}>
+          <div style={{ ...kit.card, overflow: "hidden" }}>
+            {/* Item — blue strip like Home's cards */}
+            <div style={{ position: "relative", overflow: "hidden", display: "flex", gap: 12, alignItems: "center", padding: 14, background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 55%,var(--blue) 100%)" }}>
+              <div style={{ position: "absolute", right: -40, top: -50, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.30), transparent 70%)" }} />
+              <span style={{ position: "relative", width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AppIcon name={courseIconName(t.course)} size={24} color="white" strokeWidth={1.8} />
+              </span>
+              <div style={{ position: "relative", minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.3 }}>{targetName(t)}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.7)" }}>{subtitle}</p>
               </div>
             </div>
-            {price > 0 ? (
-              <>
-                {[[t.kind === "batch" ? "Batch fee" : "Course fee", inr(price)], ["GST (18%)", inr(gst)]].map(([l, v], i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{l}</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-primary)" }}>{v}</span>
+            <div style={{ padding: 16 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>Order Summary</p>
+              {price > 0 ? (
+                <>
+                  {[[t.kind === "batch" ? "Batch fee" : "Course fee", inr(price)], ["GST (18%)", inr(gst)]].map(([l, v], i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 9 }}>
+                      <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>{l}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{v}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, padding: "12px 14px", borderRadius: 14, background: "var(--blue-tint)" }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>Total</span>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: "var(--blue)" }}>{inr(total)}</span>
                   </div>
-                ))}
-                <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid var(--surface-dim)" }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Total</span>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: "var(--blue)" }}>{inr(total)}</span>
-                </div>
-              </>
-            ) : (
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--green)" }}>Free — no payment needed</p>
-            )}
+                </>
+              ) : (
+                <kit.Pill tone="green"><AppIcon name="gift" size={12} />Free — no payment needed</kit.Pill>
+              )}
+            </div>
           </div>
 
           {price > 0 && (
-            <div style={{ background: "white", borderRadius: 18, padding: "16px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-              <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>Payment Method</p>
-              {METHODS.map((m) => (
-                <div key={m.id} onClick={() => setMethod(m.id)} style={{
-                  display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
-                  borderRadius: 12, marginBottom: 8, cursor: "pointer",
-                  border: `1.5px solid ${method === m.id ? "var(--blue)" : "var(--border)"}`,
-                  background: method === m.id ? "var(--info-border)" : "white",
-                }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon name={m.icon} size={18} color="var(--blue)" /></span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--ink-primary)" }}>{m.label}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "var(--text-disabled)" }}>{m.sub}</p>
-                  </div>
-                  <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${method === m.id ? "var(--blue)" : "#D1D5DB"}`, background: method === m.id ? "var(--blue)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {method === m.id && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "white" }} />}
-                  </div>
-                </div>
-              ))}
-              <div style={{ background: "var(--warning)", borderRadius: 10, padding: "8px 12px", marginTop: 4 }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#92400E" }}>{II("info", 12)}Test mode: this is a simulated payment. No real money is charged.</p>
+            <div style={{ ...kit.card, padding: 16 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>Payment Method</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {METHODS.map((m) => {
+                  const on = method === m.id;
+                  return (
+                    <div key={m.id} onClick={() => setMethod(m.id)} className="press" style={{
+                      display: "flex", alignItems: "center", gap: 12, padding: "11px 12px",
+                      borderRadius: 14, cursor: "pointer",
+                      border: `1.5px solid ${on ? "var(--blue)" : "var(--line)"}`,
+                      background: on ? "var(--blue-tint)" : "white",
+                    }}>
+                      <kit.IconTile icon={m.icon} size={38} solid={on} />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{m.label}</p>
+                        <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "var(--ink-soft)" }}>{m.sub}</p>
+                      </div>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${on ? "var(--blue)" : "var(--line-strong)"}`, background: on ? "var(--blue)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {on && <AppIcon name="check" size={11} color="white" strokeWidth={3.5} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ background: "var(--gold-tint)", borderRadius: 12, padding: "9px 12px", marginTop: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
+                <AppIcon name="info" size={13} color="var(--gold-dark)" style={{ marginTop: 1, flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: 11.5, color: "var(--gold-dark)", lineHeight: 1.45 }}>Test mode: this is a simulated payment. No real money is charged.</p>
               </div>
             </div>
           )}
 
-          {error && <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--error-text)", background: "var(--error)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "10px 12px" }}>{error}</p>}
+          {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)", background: "var(--error)", borderRadius: 12, padding: "10px 12px" }}>{error}</p>}
 
-          <button onClick={() => pay(t)} disabled={paying} style={{
-            width: "100%", background: gradient, color: "white", border: "none",
-            borderRadius: 16, padding: "16px", fontSize: 16, fontWeight: 800,
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11.5, color: "var(--ink-soft)" }}>
+            <AppIcon name="lock" size={12} />Secure checkout
+          </div>
+          <button onClick={() => pay(t)} disabled={paying} className="press" style={{
+            ...kit.primaryBtn, width: "100%", borderRadius: 16, padding: 16, fontSize: 16,
             cursor: paying ? "default" : "pointer", opacity: paying ? 0.7 : 1,
-            boxShadow: "0 6px 18px rgba(61,36,17,0.35)",
           }}>
             {paying ? "Processing…" : price > 0 ? `Pay ${inr(total)}` : "Enroll Free"}
+            {!paying && <AppIcon name="arrowRight" size={17} strokeWidth={2.4} />}
           </button>
         </div>
       </div>
     );
   }
 
-  // ── LIST — website-style catalog: hero, mode tabs, course chips, batch cards ──
+  // ── LIST — Home-style catalog: promo card, format cards, course chips, batch cards ──
+  const TAB_LABEL: Record<Mode, string> = { online: "Online", mentorship: "Mentorship", mock: "Mock", offline: "Classroom" };
   const tabs: { key: Mode; label: string; icon: IconName; count: number }[] = [
-    ...modes.map((m) => ({ key: m.key as Mode, label: m.label.replace(" Course", "").replace("Mock Tests", "Mock"), icon: m.icon, count: browsable.filter((c) => c.category === m.key).length })),
+    ...modes.map((m) => ({ key: m.key as Mode, label: TAB_LABEL[m.key as Mode] ?? m.label, icon: m.icon, count: browsable.filter((c) => c.category === m.key).length })),
   ];
   const active = shown.find((c) => c.id === courseSel) ?? shown[0];
   // A mode's list shows every open batch for that category — owned ones are marked ENROLLED.
@@ -525,171 +544,203 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   const courseAccess = !!active && active.enrolled && !active.batches.some((b) => b.enrolled);
 
   return (
-    <div style={{ background: "var(--app-bg)", paddingBottom: 24 }}>
-      {/* Hero — same as clatians.com/courses */}
-      <div style={{ background: gradient, padding: "26px 18px 22px", borderRadius: "0 0 24px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: -60, top: -60, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-        <div style={{ position: "absolute", left: -50, bottom: -70, width: 170, height: 170, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-        <span style={{ position: "relative", display: "inline-block", fontSize: 11.5, fontWeight: 700, color: "white", background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.25)", padding: "5px 13px", borderRadius: 20 }}>
-          {II("award", 12)}India&apos;s Best Law Entrance Coaching
-        </span>
-        <h2 style={{ position: "relative", margin: "14px 0 0", fontSize: 25, fontWeight: 900, color: "white", letterSpacing: "-0.01em" }}>
-          All Courses &amp; <span style={{ background: "linear-gradient(90deg, #FFD66B, #F5A623)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Programs</span>
-        </h2>
-        <p style={{ position: "relative", margin: "8px auto 0", maxWidth: 340, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.55 }}>
-          Classroom · Online · 1-on-1 Mentorship — pick the format that fits you.
-        </p>
-        <div style={{ position: "relative", display: "flex", justifyContent: "center", gap: 8, marginTop: 18 }}>
-          {[{ v: "15,000+", l: "Students" }, { v: "1,000+", l: "NLU Selections" }, { v: "98%", l: "Success Rate" }].map((s) => (
-            <div key={s.l} style={{ flex: "1 1 0", maxWidth: 110, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, padding: "10px 6px" }}>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "#FFD66B" }}>{s.v}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.75)" }}>{s.l}</p>
-            </div>
-          ))}
+    <div style={{ ...kit.page, paddingBottom: 28 }}>
+      {/* ── Promo card — same gradient, glows and stat strip as Home's hero ── */}
+      <div style={{ padding: "4px 16px 0" }}>
+        <div style={{
+          background: "linear-gradient(150deg,var(--blue-dark) 0%,var(--blue-dark) 55%,var(--blue) 100%)",
+          borderRadius: 24, padding: "18px 18px 16px", position: "relative", overflow: "hidden",
+          boxShadow: "0 10px 28px rgba(11,92,255,0.28)",
+        }}>
+          <div style={{ position: "absolute", right: -50, top: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.30), transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: -40, bottom: -70, width: 170, height: 170, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.14), transparent 70%)", pointerEvents: "none" }} />
+
+          <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 8 }}>
+            <AppIcon name="award" size={12} strokeWidth={2.4} />India&apos;s Best Law Entrance Coaching
+          </span>
+          <p style={{ position: "relative", margin: "12px 0 0", fontSize: 23, fontWeight: 700, color: "white", lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+            All Courses &amp; <span style={{ color: "var(--gold)" }}>Programs</span>
+          </p>
+          <p style={{ position: "relative", margin: "6px 0 0", fontSize: 13.5, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+            Classroom · Online · 1-on-1 Mentorship — pick the format that fits you.
+          </p>
+
+          <div style={{
+            position: "relative", display: "flex", alignItems: "stretch", marginTop: 14,
+            background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 16, padding: "10px 4px",
+          }}>
+            {[{ v: "15,000+", l: "Students" }, { v: "1,000+", l: "NLU Selections" }, { v: "98%", l: "Success Rate" }].map((s, i) => (
+              <div key={s.l} style={{ flex: "1 1 0", minWidth: 0, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gold)", lineHeight: 1.2 }}>{s.v}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10.5, fontWeight: 500, color: "rgba(255,255,255,0.68)", whiteSpace: "nowrap" }}>{s.l}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Mode tabs */}
-      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "var(--app-bg)", padding: "12px 16px 4px" }}>
-        <div style={{ display: "flex", gap: 4, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,41,0.06)", overflowX: "auto", scrollbarWidth: "none" }}>
-          {tabs.map((t) => {
-            const on = mode === t.key;
-            return (
-              <button key={t.key} onClick={() => { setMode(t.key); setCourseSel(null); }} style={{
-                display: "flex", alignItems: "center", gap: 6, flexShrink: 0, whiteSpace: "nowrap",
-                flex: "1 0 auto", justifyContent: "center", padding: "9px 11px", border: "none", cursor: "pointer", borderRadius: 10,
-                background: on ? gradient : "transparent", boxShadow: on ? "0 3px 10px rgba(11,92,255,0.25)" : "none",
-                fontSize: 12.5, fontWeight: on ? 800 : 600, color: on ? "white" : "var(--text-muted)",
+      {/* ── Format cards — Home's squircle tiles; scroll sideways if more are added ── */}
+      <div style={{ padding: "20px 16px 0" }}>
+        <kit.SectionTitle kicker="Choose your format" title="Explore courses" />
+      </div>
+      <div className="no-scroll" style={{
+        display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(76px, 1fr)", gap: 10,
+        overflowX: "auto", padding: "12px 16px 10px",
+      }}>
+        {tabs.map((t) => {
+          const on = mode === t.key;
+          return (
+            <button key={t.key} onClick={() => { setMode(t.key); setCourseSel(null); }} className="press" style={{
+              position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+              padding: "12px 4px 10px", borderRadius: 18, cursor: "pointer",
+              border: on ? "1px solid transparent" : "1px solid var(--line)",
+              background: on ? kit.gradient : "var(--surface)",
+              boxShadow: on ? "0 8px 18px rgba(11,92,255,0.28)" : "0 6px 10px -2px rgba(15,23,41,0.12), 0 2px 4px rgba(15,23,41,0.05)",
+            }}>
+              <span style={{
+                width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                background: on ? "rgba(255,255,255,0.18)" : "var(--blue-tint)",
               }}>
-                <AppIcon name={t.icon} size={15} />
-                {t.label}
-                <span style={{ fontSize: 10, fontWeight: 800, minWidth: 18, padding: "1px 6px", borderRadius: 10, background: on ? "rgba(255,255,255,0.25)" : "var(--surface-dim)", color: on ? "white" : "var(--text-muted)" }}>{t.count}</span>
-              </button>
-            );
-          })}
-        </div>
+                <AppIcon name={t.icon} size={20} color={on ? "white" : "var(--blue)"} />
+              </span>
+              <span style={{ fontSize: 12, fontWeight: on ? 700 : 600, color: on ? "white" : "var(--ink)", whiteSpace: "nowrap" }}>{t.label}</span>
+              <span style={{
+                position: "absolute", top: 7, right: 7, minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box",
+                borderRadius: 9, fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center",
+                background: on ? "var(--gold)" : "var(--surface-dim)", color: on ? "var(--blue-dark)" : "var(--text-muted)",
+              }}>{t.count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {shown.length === 0 ? (
-        <p style={{ margin: "24px 16px", fontSize: 13, color: "var(--text-disabled)", textAlign: "center" }}>No courses here yet.</p>
+        <div style={{ padding: "8px 16px 0" }}>
+          <kit.EmptyState icon="book" title="No courses here yet" text="Check another format, or ask us what's coming next." />
+        </div>
       ) : (
         <>
           {/* Course chips */}
-          <div style={{ display: "flex", gap: 7, padding: "10px 16px 4px", overflowX: "auto", scrollbarWidth: "none" }}>
+          <div className="no-scroll" style={{ display: "flex", gap: 8, padding: "4px 16px 6px", overflowX: "auto" }}>
             {shown.map((c) => {
               const on = active?.id === c.id;
               const joined = c.enrolled || c.batches.some((b) => b.enrolled);
               return (
                 <button key={c.id} onClick={() => setCourseSel(c.id)} className="press" style={{
-                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0, whiteSpace: "nowrap",
-                  padding: "4px 10px", borderRadius: 20, cursor: "pointer", fontSize: 11, fontWeight: 700,
+                  display: "flex", alignItems: "center", gap: 6, flexShrink: 0, whiteSpace: "nowrap",
+                  padding: "7px 13px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 700,
                   background: on ? "var(--blue-tint)" : "white",
                   border: on ? "1.5px solid var(--blue)" : "1.5px solid var(--line)",
-                  color: on ? "var(--blue)" : W.ink,
+                  color: on ? "var(--blue)" : "var(--ink)",
                 }}>
-                  <AppIcon name={courseIconName(c)} size={12} />
+                  <AppIcon name={courseIconName(c)} size={13} />
                   {c.name}
-                  {joined && <AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" />}
+                  {joined && <AppIcon name="checkCircle" size={13} strokeWidth={2.4} color="var(--green)" />}
                 </button>
               );
             })}
           </div>
 
           {active && (
-            <div style={{ padding: "10px 16px 0" }}>
+            <div style={{ padding: "10px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
 
               {courseAccess && (
-                <div style={{ background: "var(--success)", border: "1px solid var(--success-border)", borderRadius: 14, padding: "11px 14px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--success-text)" }}>{II("check", 13)}You have access to this course</span>
-                  <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(active.id) : onOpenStudy?.()} style={{ ...enrollBtn, background: "var(--green)" }}>Start learning</button>
+                <div style={{ ...kit.card, background: "var(--success)", border: "1px solid var(--success-border)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}>
+                    <AppIcon name="checkCircle" size={16} />You have access to this course
+                  </span>
+                  <button onClick={() => onOpenCourseLearning ? onOpenCourseLearning(active.id) : onOpenStudy?.()} className="press" style={{ ...enrollBtn, background: "var(--green)", boxShadow: "none" }}>Start learning</button>
                 </div>
               )}
 
               {activeBatches.length === 0 && !courseAccess && (
-                <div style={{ background: "white", borderRadius: 16, padding: 16, border: "1px solid #E9EEF2" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>No batch is open for this course right now. Ask us when the next batch starts.</p>
-                  <a href="/enquiry" style={{ ...enrollBtn, display: "inline-block", marginTop: 12, textDecoration: "none" }}>Enquire</a>
-                </div>
+                <kit.EmptyState
+                  icon="calendar"
+                  title="No batch open right now"
+                  text="Ask us when the next batch of this course starts."
+                  action={<a href="/enquiry" style={{ ...kit.primaryBtn, textDecoration: "none", padding: "11px 20px" }}>Enquire</a>}
+                />
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {activeBatches.map((b) => {
-                  const left = seatsLeft(b);
-                  const seatText = left === null ? "" : left === 0 ? "Batch full" : b.filled === 0 ? `Only ${b.seats} Students` : left <= 5 ? `Only ${left} Seats Left!` : `${left} Seats Left`;
-                  const seatColor = left !== null && left <= 5 && b.filled > 0 ? "var(--error-text)" : "var(--success-text)";
-                  const tint = active.color || "var(--blue)";
-                  return (
-                    <div key={b.id} onClick={() => openBatch(active, b)} className="press" style={{
-                      display: "flex", alignItems: "stretch", background: "white", borderRadius: 16, cursor: "pointer",
-                      border: "none", boxShadow: "0 2px 10px rgba(15,23,41,0.06)", overflow: "hidden",
-                    }}>
-                      {/* Left graphic — ~40% of the card, carries the batch's status at a glance */}
-                      <div style={{
-                        flex: "0 0 38%", position: "relative", minWidth: 0, overflow: "hidden",
-                        background: `linear-gradient(160deg, ${tint}, ${shade(tint, 0.22)})`,
-                        display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
-                      }}>
-                        <div style={{ position: "absolute", right: -18, top: -18, width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
-                        <div style={{ position: "absolute", left: -14, bottom: -22, width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.10)" }} />
-                        <AppIcon name={courseIconName(active)} size={38} color="rgba(255,255,255,0.95)" strokeWidth={1.5} style={{ position: "relative" }} />
-                        {b.enrolled && (
-                          <span style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,0.94)", color: "var(--success-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20 }}>
-                            <AppIcon name="check" size={9} strokeWidth={3.5} />ENROLLED
-                          </span>
-                        )}
-                        {!b.enrolled && b.status === "filling-fast" && (
-                          <span style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,0.94)", color: "#EA580C", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20 }}>
-                            <AppIcon name="flame" size={9} />HOT
-                          </span>
+              {activeBatches.map((b) => {
+                const left = seatsLeft(b);
+                const seatText = left === null ? "" : left === 0 ? "Batch full" : b.filled === 0 ? `Only ${b.seats} Students` : left <= 5 ? `Only ${left} Seats Left!` : `${left} Seats Left`;
+                const urgent = left !== null && left <= 5 && b.filled > 0;
+                const off = pctOff(b);
+                const validity = [b.startDate, b.endDate].filter(Boolean).join(" – ");
+                return (
+                  <div key={b.id} onClick={() => openBatch(active, b)} className="press" style={{ ...kit.card, padding: 12, cursor: "pointer" }}>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      {/* Visual — a small Home-blue tile */}
+                      <div style={{ position: "relative", width: 78, height: 78, borderRadius: 18, flexShrink: 0, overflow: "hidden", background: kit.heroBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ position: "absolute", right: -24, top: -24, width: 70, height: 70, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.45), transparent 70%)" }} />
+                        <AppIcon name={courseIconName(active)} size={32} color="white" strokeWidth={1.7} style={{ position: "relative" }} />
+                        {off > 0 && !b.enrolled && (
+                          <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, textAlign: "center", background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 9.5, fontWeight: 800, padding: "2px 0" }}>{off}% OFF</span>
                         )}
                       </div>
-
-                      {/* Right content */}
-                      <div style={{ flex: 1, minWidth: 0, padding: "12px 14px", display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                          {b.batchType && <span style={{ ...badge, background: "var(--blue-tint)", color: "var(--blue)" }}>{b.batchType}</span>}
-                          {b.language && <span style={{ ...badge, background: "#FEF3C7", color: "#92400E" }}>{b.language}</span>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 4 }}>
+                          {b.enrolled && <kit.Pill tone="green"><AppIcon name="check" size={10} strokeWidth={3} />Enrolled</kit.Pill>}
+                          {!b.enrolled && b.status === "filling-fast" && <kit.Pill tone="gold"><AppIcon name="flame" size={10} />Filling fast</kit.Pill>}
+                          {b.batchType && <kit.Pill tone="blue">{b.batchType}</kit.Pill>}
                         </div>
-                        <p style={{ margin: "7px 0 0", fontSize: 14, fontWeight: 800, color: W.ink, lineHeight: 1.3 }}>{b.name}</p>
-                        {(b.startDate || b.endDate) && (
-                          <p style={{ margin: "5px 0 0", fontSize: 11.5, color: "#94A3B8" }}>{II("calendar", 12)}{[b.startDate, b.endDate].filter(Boolean).join(" – ")}</p>
-                        )}
-                        {b.chips.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
-                            {b.chips.slice(0, 2).map((x, i) => <span key={i} style={{ fontSize: 11.5, color: "#475569" }}><AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" style={{ display: "inline-block", verticalAlign: "-1px", marginRight: 5 }} />{x}</span>)}
-                          </div>
-                        )}
-
-                        <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
-                          {b.enrolled ? (
-                            <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--success-text)" }}>Full access</span>
-                          ) : (
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: W.ink }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</p>
-                              {b.originalFee > b.fee && <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", textDecoration: "line-through" }}>{inr(b.originalFee)}</p>}
-                              {seatText && <p style={{ margin: "1px 0 0", fontSize: 10.5, fontWeight: 700, color: seatColor }}>{seatText}</p>}
-                            </div>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openBatch(active, b); }}
-                            style={{ ...enrollBtn, flexShrink: 0 }}
-                          >
-                            View Details
-                          </button>
-                        </div>
+                        <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{b.name}</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--ink-soft)", display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+                          {b.language && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="language" size={12} color="var(--blue)" />{b.language}</span>}
+                          {validity && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name="calendar" size={12} color="var(--blue)" />{validity}</span>}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* Counselling nudge — as on the website */}
-              <div style={{ marginTop: 18, background: "white", boxShadow: "0 2px 10px rgba(15,23,41,0.06)", borderRadius: 16, padding: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: W.ink }}>Need Help Choosing?</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--text-muted)" }}>Talk to our expert counsellors — free!</p>
+                    {b.chips.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 10 }}>
+                        {b.chips.slice(0, 4).map((x, i) => (
+                          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
+                            <AppIcon name="check" size={12} strokeWidth={3} color="var(--green)" />{x}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+                      {b.enrolled ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "var(--success-text)" }}>
+                          <AppIcon name="checkCircle" size={15} />Full access
+                        </span>
+                      ) : (
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 17, fontWeight: 800, color: b.fee === 0 ? "var(--green)" : "var(--ink)" }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</span>
+                            {b.originalFee > b.fee && <span style={{ fontSize: 11.5, color: "var(--text-disabled)", textDecoration: "line-through" }}>{inr(b.originalFee)}</span>}
+                          </div>
+                          {seatText && (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: urgent || left === 0 ? "var(--error-text)" : "var(--success-text)" }}>
+                              <AppIcon name="users" size={11} strokeWidth={2.4} />{seatText}{b.filled > 0 ? ` · ${b.filled} enrolled` : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openBatch(active, b); }}
+                        className="press"
+                        style={{ ...kit.primaryBtn, padding: "9px 14px", fontSize: 12.5, borderRadius: 12, flexShrink: 0 }}
+                      >
+                        View Details<AppIcon name="arrowRight" size={14} strokeWidth={2.4} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Counselling nudge */}
+              <div style={{ ...kit.card, padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+                <kit.IconTile icon="chat" tone="gold" size={44} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>Need help choosing?</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--ink-soft)" }}>Talk to our expert counsellors — free!</p>
                 </div>
-                <a href="/enquiry" style={{ flexShrink: 0, background: gradient, color: "white", borderRadius: 10, padding: "9px 13px", fontSize: 12, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" }}>{II("chat", 12)}Free Counselling</a>
+                <a href="/enquiry" className="press" style={{ ...kit.goldBtn, flexShrink: 0, padding: "9px 13px", fontSize: 12, borderRadius: 12, textDecoration: "none", whiteSpace: "nowrap" }}>Free Counselling</a>
               </div>
             </div>
           )}
@@ -699,22 +750,21 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   );
 }
 
-const W = { ink: "var(--ink-primary)" };
-const badge: React.CSSProperties = { fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6 };
+/** A small grey info chip with an icon: batch type, language, validity. */
+function Meta({ icon, children }: { icon: IconName; children: React.ReactNode }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", background: "var(--app-bg)", border: "1px solid var(--line)", padding: "4px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>
+      <AppIcon name={icon} size={12} color="var(--blue)" strokeWidth={2.2} />{children}
+    </span>
+  );
+}
+
 const enrollBtn: React.CSSProperties = {
   background: gradient, color: "white", border: "none", borderRadius: 10, boxShadow: "0 3px 10px rgba(11,92,255,0.25)",
   padding: "9px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap",
 };
 
-const cardStyle: React.CSSProperties = {
-  background: "white", borderRadius: 16, padding: "16px",
-  marginTop: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-};
 const heroChip: React.CSSProperties = {
-  background: "rgba(255,255,255,0.18)", color: "white", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 20,
-};
-const primaryBtn: React.CSSProperties = {
-  background: gradient, color: "white", border: "none", borderRadius: 14,
-  padding: "13px 20px", fontSize: 14, fontWeight: 800, cursor: "pointer",
-  boxShadow: "0 6px 16px rgba(61,36,17,0.3)", whiteSpace: "nowrap", flexShrink: 0,
+  display: "inline-flex", alignItems: "center", gap: 4, background: "white", color: "var(--success-text)",
+  fontSize: 10.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20, whiteSpace: "nowrap",
 };

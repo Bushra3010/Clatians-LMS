@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, Send, Clock } from "./icons";
 import type { DoubtMessage } from "../lib/doubt-actions";
 import { AppIcon } from "./AppIcon";
-import { card, input, primaryBtn, IconTile, EmptyState, Pill, type Tone } from "./ui/kit";
+import { card, input, primaryBtn, IconTile, EmptyState, Pill, PageTitle, HeroCard, SectionTitle, heroStrip, goldBtn, type Tone } from "./ui/kit";
 import { AttachmentPicker, AttachmentPreview, type Attachment } from "./DoubtAttachment";
 
 export type DoubtItem = {
@@ -63,27 +63,55 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
   const sorted = [...doubts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <div style={{ background: "var(--app-bg)", padding: "16px 16px 80px" }}>
-      <div style={{ margin: "0 2px 14px" }}>
-        <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>Ask questions · get help from mentors</p>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>Doubts</h2>
-      </div>
+    <div style={{ background: "var(--app-bg)", paddingBottom: 80 }}>
+      <PageTitle kicker="Ask questions · get help from mentors" title="Doubts" />
+
+      <div style={{ padding: "12px 16px 0" }}>
+      {/* Summary — Home's blue card */}
+      <HeroCard padding={16} style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ width: 46, height: 46, borderRadius: 14, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AppIcon name="chat" size={22} color="white" />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>Stuck somewhere? <span style={{ color: "var(--gold)" }}>Ask us.</span></span>
+            <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>Mentors usually reply within a day.</span>
+          </span>
+        </div>
+        <div style={{ ...heroStrip, display: "flex", padding: "10px 4px", marginTop: 14 }}>
+          {[
+            { v: doubts.length, l: "Asked" },
+            { v: doubts.filter((d) => d.status === "answered").length, l: "Answered" },
+            { v: doubts.filter((d) => d.status === "open").length, l: "Awaiting" },
+          ].map((x, i) => (
+            <div key={x.l} style={{ flex: 1, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--gold)", lineHeight: 1.2 }}>{x.v}</p>
+              <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.68)" }}>{x.l}</p>
+            </div>
+          ))}
+        </div>
+      </HeroCard>
 
       {/* Ask a new doubt */}
-      <div style={{ ...card, padding: 16, marginBottom: 16 }}>
+      <div style={{ ...card, padding: 16, marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <IconTile icon="pen" size={34} />
-          <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>Ask a new doubt</p>
+          <IconTile icon="pen" size={36} />
+          <span>
+            <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>Ask a new doubt</span>
+            <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)" }}>Add a photo or PDF if it helps</span>
+          </span>
         </div>
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g., Legal Reasoning)" style={{ ...input, marginBottom: 8 }} />
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your question here…" rows={3} style={{ ...input, marginBottom: 8, resize: "vertical" }} />
-        <div style={{ marginBottom: 10 }}>
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g., Legal Reasoning)" style={{ ...input, marginBottom: 8, background: "var(--app-bg)", border: "1px solid var(--line)" }} />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your question here…" rows={3} style={{ ...input, marginBottom: 8, resize: "vertical", background: "var(--app-bg)", border: "1px solid var(--line)" }} />
+        <div style={{ marginBottom: 12 }}>
           <AttachmentPicker value={attachment} onChange={setAttachment} disabled={busy} />
         </div>
-        <button onClick={ask} disabled={busy} style={{ ...primaryBtn, width: "100%", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
-          {busy ? "Submitting…" : "Post Doubt"}
+        <button onClick={ask} disabled={busy} className="press" style={{ ...goldBtn, width: "100%", color: "var(--blue-dark)", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
+          {busy ? "Submitting…" : <>Post Doubt <Send size={16} /></>}
         </button>
       </div>
+
+      {sorted.length > 0 && <div style={{ marginBottom: 12 }}><SectionTitle kicker="Your questions" title="Recent doubts" /></div>}
 
       {/* Doubts list */}
       {sorted.length === 0 ? (
@@ -152,6 +180,7 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }

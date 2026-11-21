@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AppIcon } from "../AppIcon";
-import { card, gradient, primaryBtn, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState, Pill } from "../ui/kit";
+import { heroSurface, card, gradient, primaryBtn, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState, Pill } from "../ui/kit";
 
 interface MentorSession {
   id: string;
@@ -53,7 +53,7 @@ export default function MentorshipPage({ mentorName, mentorPhoto, studentName, s
 
       <div style={body}>
         {/* Hero */}
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)" }}>
+        <div style={{ ...heroSurface, padding: "18px 16px", color: "white", }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 60, height: 60, borderRadius: 18, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
               {mentorPhoto ? <img src={mentorPhoto} alt="" style={{ width: 60, height: 60, borderRadius: 18, objectFit: "cover" }} /> : <AppIcon name="user" size={28} color="white" />}

@@ -2,7 +2,7 @@
 
 import { fmtIST } from "../../lib/dates";
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, IconTile, EmptyState, Pill, card, smallBtn, gradient, page, body, type Tone } from "../ui/kit";
+import { heroSurface, ScreenHeader, IconTile, EmptyState, Pill, card, smallBtn, page, body, type Tone } from "../ui/kit";
 
 export type PaymentItem = {
   invoiceNo: string;
@@ -84,7 +84,7 @@ export default function MyPaymentsPage({ onBack, payments, studentName, studentE
       <ScreenHeader title="Payments & Invoices" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: 18, color: "white", boxShadow: "0 8px 24px rgba(11,92,255,0.22)", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ ...heroSurface, padding: 18, color: "white", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.75)" }}>Total paid</p>
             <p style={{ margin: "6px 0 0", fontSize: 32, fontWeight: 900, letterSpacing: "-0.02em" }}>{inr(totalPaid)}</p>

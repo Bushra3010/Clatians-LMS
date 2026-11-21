@@ -6,8 +6,9 @@ import type { CourseSyllabus, LearningChapter, LearningTopic } from "../../lib/l
 import { getCourseSyllabusAction, getBatchExtrasAction, getCourseTestsAction, getBatchMocksAction, type BatchExtras, type ChapterTest, type MockTest } from "../../lib/learning-actions";
 import { fmtIST } from "../../lib/dates";
 import { Check } from "../BatchInfo";
-import { WebsiteBatchHero, WebsiteBatchBody, paletteFor } from "../WebsiteBatch";
-import { AppIcon, courseIconName, type IconName } from "../AppIcon";
+import { WebsiteBatchHero, WebsiteBatchBody } from "../WebsiteBatch";
+import { AppIcon, courseIconName, subjectIconName, type IconName } from "../AppIcon";
+import * as kit from "../ui/kit";
 import { shareText } from "../../lib/share";
 
 /** Topics finished per enrolled course — loaded with the page for the My Learning list. */
@@ -22,8 +23,8 @@ export type LearningNav =
   | { view: "subject"; courseId: string; batchId: string | null; subject: string }
   | { view: "chapter"; courseId: string; chapterId: string; from: string };
 
-const gradient = "linear-gradient(135deg,var(--blue-dark),var(--blue))";
-const card: React.CSSProperties = { background: "white", borderRadius: 16, boxShadow: "0 2px 10px rgba(15,23,41,0.06)" };
+const gradient = kit.gradient;
+const card: React.CSSProperties = kit.card;
 
 export const fmtDuration = (min: number) => {
   if (min <= 0) return "";
@@ -38,44 +39,21 @@ function Chevron({ color = "var(--text-muted)" }: { color?: string }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>;
 }
 
-function Header({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 6px" }}>
-      <button onClick={onBack} aria-label="Back" style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--app-bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <AppIcon name="chevronRight" size={19} color="var(--ink)" strokeWidth={2.5} style={{ transform: "rotate(180deg)" }} />
-      </button>
-      <h2 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 17, fontWeight: 800, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
-      {right}
-    </div>
-  );
+function Header({ title, onBack, right, subtitle }: { title: string; onBack: () => void; right?: React.ReactNode; subtitle?: string }) {
+  return <kit.ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={right} />;
 }
 
 function Pill({ label, bg, color }: { label: string; bg: string; color: string }) {
   return <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 8, background: bg, color }}>{label}</span>;
 }
 
-/** Underlined tab strip, as in the mockups. */
+/** Pill tab switcher, shared with the rest of the app. */
 function Tabs<T extends string>({ tabs, active, onChange }: { tabs: { key: T; label: string }[]; active: T; onChange: (t: T) => void }) {
-  return (
-    <div style={{ display: "flex", borderBottom: "1px solid var(--line)", margin: "0 16px", overflowX: "auto", scrollbarWidth: "none" }}>
-      {tabs.map((t) => (
-        <button key={t.key} onClick={() => onChange(t.key)} style={{
-          flex: "1 0 auto", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap",
-          padding: "11px 8px 10px", fontSize: 13, fontWeight: active === t.key ? 800 : 600,
-          color: active === t.key ? "var(--blue)" : "var(--text-muted)",
-          borderBottom: `2.5px solid ${active === t.key ? "var(--blue)" : "transparent"}`, marginBottom: -1,
-        }}>{t.label}</button>
-      ))}
-    </div>
-  );
+  return <div style={{ padding: "0 16px" }}><kit.Segmented tabs={tabs} active={active} onChange={onChange} /></div>;
 }
 
-function Bar({ pct, height = 6 }: { pct: number; height?: number }) {
-  return (
-    <div style={{ height, background: "var(--surface-dim)", borderRadius: height, overflow: "hidden" }}>
-      <div style={{ width: `${pct}%`, height: "100%", background: "var(--green)", borderRadius: height }} />
-    </div>
-  );
+function Bar({ pct, height = 6, onDark }: { pct: number; height?: number; onDark?: boolean }) {
+  return <kit.Progress pct={pct} height={height} onDark={onDark} />;
 }
 
 function Num({ n, active }: { n: number; active?: boolean }) {
@@ -85,30 +63,14 @@ function Num({ n, active }: { n: number; active?: boolean }) {
 }
 
 function Empty({ icon, title, text, action }: { icon: IconName; title: string; text: string; action?: React.ReactNode }) {
-  return (
-    <div style={{ ...card, textAlign: "center", padding: "28px 18px" }}>
-      <span style={{ width: 56, height: 56, borderRadius: 18, background: "var(--blue-tint)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-        <AppIcon name={icon} size={26} color="var(--blue)" />
-      </span>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{title}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--text-disabled)", lineHeight: 1.5 }}>{text}</p>
-      {action}
-    </div>
-  );
+  return <kit.EmptyState icon={icon} title={title} text={text} action={action} />;
 }
 
 function Loading() {
   return <p style={{ margin: "24px 0", textAlign: "center", fontSize: 13, color: "var(--text-disabled)" }}>Loading…</p>;
 }
 
-const heroBtn: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.18)",
-  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-};
-const primaryBtn: React.CSSProperties = {
-  background: gradient, color: "white", border: "none", borderRadius: 12, padding: "11px 16px",
-  fontSize: 13.5, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 12px rgba(11,92,255,0.25)",
-};
+const primaryBtn: React.CSSProperties = { ...kit.primaryBtn, borderRadius: 12, padding: "10px 16px", fontSize: 13 };
 
 // ── Data ──
 
@@ -131,7 +93,7 @@ function useSyllabus(courseId: string) {
   return { data, error };
 }
 
-/** The course's chapter tests, grouped by chapter id; loads only when needed. */
+/** The course's chapter tests, grouped by chapter id. Loads once `active` turns true. */
 function useCourseTests(courseId: string, active = true) {
   const [tests, setTests] = useState<Map<string, ChapterTest[]> | null>(null);
   useEffect(() => {
@@ -139,25 +101,25 @@ function useCourseTests(courseId: string, active = true) {
     let live = true;
     getCourseTestsAction(courseId).then((res) => {
       if (!live) return;
-      const byChapter = new Map<string, ChapterTest[]>();
-      for (const t of res.ok ? res.tests : []) byChapter.set(t.chapterId, [...(byChapter.get(t.chapterId) ?? []), t]);
-      setTests(byChapter);
+      const map = new Map<string, ChapterTest[]>();
+      if (res.ok) for (const t of res.tests) map.set(t.chapterId, [...(map.get(t.chapterId) ?? []), t]);
+      setTests(map);
     });
     return () => { live = false; };
   }, [courseId, active]);
   return tests;
 }
 
-/** The batch's full mock tests; loads only once the Tests tab is opened. */
+/** The batch's full mock tests. Loads once `active` turns true. */
 function useBatchMocks(courseId: string, active = true) {
-  const [tests, setTests] = useState<MockTest[] | null>(null);
+  const [mocks, setMocks] = useState<MockTest[] | null>(null);
   useEffect(() => {
     if (!active) return;
     let live = true;
-    getBatchMocksAction(courseId).then((res) => { if (live) setTests(res.ok ? res.tests : []); });
+    getBatchMocksAction(courseId).then((res) => { if (live) setMocks(res.ok ? res.tests : []); });
     return () => { live = false; };
   }, [courseId, active]);
-  return tests;
+  return mocks;
 }
 
 const SECTION_SHORT: Record<string, string> = {
@@ -323,14 +285,6 @@ function subjectState(done: number, total: number): { label: string; bg: string;
   return { label: "Not started", bg: "var(--surface-dim)", color: "var(--text-muted)" };
 }
 
-function Meta({ icon, children }: { icon: IconName; children: React.ReactNode }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-      <AppIcon name={icon} size={14} color="var(--text-muted)" />{children}
-    </span>
-  );
-}
-
 // ── 2 · My Learning — the batches they bought ──
 
 type ListTab = "enrolled" | "resources";
@@ -345,18 +299,13 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
   const owned = ownedItems(catalog);
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <div style={{ background: "white", paddingTop: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 16px 10px" }}>
-          <span style={{ width: 36 }} />
-          <h2 style={{ flex: 1, margin: 0, fontSize: 21, fontWeight: 900, color: "var(--ink-primary)", textAlign: "center" }}>My Learning</h2>
-          {onOpenNotifications ? (
-            <button onClick={onOpenNotifications} aria-label="Notifications" style={{ position: "relative", width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--app-bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <AppIcon name="bell" size={19} color="var(--ink-primary)" />
-              {unreadCount > 0 && <span style={{ position: "absolute", top: 6, right: 7, width: 8, height: 8, borderRadius: "50%", background: "#E03131", border: "1.5px solid white" }} />}
-            </button>
-          ) : <span style={{ width: 36 }} />}
-        </div>
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <kit.PageTitle
+        kicker="Your study space"
+        title="My Learning"
+        right={onOpenNotifications ? <kit.RoundBtn icon="bell" label="Notifications" onClick={onOpenNotifications} dot={unreadCount > 0} /> : undefined}
+      />
+      <div style={{ padding: "12px 0 0" }}>
         <Tabs<ListTab>
           tabs={[
             { key: "enrolled", label: `Enrolled (${owned.length})` },
@@ -372,36 +321,39 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
           <>
             {owned.length === 0 && (
               <Empty icon="graduation" title="No batch yet" text="Buy a batch and it shows up here with your progress."
-                action={<button onClick={onBrowseCourses} style={{ ...primaryBtn, marginTop: 14 }}>Browse courses</button>} />
+                action={<button onClick={onBrowseCourses} className="press" style={primaryBtn}>Browse courses</button>} />
             )}
 
             {owned.map(({ key, course: c, batch: b }) => {
               const p = prog(c.id);
               const pct = pctOf(p.done, p.lessons);
-              const label = p.lessons > 0 && pct >= 100 ? "Review" : p.done > 0 ? "Continue" : "Start Learning";
+              const label = p.lessons > 0 && pct >= 100 ? "Review" : p.done > 0 ? "Continue" : "Start";
               const open = () => onNav({ view: "batch", courseId: c.id, batchId: b?.id ?? null });
+              const meta = [p.lessons > 0 && `${p.lessons} Lessons`, (b?.duration || c.duration || fmtDuration(p.minutes)).replace(/\s*\(.*\)$/, "")].filter(Boolean).join(" · ");
               return (
-                <div key={key} style={{ ...card, padding: 12, display: "flex", gap: 12 }}>
-                  <button onClick={open} aria-label={b?.name ?? c.name} style={{ width: 88, height: 88, borderRadius: 14, flexShrink: 0, border: "none", cursor: "pointer", background: b ? `linear-gradient(135deg, ${paletteFor(b).from}, ${paletteFor(b).to})` : gradient, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <AppIcon name={courseIconName(c)} size={38} color="white" strokeWidth={1.6} />
-                  </button>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <button onClick={open} style={{ display: "block", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.3 }}>{b?.name ?? c.name}</button>
-                    {b && <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--text-muted)" }}>{c.name}</p>}
-                    <div style={{ display: "flex", justifyContent: "space-between", margin: "5px 0 5px", fontSize: 11.5, color: "var(--text-muted)" }}>
-                      <span>{pct}% Completed</span>
-                      <span style={{ fontWeight: 700 }}>{pct}%</span>
-                    </div>
-                    <Bar pct={pct} />
-                    <p style={{ margin: "6px 0 8px", fontSize: 11, color: "var(--text-disabled)", display: "flex", alignItems: "center", gap: 5 }}>
-                      <AppIcon name="file" size={12} color="var(--text-disabled)" />
-                      {[p.lessons > 0 && `${p.lessons} Lessons`, (b?.duration || c.duration || fmtDuration(p.minutes)).replace(/\s*\(.*\)$/, "")].filter(Boolean).join(" • ")}
-                    </p>
-                    <button onClick={open} style={{
-                      ...primaryBtn, width: "100%", padding: "9px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      ...(label === "Start Learning" ? { background: "var(--error)", color: "var(--error-text)", boxShadow: "none" }
-                        : label === "Review" ? { background: "var(--blue-tint)", color: "var(--blue)", boxShadow: "none" } : {}),
-                    }}>{label}<AppIcon name="arrowRight" size={14} /></button>
+                <div key={key} onClick={open} className="press" style={{ ...card, padding: 12, cursor: "pointer" }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <span style={{ position: "relative", width: 60, height: 60, borderRadius: 18, flexShrink: 0, overflow: "hidden", background: kit.heroBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ position: "absolute", right: -20, top: -20, width: 56, height: 56, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,166,35,0.45), transparent 70%)" }} />
+                      <AppIcon name={courseIconName(c)} size={26} color="white" strokeWidth={1.7} style={{ position: "relative" }} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{b?.name ?? c.name}</span>
+                      <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[b && c.name, meta].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 5 }}>
+                        <span>{p.done}/{p.lessons || 0} done</span><span style={{ fontWeight: 800, color: "var(--blue)" }}>{pct}%</span>
+                      </span>
+                      <Bar pct={pct} />
+                    </span>
+                    <button onClick={(e) => { e.stopPropagation(); open(); }} className="press" style={label === "Review"
+                      ? { ...kit.smallBtn, borderRadius: 12, padding: "9px 14px" }
+                      : { ...primaryBtn, padding: "9px 14px", fontSize: 12.5, flexShrink: 0 }}>
+                      {label}<AppIcon name={label === "Review" ? "refresh" : "play"} size={13} fill={label === "Review" ? "none" : "currentColor"} />
+                    </button>
                   </div>
                 </div>
               );
@@ -409,48 +361,45 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
           </>
         ) : (
           <>
-            {/* Free for everyone — banner, then one tile per resource */}
-            <div style={{ position: "relative", overflow: "hidden", borderRadius: 18, padding: "18px 16px", background: "linear-gradient(135deg,#0D1837 0%,#1d4ed8 100%)" }}>
-              <div style={{ position: "absolute", top: -50, right: -40, width: 150, height: 150, borderRadius: "50%", background: "#08BD80", opacity: 0.18, filter: "blur(24px)" }} />
-              <div style={{ position: "absolute", bottom: -36, right: 24, width: 90, height: 90, borderRadius: "50%", border: "14px solid rgba(255,255,255,0.06)" }} />
-              <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", color: "#08BD80", background: "rgba(8,189,128,0.14)", border: "1px solid rgba(8,189,128,0.35)", padding: "3px 9px", borderRadius: 20 }}>
-                <AppIcon name="gift" size={11} color="#08BD80" />FREE FOR EVERY STUDENT
+            {/* Free for everyone — Home's blue card, then one tile per resource */}
+            <kit.HeroCard>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 8 }}>
+                <AppIcon name="gift" size={12} />Free for every student
               </span>
-              <p style={{ position: "relative", margin: "10px 0 4px", fontSize: 18, fontWeight: 900, color: "white", lineHeight: 1.25 }}>Start learning for free</p>
-              <p style={{ position: "relative", margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>Videos, notes, practice and daily current affairs. No batch needed.</p>
-              <button onClick={onOpenLibrary} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", borderRadius: 10, padding: "9px 14px", fontSize: 12.5, fontWeight: 800, background: "white", color: "#0D1837" }}>
-                Open library <AppIcon name="arrowRight" size={14} color="#0D1837" />
+              <p style={{ margin: "12px 0 4px", fontSize: 22, fontWeight: 700, lineHeight: 1.25 }}>Start learning <span style={{ color: "var(--gold)" }}>for free</span></p>
+              <p style={{ margin: "0 0 16px", fontSize: 13.5, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>Videos, notes, practice and daily current affairs. No batch needed.</p>
+              <button onClick={onOpenLibrary} className="press" style={{ ...kit.goldBtn, width: "100%", color: "var(--blue-dark)" }}>
+                Open library <AppIcon name="arrowRight" size={16} />
               </button>
-            </div>
+            </kit.HeroCard>
 
-            <p style={{ margin: "6px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Explore resources</p>
+            <kit.SectionTitle kicker="Pick a format" title="Explore resources" />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
               {[
-                { icon: "video" as IconName, label: "Video Lectures", sub: "Recorded classes by faculty", color: "#EF4444" },
-                { icon: "file" as IconName, label: "Study Notes", sub: "Chapter-wise notes & PDFs", color: "#2563EB" },
-                { icon: "clipboard" as IconName, label: "Practice Questions", sub: "Topic-wise MCQs", color: "#7C3AED" },
-                { icon: "newspaper" as IconName, label: "Current Affairs", sub: "Daily notes for CLAT GK", color: "#059669" },
+                { icon: "video" as IconName, label: "Video Lectures", sub: "Recorded classes by faculty", tone: "red" as kit.Tone },
+                { icon: "file" as IconName, label: "Study Notes", sub: "Chapter-wise notes & PDFs", tone: "blue" as kit.Tone },
+                { icon: "clipboard" as IconName, label: "Practice Questions", sub: "Topic-wise MCQs", tone: "purple" as kit.Tone },
+                { icon: "newspaper" as IconName, label: "Current Affairs", sub: "Daily notes for CLAT GK", tone: "green" as kit.Tone },
               ].map((r) => (
-                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 12px 12px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0, position: "relative", overflow: "hidden" }}>
-                  <span style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: r.color }} />
+                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} className="press" style={{ ...card, cursor: "pointer", textAlign: "left", padding: 14, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ width: 38, height: 38, borderRadius: 11, background: `${r.color}14`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon name={r.icon} size={19} color={r.color} /></span>
+                    <kit.IconTile icon={r.icon} tone={r.tone} size={40} />
                     <AppIcon name="arrowRight" size={15} color="var(--text-disabled)" />
                   </span>
                   <span>
-                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)", lineHeight: 1.25 }}>{r.label}</span>
-                    <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 3, lineHeight: 1.35 }}>{r.sub}</span>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{r.label}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{r.sub}</span>
                   </span>
                 </button>
               ))}
             </div>
 
             {/* Next step for a free user */}
-            <button onClick={onBrowseCourses} style={{ ...card, border: "1.5px dashed var(--blue)", background: "var(--blue-tint)", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "none" }}>
-              <span style={{ width: 38, height: 38, borderRadius: 11, background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="graduation" size={19} color="var(--blue)" /></span>
+            <button onClick={onBrowseCourses} className="press" style={{ ...card, cursor: "pointer", textAlign: "left", padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+              <kit.IconTile icon="graduation" tone="gold" size={42} />
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>Want live classes & mentorship?</span>
-                <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Explore CLATians batches</span>
+                <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>Want live classes & mentorship?</span>
+                <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>Explore CLATians batches</span>
               </span>
               <Chevron color="var(--blue)" />
             </button>
@@ -465,7 +414,7 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
   const done = ch.topics.filter((t) => t.completed).length;
   const all = ch.topics.length > 0 && done === ch.topics.length;
   return (
-    <button onClick={onOpen} style={{ ...card, border: "none", width: "100%", cursor: "pointer", textAlign: "left", padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+    <button onClick={onOpen} className="press" style={{ ...card, width: "100%", cursor: "pointer", textAlign: "left", padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
       <Num n={n} active={done > 0 && !all} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>{ch.title}</span>
@@ -511,56 +460,79 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
   const openSubject = (subject: string) => onNav({ view: "subject", courseId: c.id, batchId: b?.id ?? null, subject });
 
   return (
-    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      {/* Hero — in the batch's colours from clatians.com */}
-      <div style={{ position: "relative", height: 180, background: b ? `linear-gradient(135deg, ${paletteFor(b).from} 0%, ${paletteFor(b).to} 100%)` : gradient, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: -30, top: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-        <div style={{ position: "absolute", left: -20, bottom: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-        <AppIcon name={courseIconName(c)} size={next ? 120 : 66} color={next ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.9)"} strokeWidth={1.3} />
-        <button onClick={onBack} aria-label="Back" style={{ ...heroBtn, position: "absolute", left: 12, top: 12 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        </button>
-        <div style={{ position: "absolute", right: 12, top: 12, display: "flex", gap: 8 }}>
-          {onToggleSaveBatch && b && (
-            <button onClick={() => onToggleSaveBatch(saveKey, b.name, c.name)} aria-label={saved ? "Remove from saved" : "Save batch"} style={heroBtn}>
-              <AppIcon name="heart" size={18} color="white" fill={saved ? "white" : "none"} />
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <Header
+        title={b?.name ?? c.name}
+        subtitle="My Learning"
+        onBack={onBack}
+        right={
+          <span style={{ display: "flex", gap: 8, position: "relative" }}>
+            {onToggleSaveBatch && b && (
+              <button onClick={() => onToggleSaveBatch(saveKey, b.name, c.name)} aria-label={saved ? "Remove from saved" : "Save batch"} className="press" style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--line)", background: "white", boxShadow: "var(--shadow-md)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AppIcon name="heart" size={18} color={saved ? "#E03131" : "var(--ink)"} fill={saved ? "#E03131" : "none"} />
+              </button>
+            )}
+            <kit.RoundBtn icon="share" label="Share batch" onClick={share} />
+            {shareNote && <span style={{ position: "absolute", right: 0, top: 44, fontSize: 11, fontWeight: 700, color: "white", background: "var(--ink)", padding: "3px 8px", borderRadius: 8, whiteSpace: "nowrap", zIndex: 2 }}>{shareNote}</span>}
+          </span>
+        }
+      />
+
+      {/* Hero — Home's blue card: batch, progress and the continue button */}
+      <div style={{ padding: "8px 16px 0" }}>
+        <kit.HeroCard>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AppIcon name={courseIconName(c)} size={26} color="white" strokeWidth={1.7} />
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 19, fontWeight: 700, lineHeight: 1.25 }}>{b?.name ?? c.name}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>{b ? c.name : c.tagline || c.description}</span>
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            {[
+              topics.length > 0 && { icon: "file" as IconName, text: `${topics.length} Lessons` },
+              duration && { icon: "clock" as IconName, text: duration },
+              { icon: "award" as IconName, text: "Certificate" },
+            ].filter(Boolean).map((m) => {
+              const x = m as { icon: IconName; text: string };
+              return (
+                <span key={x.text} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "white", background: "rgba(255,255,255,0.12)", padding: "4px 10px", borderRadius: 20 }}>
+                  <AppIcon name={x.icon} size={12} color="var(--gold)" />{x.text}
+                </span>
+              );
+            })}
+          </div>
+          {topics.length > 0 && (
+            <div style={{ ...kit.heroStrip, padding: "10px 12px", marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>
+                <span>{done} / {topics.length} completed</span><span style={{ fontWeight: 800, color: "var(--gold)" }}>{pctOf(done, topics.length)}%</span>
+              </div>
+              <Bar pct={pctOf(done, topics.length)} onDark />
+            </div>
+          )}
+          {next && (
+            <button onClick={() => onOpenTopic(next.id)} className="press" style={{ ...kit.goldBtn, width: "100%", marginTop: 14, color: "var(--blue-dark)", justifyContent: "flex-start", textAlign: "left" }}>
+              <span style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--blue-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AppIcon name="play" size={12} color="white" fill="white" style={{ marginLeft: 2 }} />
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", opacity: 0.75 }}>{done > 0 ? "Continue learning" : "Start here"}</span>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{next.title}</span>
+              </span>
+              <AppIcon name="arrowRight" size={16} />
             </button>
           )}
-          <button onClick={share} aria-label="Share batch" style={heroBtn}>
-            <AppIcon name="share" size={17} color="white" />
-          </button>
-        </div>
-        {shareNote && <span style={{ position: "absolute", right: 14, top: 56, fontSize: 11, fontWeight: 700, color: "white", background: "rgba(0,0,0,0.35)", padding: "3px 8px", borderRadius: 8 }}>{shareNote}</span>}
-        {next && (
-          <button onClick={() => onOpenTopic(next.id)} aria-label="Continue learning" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 62, height: 62, borderRadius: "50%", border: "none", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.3)" }}>
-            <AppIcon name="play" size={24} color={b ? paletteFor(b).to : "var(--blue)"} fill={b ? paletteFor(b).to : "var(--blue)"} style={{ marginLeft: 3 }} />
-          </button>
-        )}
+        </kit.HeroCard>
       </div>
 
-      <div style={{ background: "white", padding: "14px 16px 0" }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.25 }}>{b?.name ?? c.name}</h1>
-        <p style={{ margin: "5px 0 0", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>{b ? c.name : c.tagline || c.description}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", margin: "10px 0 0", fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
-          {topics.length > 0 && <Meta icon="file">{topics.length} Lessons</Meta>}
-          {duration && <Meta icon="clock">{duration}</Meta>}
-          <Meta icon="award">Certificate</Meta>
-        </div>
-        {topics.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", marginBottom: 4 }}>
-              <span>{done} / {topics.length} completed</span><span style={{ fontWeight: 700 }}>{pctOf(done, topics.length)}%</span>
-            </div>
-            <Bar pct={pctOf(done, topics.length)} />
-          </div>
-        )}
-        <div style={{ margin: "8px -16px 0" }}>
-          <Tabs<HomeTab>
-            tabs={[{ key: "overview", label: "Overview" }, { key: "subjects", label: "Subjects" }, { key: "instructors", label: "Instructors" }, { key: "tests", label: "Mock Test" }]}
-            active={tab}
-            onChange={setTab}
-          />
-        </div>
+      <div style={{ padding: "14px 0 0" }}>
+        <Tabs<HomeTab>
+          tabs={[{ key: "subjects", label: "Subjects" }, { key: "overview", label: "Overview" }, { key: "tests", label: "Mock Test" }, { key: "instructors", label: "Faculty" }]}
+          active={tab}
+          onChange={setTab}
+        />
       </div>
 
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -568,18 +540,6 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
 
         {tab === "overview" && (
           <>
-            {next && (
-              <button onClick={() => onOpenTopic(next.id)} style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <AppIcon name="play" size={14} color="white" fill="white" style={{ marginLeft: 2 }} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{done > 0 ? "Continue learning" : "Start here"}</span>
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)", marginTop: 2 }}>{next.title}</span>
-                </span>
-                <Chevron />
-              </button>
-            )}
             {b ? (
               // The batch page from clatians.com, without the buying bits.
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -607,7 +567,7 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
 
         {tab === "subjects" && (
           <>
-            <p style={{ margin: "2px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Subjects</p>
+            <kit.SectionTitle kicker="Pick up where you left off" title="Subjects" />
             {!data ? <Loading /> : subjects.length === 0 ? (
               <Empty icon="library" title="Subjects coming soon" text="Faculty will add this batch's chapters shortly." />
             ) : (
@@ -616,13 +576,16 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
                   const st = s.chapters.flatMap((ch) => ch.topics);
                   const sd = st.filter((t) => t.completed).length;
                   return (
-                    <button key={s.name} onClick={() => openSubject(s.name)} style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <button key={s.name} onClick={() => openSubject(s.name)} className="press" style={{ width: "100%", background: "none", border: "none", borderTop: i ? "1px solid var(--line)" : "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                      <kit.IconTile icon={subjectIconName(s.name)} size={42} />
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{s.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{s.chapters.length} {s.chapters.length === 1 ? "Chapter" : "Chapters"} · {st.length} {st.length === 1 ? "Topic" : "Topics"}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{sd} / {st.length} completed</span>
+                        <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{s.name}</span>
+                          <Pill {...subjectState(sd, st.length)} />
+                        </span>
+                        <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 6px" }}>{s.chapters.length} {s.chapters.length === 1 ? "Chapter" : "Chapters"} · {st.length} {st.length === 1 ? "Topic" : "Topics"} · {sd}/{st.length} done</span>
+                        <Bar pct={pctOf(sd, st.length)} height={5} />
                       </span>
-                      <Pill {...subjectState(sd, st.length)} />
                       <Chevron />
                     </button>
                   );
@@ -641,7 +604,7 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
             <Empty icon="user" title="Faculty to be announced" text="Instructors are listed here once a batch is assigned." />
           ) : faculty.map((f) => (
             <div key={f} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ width: 42, height: 42, borderRadius: "50%", background: gradient, color: "white", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ width: 44, height: 44, borderRadius: 14, background: gradient, color: "white", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {f.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("")}
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-primary)" }}>{f}</span>
@@ -769,17 +732,31 @@ function SubjectView({ course: c, batch: b, subject, onBack, onNav, onStartTest 
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <div style={{ background: "white" }}>
-        <Header title={subject} onBack={onBack} right={<Pill {...subjectState(done, topics.length)} />} />
-        <div style={{ padding: "4px 16px 8px 62px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {meta.map((m) => (
-            <p key={m.text} style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 7 }}>
-              <AppIcon name={m.icon} size={14} color="var(--blue)" />{m.text}
-            </p>
-          ))}
-        </div>
-        {tabs.length > 1 ? <Tabs<SubjectTab> tabs={tabs} active={tab} onChange={setTab} /> : <div style={{ height: 6 }} />}
+      <Header title={subject} subtitle={b?.name ?? c.name} onBack={onBack} />
+      <div style={{ padding: "8px 16px 0" }}>
+        <kit.HeroCard padding={16}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 46, height: 46, borderRadius: 14, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AppIcon name={subjectIconName(subject)} size={22} color="white" />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>{subject}</span>
+              <span style={{ display: "flex", flexWrap: "wrap", gap: "2px 10px", fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 3 }}>
+                {meta.slice(1).map((m) => <span key={m.text} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AppIcon name={m.icon} size={12} color="var(--gold)" />{m.text}</span>)}
+              </span>
+            </span>
+          </div>
+          {topics.length > 0 && (
+            <div style={{ ...kit.heroStrip, padding: "10px 12px", marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>
+                <span>{done} / {topics.length} completed</span><span style={{ fontWeight: 800, color: "var(--gold)" }}>{pctOf(done, topics.length)}%</span>
+              </div>
+              <Bar pct={pctOf(done, topics.length)} onDark />
+            </div>
+          )}
+        </kit.HeroCard>
       </div>
+      {tabs.length > 1 && <div style={{ padding: "14px 0 0" }}><Tabs<SubjectTab> tabs={tabs} active={tab} onChange={setTab} /></div>}
 
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {error && <p style={{ margin: 0, fontSize: 13, color: "var(--error-text)" }}>{error}</p>}
@@ -837,18 +814,22 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }:
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
-      <div style={{ background: "white", paddingBottom: 14 }}>
-        <Header title="" onBack={onBack} />
-        <div style={{ padding: "0 16px" }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Chapter {localChapterNumber(data!, ch)}{ch.subject ? ` · ${ch.subject}` : ""}</p>
-          <h1 style={{ margin: "2px 0 0", fontSize: 20, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1.25 }}>{ch.title}</h1>
-          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
-            <AppIcon name="file" size={13} color="var(--text-muted)" />{ch.topics.length} Topics
-            {fmtDuration(minutes) && <><span style={{ margin: "0 3px" }}>·</span><AppIcon name="clock" size={13} color="var(--text-muted)" />{fmtDuration(minutes)}</>}
+      <Header title={`Chapter ${localChapterNumber(data!, ch)}`} subtitle={ch.subject || c.name} onBack={onBack} />
+      <div style={{ padding: "8px 16px 0" }}>
+        <kit.HeroCard padding={16}>
+          <span style={{ display: "inline-block", background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 8 }}>Chapter {localChapterNumber(data!, ch)}{ch.subject ? ` · ${ch.subject}` : ""}</span>
+          <h1 style={{ margin: "10px 0 0", fontSize: 20, fontWeight: 700, lineHeight: 1.25 }}>{ch.title}</h1>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.72)", display: "flex", alignItems: "center", gap: 5 }}>
+            <AppIcon name="file" size={13} color="var(--gold)" />{ch.topics.length} Topics
+            {fmtDuration(minutes) && <><span style={{ margin: "0 3px" }}>·</span><AppIcon name="clock" size={13} color="var(--gold)" />{fmtDuration(minutes)}</>}
           </p>
-          <p style={{ margin: "8px 0 5px", fontSize: 12, color: "var(--text-muted)" }}>{done} / {ch.topics.length} completed</p>
-          <Bar pct={pctOf(done, ch.topics.length)} />
-        </div>
+          <div style={{ ...kit.heroStrip, padding: "10px 12px", marginTop: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>
+              <span>{done} / {ch.topics.length} completed</span><span style={{ fontWeight: 800, color: "var(--gold)" }}>{pctOf(done, ch.topics.length)}%</span>
+            </div>
+            <Bar pct={pctOf(done, ch.topics.length)} onDark />
+          </div>
+        </kit.HeroCard>
       </div>
 
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -864,7 +845,7 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }:
                 : onOpenTopic(t.id)}
               style={{
                 ...card, width: "100%", textAlign: "left", cursor: "pointer", padding: "11px 12px", display: "flex", alignItems: "center", gap: 12,
-                border: isCurrent ? "1.5px solid var(--blue)" : "1.5px solid transparent",
+                border: isCurrent ? "1.5px solid var(--blue)" : "1px solid var(--line)",
                 background: isCurrent ? "var(--blue-tint)" : "white",
               }}
             >
@@ -887,7 +868,7 @@ function ChapterView({ course: c, chapterId, onBack, onOpenTopic, onStartTest }:
         })}
 
         {/* This chapter's tests */}
-        <p style={{ margin: "12px 2px 0", fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>Tests</p>
+        <div style={{ marginTop: 8 }}><kit.SectionTitle kicker="Check what you learnt" title="Chapter tests" /></div>
         {tests ? <ChapterTests chapters={[ch]} tests={tests} onStartTest={onStartTest} enrolled={!!data?.enrolled} firstNumber={localChapterNumber(data!, ch)} /> : <Loading />}
       </div>
     </div>

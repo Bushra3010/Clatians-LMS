@@ -1,7 +1,7 @@
 "use client";
 import type { Story } from "../../lib/resource-types";
 import { AppIcon } from "../AppIcon";
-import { card, gradient, page, body, ScreenHeader, EmptyState } from "../ui/kit";
+import { heroSurface, card, page, body, ScreenHeader, EmptyState } from "../ui/kit";
 
 export default function TopperStoriesPage({ onBack, stories }: { onBack: () => void; stories: Story[] }) {
   return (
@@ -9,7 +9,7 @@ export default function TopperStoriesPage({ onBack, stories }: { onBack: () => v
       <ScreenHeader title="CLATians Toppers" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 22px rgba(11,92,255,0.22)" }}>
+        <div style={{ ...heroSurface, padding: "18px 16px", }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--gold)", color: "var(--ink)", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 20 }}>
             <AppIcon name="trophy" size={12} color="var(--ink)" strokeWidth={2.4} />
             HALL OF FAME

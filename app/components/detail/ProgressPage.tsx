@@ -4,7 +4,7 @@ import { useState } from "react";
 import { aiCoachAction } from "../../lib/ai-actions";
 import AiText from "../AiText";
 import { AppIcon } from "../AppIcon";
-import { card, gradient, goldBtn, smallBtn, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
+import { heroSurface, card, gradient, goldBtn, smallBtn, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
 
 export type StudentProgress = {
   contentTotal: number;
@@ -42,7 +42,7 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
   };
 
   return (
-    <div style={{ background: gradient, borderRadius: 18, padding: "16px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", marginTop: 8 }}>
+    <div style={{ ...heroSurface, padding: "16px", color: "white", marginTop: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <AppIcon name="bolt" size={18} color="var(--gold)" />
@@ -174,7 +174,7 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
 
       <div style={body}>
         {/* Overall completion */}
-        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)" }}>
+        <div style={{ ...heroSurface, padding: "20px", color: "white", }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Course completion</p>
           <p style={{ margin: "6px 0 10px", fontSize: 40, fontWeight: 900 }}>{overall}%</p>
           <div style={{ height: 8, borderRadius: 20, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>

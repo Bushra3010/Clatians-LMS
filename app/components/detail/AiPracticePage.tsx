@@ -5,7 +5,7 @@ import { generatePracticeAction, savePracticeResultAction } from "../../lib/ai-a
 import type { PracticeMCQ } from "../../lib/ai"; // type-only — safe for clients (erased at build)
 
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, card, page, primaryBtn, outlineBtn, input, gradient } from "../ui/kit";
+import { heroSurface, ScreenHeader, card, page, primaryBtn, outlineBtn, input } from "../ui/kit";
 
 const SUBJECTS = ["Legal Reasoning", "English", "GK & Current Affairs", "Logical Reasoning", "Quantitative"];
 
@@ -70,7 +70,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
       {/* ── Setup ── */}
       {phase === "setup" && (
         <div style={{ padding: "14px 16px 0" }}>
-          <div style={{ background: gradient, borderRadius: 20, padding: "18px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.25)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ ...heroSurface, padding: "18px", color: "white", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <AppIcon name="sparkle" size={21} color="white" />
             </span>
@@ -122,7 +122,7 @@ export default function AiPracticePage({ onBack }: { onBack: () => void }) {
       {(phase === "quiz" || phase === "result") && (
         <div style={{ padding: "14px 16px 0" }}>
           {phase === "result" && (
-            <div style={{ background: gradient, borderRadius: 20, padding: "20px 16px", color: "white", textAlign: "center", boxShadow: "0 8px 22px rgba(11,92,255,0.25)", marginBottom: 12 }}>
+            <div style={{ ...heroSurface, padding: "20px 16px", color: "white", textAlign: "center", marginBottom: 12 }}>
               <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Your score</p>
               <p style={{ margin: "6px 0 0", fontSize: 44, fontWeight: 900 }}>{score}<span style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>/{questions.length}</span></p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--gold-100)" }}>{Math.round((score / questions.length) * 100)}% · {topic}</p>

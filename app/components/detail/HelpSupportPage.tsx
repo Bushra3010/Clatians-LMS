@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, SectionTitle, card, goldBtn, gradient, page, body } from "../ui/kit";
+import { heroSurface, ScreenHeader, SectionTitle, card, goldBtn, page, body } from "../ui/kit";
 
 const faqs = [
   { q: "How do I enrol in a course?", a: "Go to the Courses tab, pick a batch and tap the card to see the full syllabus, then Buy / Enroll. Enrolling unlocks that batch's videos, notes, live classes and tests." },
@@ -25,7 +25,7 @@ export default function HelpSupportPage({ onBack }: { onBack: () => void }) {
 
       <div style={body}>
         {/* Contact */}
-        <div style={{ background: gradient, borderRadius: 20, padding: 18, color: "white", boxShadow: "0 8px 24px rgba(11,92,255,0.22)" }}>
+        <div style={{ ...heroSurface, padding: 18, color: "white", }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <AppIcon name="help" size={21} color="white" />

@@ -5,7 +5,7 @@ import { CATEGORIES, type Category } from "../../lib/clat-data";
 import type { VocabItem, CAItem, NLUItem } from "../../lib/resource-types";
 import { generateVocabAction } from "../../lib/ai-actions";
 import { AppIcon, type IconName } from "../AppIcon";
-import { ScreenHeader, IconTile, EmptyState, Pill, card as cardStyle, page, primaryBtn, outlineBtn, goldBtn, input, gradient } from "../ui/kit";
+import { heroSurface, ScreenHeader, IconTile, EmptyState, Pill, card as cardStyle, page, primaryBtn, outlineBtn, goldBtn, input, gradient } from "../ui/kit";
 
 const TABS: readonly (readonly [Tab, string, IconName])[] = [["predictor", "Predictor", "graduation"], ["quiz", "CA Quiz", "newspaper"], ["vocab", "Vocab", "book"]];
 
@@ -114,7 +114,7 @@ function Quiz({ caq }: { caq: CAItem[] }) {
   if (submitted) {
     return (
       <div>
-        <div style={{ background: gradient, borderRadius: 20, padding: "20px", color: "white", textAlign: "center", boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
+        <div style={{ ...heroSurface, padding: "20px", color: "white", textAlign: "center", }}>
           <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Daily Current Affairs Quiz</p>
           <p style={{ margin: "6px 0 0", fontSize: 38, fontWeight: 900 }}>{score}<span style={{ fontSize: 18, color: "rgba(255,255,255,0.7)" }}>/{CA_QUIZ.length}</span></p>
         </div>
@@ -211,7 +211,7 @@ function VocabCards({ vocab, savedWords, onToggleSave }: { vocab: VocabItem[]; s
   };
 
   const generator = (
-    <div style={{ background: gradient, borderRadius: 20, padding: "16px", color: "white", marginBottom: 14, boxShadow: "0 8px 22px rgba(11,92,255,0.25)" }}>
+    <div style={{ ...heroSurface, padding: "16px", color: "white", marginBottom: 14, }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <AppIcon name="sparkle" size={17} color="white" />

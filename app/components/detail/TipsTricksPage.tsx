@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { Tip } from "../../lib/resource-types";
 import { AppIcon, subjectIconName, type IconName } from "../AppIcon";
-import { card, page, body, ScreenHeader, EmptyState } from "../ui/kit";
+import { heroSurface, card, page, body, ScreenHeader, EmptyState } from "../ui/kit";
 
 // A tip's icon comes from its subject — the tip's own emoji `icon` is never shown.
 const tipIcon = (tip: Tip): IconName => {
@@ -19,12 +19,12 @@ export default function TipsTricksPage({ onBack, tips, savedKeys, onToggleSave }
       <ScreenHeader title="Tips & Tricks" onBack={onBack} />
 
       <div style={body}>
-        <div style={{ background: "linear-gradient(135deg,var(--gold-dark),var(--warning-text))", borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 22px rgba(221,143,13,0.22)" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.22)", color: "white", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 20 }}>
-            <AppIcon name="bulb" size={12} color="white" strokeWidth={2.4} />
+        <div style={{ ...heroSurface, padding: "18px 16px" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 10.5, fontWeight: 800, padding: "4px 10px", borderRadius: 8 }}>
+            <AppIcon name="bulb" size={12} color="var(--blue-dark)" strokeWidth={2.4} />
             EXPERT ADVICE
           </span>
-          <p style={{ margin: "8px 0 2px", fontSize: 18, fontWeight: 800, color: "white" }}>Tips & Tricks</p>
+          <p style={{ margin: "8px 0 2px", fontSize: 20, fontWeight: 700, color: "white" }}>Tips & <span style={{ color: "var(--gold)" }}>Tricks</span></p>
           <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Topper-tested strategies for CLAT 2026</p>
         </div>
 

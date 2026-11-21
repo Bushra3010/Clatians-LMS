@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AppIcon } from "../AppIcon";
-import { ScreenHeader, card, primaryBtn, smallBtn, goldBtn, input, gradient, page, body } from "../ui/kit";
+import { heroSurface, ScreenHeader, card, primaryBtn, smallBtn, goldBtn, input, page, body } from "../ui/kit";
 
 export type Referral = { code: string; total: number; enrolled: number; credit: number };
 
@@ -34,7 +34,7 @@ export default function ReferPage({ onBack, referral }: { onBack: () => void; re
 
       <div style={body}>
         {/* Hero */}
-        <div style={{ background: gradient, borderRadius: 20, padding: 22, color: "white", textAlign: "center", boxShadow: "0 8px 24px rgba(11,92,255,0.22)", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ ...heroSurface, padding: 22, color: "white", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <span style={{ width: 56, height: 56, borderRadius: 18, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <AppIcon name="gift" size={28} color="white" />
           </span>

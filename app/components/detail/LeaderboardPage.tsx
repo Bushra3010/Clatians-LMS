@@ -1,7 +1,7 @@
 "use client";
 
 import { AppIcon, type IconName } from "../AppIcon";
-import { card, gradient, page, body, ScreenHeader, SectionTitle, EmptyState } from "../ui/kit";
+import { heroSurface, card, gradient, page, body, ScreenHeader, SectionTitle, EmptyState } from "../ui/kit";
 
 export type Badge = { emoji: string; label: string; desc: string; earned: boolean };
 export type LeaderRow = { rank: number; name: string; points: number; isMe: boolean };
@@ -40,7 +40,7 @@ export default function LeaderboardPage({ onBack, engagement }: { onBack: () => 
 
       <div style={body}>
         {/* My standing */}
-        <div style={{ background: gradient, borderRadius: 20, padding: "18px 20px", color: "white", boxShadow: "0 8px 22px rgba(11,92,255,0.22)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ ...heroSurface, padding: "18px 20px", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {[
             { v: engagement.myRank === null ? "—" : `#${engagement.myRank}`, l: `of ${engagement.totalStudents}`, icon: null },
             { v: String(engagement.myPoints), l: "points", icon: null },
