@@ -10,6 +10,7 @@ import { batches as bundledBatches, type Batch } from "./batches";
 import { defaultCourseCategories, type CourseCategory } from "./categories";
 import { facultyMembers, type FacultyMember } from "./faculty";
 import { SEED_NOTES, SEED_CURRENT_AFFAIRS, SEED_PAPERS, type SeedNote, type SeedPaper } from "./study-content";
+import { SEED_FREE_VIDEOS, SEED_FREE_CLASSES } from "./free-resources";
 
 // ────────────────────────────────────────────────────────────
 // Catalog sync — mirrors the CLATians website's course catalog into the LMS.
@@ -398,6 +399,19 @@ async function runEnsureCatalog(): Promise<void> {
     }
   }
 
+  // Free Resources: a free lecture and a free live class per CLAT section.
+  const claimFree = await db.prepare(
+    "INSERT INTO meta (key) VALUES ('free_resources_v2') ON CONFLICT DO NOTHING"
+  ).run();
+  if (claimFree.changes === 1) {
+    try {
+      await seedFreeResources();
+    } catch (e) {
+      await db.prepare("DELETE FROM meta WHERE key = 'free_resources_v2'").run();
+      throw e;
+    }
+  }
+
   // Chapter tests for the starter chapters (v2: several per chapter, via chapter_tests).
   const claimChapterTests = await db.prepare(
     "INSERT INTO meta (key) VALUES ('demo_chapter_tests_v2') ON CONFLICT DO NOTHING"
@@ -444,11 +458,11 @@ async function seedNotes(rows: SeedNote[], authorId: string | null): Promise<num
   for (const note of rows) {
     const exists = await db.prepare("SELECT 1 FROM content WHERE title = ?").get(note.title);
     if (exists) continue;
-    // course_id NULL = shared CLAT material, visible to every enrolled student.
+    // course_id NULL = free CLAT material, visible to every student.
     await db.prepare(
-      `INSERT INTO content (id, title, type, body, status, author_id, course_id)
-       VALUES (?, ?, ?, ?, 'approved', ?, NULL)`
-    ).run(newId(), note.title, note.type, note.body, authorId);
+      `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
+       VALUES (?, ?, ?, ?, ?, 'approved', ?, NULL)`
+    ).run(newId(), note.title, note.type, note.body, note.subject ?? "", authorId);
     n++;
   }
   return n;
@@ -494,5 +508,72 @@ export async function seedStudyContent(): Promise<StudyContentResult> {
     notes: await seedNotes(SEED_NOTES, authorId),
     currentAffairs: await seedNotes(SEED_CURRENT_AFFAIRS, authorId),
     papers: await seedPapers(SEED_PAPERS, authorId),
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// Free Resources — one free lecture and one free live class per
+// CLAT section, so the subject lists are never empty on a fresh
+// install. course_id NULL is what makes them free for everyone.
+// ────────────────────────────────────────────────────────────
+
+async function seedFreeVideos(authorId: string | null): Promise<number> {
+  let n = 0;
+  for (const v of SEED_FREE_VIDEOS) {
+    const exists = await db.prepare("SELECT 1 FROM content WHERE title = ?").get(v.title);
+    if (exists) continue;
+    await db.prepare(
+      `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
+       VALUES (?, ?, 'video', ?, ?, 'approved', ?, NULL)`
+    ).run(newId(), v.title, v.url, v.subject, authorId);
+    n++;
+  }
+  return n;
+}
+
+async function seedFreeClasses(teacherId: string | null): Promise<number> {
+  let n = 0;
+  const day = 24 * 60 * 60 * 1000;
+  for (const c of SEED_FREE_CLASSES) {
+    const exists = await db.prepare("SELECT 1 FROM live_classes WHERE title = ?").get(c.title);
+    if (exists) continue;
+    const startAt = new Date(Date.now() + c.inDays * day).toISOString();
+    await db.prepare(
+      `INSERT INTO live_classes (id, title, subject, course_id, teacher_id, start_at, duration_min, join_url, status, recording_url, notes)
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      newId(), c.title, c.subject, teacherId, startAt, c.durationMin,
+      c.recordingUrl ? "" : "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+      c.inDays < 0 ? "ended" : "scheduled",
+      c.recordingUrl ?? "", c.notes ?? "",
+    );
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Fill in the section on material seeded before content carried one. Only rows
+ * still blank are touched, so a subject an admin has since set is never undone.
+ */
+async function backfillSubjects(): Promise<number> {
+  let n = 0;
+  for (const note of [...SEED_NOTES, ...SEED_CURRENT_AFFAIRS]) {
+    if (!note.subject) continue;
+    const r = await db.prepare(
+      "UPDATE content SET subject = ? WHERE title = ? AND subject = ''"
+    ).run(note.subject, note.title);
+    n += r.changes ?? 0;
+  }
+  return n;
+}
+
+/** Idempotent — each free lecture and class is keyed on its title. */
+export async function seedFreeResources(): Promise<{ videos: number; classes: number; tagged: number }> {
+  const authorId = await contentAuthorId();
+  return {
+    videos: await seedFreeVideos(authorId),
+    classes: await seedFreeClasses(authorId),
+    tagged: await backfillSubjects(),
   };
 }

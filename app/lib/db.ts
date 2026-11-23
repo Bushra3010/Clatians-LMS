@@ -177,6 +177,10 @@ const SCHEMA = `
     status TEXT NOT NULL DEFAULT 'pending', author_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, created_at TEXT NOT NULL DEFAULT ${NOW}
   );
+  -- The CLAT section a lecture / note / digest belongs to, so Free Resources can
+  -- list it under its subject. Blank on rows saved before this column existed —
+  -- those fall back to resolveSubject(), which reads the title.
+  ALTER TABLE content ADD COLUMN IF NOT EXISTS subject TEXT NOT NULL DEFAULT '';
   CREATE TABLE IF NOT EXISTS live_classes (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, subject TEXT NOT NULL DEFAULT '',
     course_id TEXT REFERENCES courses(id) ON DELETE CASCADE, teacher_id TEXT REFERENCES users(id) ON DELETE SET NULL,

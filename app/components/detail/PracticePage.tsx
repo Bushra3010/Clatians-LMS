@@ -23,6 +23,7 @@ export default function PracticePage({
   onStart,
   onOpenMaterial,
   onGenerate,
+  subtitle,
 }: {
   onBack: () => void;
   papers: TestListItem[];
@@ -30,6 +31,8 @@ export default function PracticePage({
   onStart: (id: string) => Promise<StartResult>;
   onOpenMaterial: () => void;
   onGenerate?: () => void;
+  /** Shown under the title — Free Resources passes the subject being listed. */
+  subtitle?: string;
 }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export default function PracticePage({
 
   return (
     <div style={page}>
-      <ScreenHeader title="Practice Questions" onBack={onBack} />
+      <ScreenHeader title="Practice Questions" subtitle={subtitle} onBack={onBack} />
 
       <div style={{ padding: "14px 16px 0" }}>
         <p style={{ margin: "0 2px 12px", fontSize: 12.5, color: "var(--ink-soft)" }}>

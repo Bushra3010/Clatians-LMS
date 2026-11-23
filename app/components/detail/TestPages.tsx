@@ -20,6 +20,8 @@ export type TestListItem = {
   myAttempts: number;
   bestScore: number | null;
   bestTotal: number | null;
+  /** True when no batch stands behind it — free practice for everyone. */
+  free?: boolean;
 };
 
 const typeLabel: Record<string, string> = { mock: "Full Mock", sectional: "Sectional", pyq: "Previous Year", practice: "Practice" };

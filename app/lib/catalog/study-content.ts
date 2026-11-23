@@ -38,6 +38,8 @@ export type SeedPaper = {
 export type SeedNote = {
   title: string;
   type: "notes" | "current-affairs";
+  /** The CLAT section it is filed under in Free Resources. */
+  subject: string;
   body: string;
 };
 
@@ -533,6 +535,7 @@ export const SEED_NOTES: SeedNote[] = [
   {
     title: "Legal Reasoning: how to attack a principle-and-facts question",
     type: "notes",
+    subject: "Legal Reasoning",
     body: `The single biggest source of lost marks in Legal Reasoning is answering with what the law actually is instead of what the given principle says. The section tests application, not legal knowledge.
 
 A method that works under time pressure:
@@ -557,6 +560,7 @@ One worked line to remember: if the principle makes liability turn on foreseeabi
   {
     title: "Constitution: Fundamental Rights at a glance",
     type: "notes",
+    subject: "Legal Reasoning",
     body: `Part III, Articles 12–35. These are the articles that recur in Legal Reasoning passages and in GK, so it is worth knowing the structure rather than just the numbers.
 
 Article 12 — defines "State". Fundamental rights are enforceable against the State, so what counts as State decides whether a right applies at all.
@@ -598,6 +602,7 @@ Note: the right to property was removed from Part III by the 44th Amendment (197
   {
     title: "English: finishing all reading-comprehension passages in time",
     type: "notes",
+    subject: "English Language",
     body: `CLAT English is four to six passages of roughly 450 words each, with four to six questions apiece. The constraint is not reading speed — it is decision speed.
 
 Budget
@@ -622,6 +627,7 @@ On a hard question, ruling out two options takes less time than proving one, and
   {
     title: "Quantitative Techniques: the formulas that actually appear",
     type: "notes",
+    subject: "Quantitative Techniques",
     body: `CLAT Quant is ten to fifteen questions, data-led, drawn from a narrow band of elementary mathematics. The syllabus is small — the marks go to whoever is quick and accurate, not to whoever knows the most.
 
 Percentages
@@ -654,6 +660,7 @@ Speed, time, distance
   {
     title: "Law of Torts: negligence, the three-element test",
     type: "notes",
+    subject: "Legal Reasoning",
     body: `Negligence is the tort that appears most often in CLAT Legal Reasoning passages, because it has a clean structure that a principle can state in two sentences.
 
 The three elements
@@ -682,6 +689,7 @@ export const SEED_CURRENT_AFFAIRS: SeedNote[] = [
   {
     title: "Current Affairs: how to prepare the GK section",
     type: "current-affairs",
+    subject: "Current Affairs & GK",
     body: `Current Affairs & GK is 35 to 39 questions — roughly a quarter of the paper — and it is the section where a steady habit beats last-minute effort most decisively.
 
 What CLAT actually asks
@@ -709,6 +717,7 @@ Exhaustive lists of dates, minor appointments and trivia are a poor use of the t
   {
     title: "Landmark judgments every CLAT aspirant should know",
     type: "current-affairs",
+    subject: "Current Affairs & GK",
     body: `These cases recur across both Legal Reasoning and GK. Know the holding and why it mattered — not the citation.
 
 Kesavananda Bharati v. State of Kerala (1973)
@@ -740,6 +749,7 @@ A tip on using these in Legal Reasoning: a passage may be built around one of th
   {
     title: "The CLAT exam pattern: what you are actually sitting",
     type: "current-affairs",
+    subject: "General & Exam Strategy",
     body: `Knowing the shape of the paper is worth a few marks on its own, because it decides how you allocate time.
 
 The paper

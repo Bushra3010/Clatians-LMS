@@ -5,8 +5,11 @@ import { db, newId } from "@/app/lib/db";
 import { requireRole } from "@/app/lib/auth";
 import { saveUpload } from "@/app/lib/upload";
 import { isOurFileUrl } from "@/app/lib/storage";
+import { CLAT_SUBJECTS } from "@/app/lib/subjects";
 
 const CONTENT_TYPES = ["video", "notes", "practice", "current-affairs"];
+/** Free Resources files material under its CLAT section, so one is recorded here. */
+const SUBJECTS = CLAT_SUBJECTS.map((s) => s.name);
 
 /**
  * Teacher submits content. It enters the shared content table as `pending`,
@@ -19,6 +22,9 @@ export async function createContentAction(formData: FormData) {
   const type = String(formData.get("type") ?? "");
   let body = String(formData.get("body") ?? "").trim();
   const courseId = String(formData.get("courseId") ?? "") || null;
+  const picked = String(formData.get("subject") ?? "").trim();
+  // Anything unrecognised is left blank, and the app falls back to the title.
+  const subject = SUBJECTS.includes(picked) ? picked : "";
 
   if (!title || !CONTENT_TYPES.includes(type)) return;
 
@@ -35,9 +41,9 @@ export async function createContentAction(formData: FormData) {
   }
 
   await db.prepare(
-    `INSERT INTO content (id, title, type, body, status, author_id, course_id)
-     VALUES (?, ?, ?, ?, 'pending', ?, ?)`
-  ).run(newId(), title, type, body, user.id, courseId);
+    `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
+     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`
+  ).run(newId(), title, type, body, subject, user.id, courseId);
 
   revalidatePath("/teacher/content");
   revalidatePath("/teacher");

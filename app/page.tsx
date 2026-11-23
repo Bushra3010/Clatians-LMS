@@ -17,6 +17,7 @@ import type { StudentResources } from "./lib/resource-types";
 import type { SyllabusSubject } from "./components/StudyScreen";
 import type { LearningProgress } from "./components/learning/LearningFlow";
 import { ensureCatalog } from "./lib/catalog/sync";
+import { resolveSubject } from "./lib/subjects";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ type ClassQueryRow = {
   join_url: string; recording_url: string; notes: string; attended: number;
 };
 type ContentRow = {
-  id: string; title: string; body: string; type: string;
+  id: string; title: string; body: string; type: string; subject: string;
   author: string | null; course: string | null; created_at: string; done: number;
 };
 type DoubtRow = {
@@ -100,20 +101,25 @@ export default async function Home() {
   // Every query below is independent of the others, so they all go out at
   // once. One after another they cost ~30 database round trips per page
   // load, which on a serverless host far from the database took ~9 seconds.
-  const classSelect = (statusClause: string, order: string, limit = "") => `
+  const classSelect = (statusClause: string, order: string, limit = "", scope = "lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)") => `
     SELECT lc.id, lc.title, lc.subject, lc.start_at, lc.duration_min, lc.status,
            lc.join_url, lc.recording_url, lc.notes, u.name AS teacher,
            (EXISTS(SELECT 1 FROM class_attendance a WHERE a.class_id = lc.id AND a.user_id = ?))::int AS attended
     FROM live_classes lc
     LEFT JOIN users u ON u.id = lc.teacher_id
-    WHERE lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+    WHERE ${scope}
       AND ${statusClause}
     ORDER BY ${order} ${limit}`;
+  // Classes with no course behind them are the free ones — open to every
+  // student, enrolled or not, and listed under Free Resources ▸ Live Classes.
+  const freeClassSelect = (statusClause: string, order: string, limit = "") =>
+    classSelect(statusClause, order, limit, "lc.course_id IS NULL");
   const nowIso = new Date().toISOString();
 
   const [
     upcomingRows, pastRows, statRow, contentQuery, doubtMsgQuery, doubtRows, courseContentQuery, batchQuery, courseRows, hierarchyQuery, paperRows, enrolledCourseRows, attemptRows, practiceRow, savedQuery, resourceQuery, notificationRows, certQuery, prefsQuery, openSlotRows, bookingRows, taskRows, noteRows, creditQuery, referralTotalRow, referralEnrolledRow, paymentRows,
     selectedCourseRow, learningRows, leaderboardRows, streakDays,
+    freeUpcomingRows, freePastRows,
   ] = await Promise.all([
     db.prepare(classSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id, user.id),
     db.prepare(classSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 10")).all(user.id, user.id),
@@ -123,7 +129,7 @@ export default async function Home() {
        (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status IN ('live','ended') AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
   ).get(user.id, user.id, user.id),
     db.prepare(
-    `SELECT ct.id, ct.title, ct.body, ct.type, ct.created_at, u.name AS author, c.name AS course,
+    `SELECT ct.id, ct.title, ct.body, ct.type, ct.subject, ct.created_at, u.name AS author, c.name AS course,
             (EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?))::int AS done
      FROM content ct
      LEFT JOIN users u ON u.id = ct.author_id
@@ -218,7 +224,9 @@ export default async function Home() {
                FROM questions q WHERE q.test_id = t.id) AS subject,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
             (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS best_score,
-            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total
+            (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total,
+            -- A paper behind no course is free for everyone.
+            (t.course_id IS NULL)::int AS free
      FROM tests t
      WHERE t.status='published'
        AND (t.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?) OR t.course_id IS NULL)
@@ -297,6 +305,8 @@ export default async function Home() {
     ).all(user.id, user.id),
     computeLeaderboard(),
     computeStreak(user.id),
+    db.prepare(freeClassSelect("lc.status IN ('scheduled','live')", "CASE lc.status WHEN 'live' THEN 0 ELSE 1 END, lc.start_at ASC")).all(user.id),
+    db.prepare(freeClassSelect("lc.status = 'ended'", "lc.start_at DESC", "LIMIT 20")).all(user.id),
   ]);
 
 
@@ -304,6 +314,11 @@ export default async function Home() {
 
   const upcoming = (upcomingRows as ClassQueryRow[]).map(toClass);
   const past = (pastRows as ClassQueryRow[]).map(toClass);
+  // Free Resources ▸ Live Classes — the open sessions, for everyone.
+  const freeClasses = {
+    upcoming: (freeUpcomingRows as ClassQueryRow[]).map(toClass),
+    past: (freePastRows as ClassQueryRow[]).map(toClass),
+  };
 
   const stat = statRow as { total: number; attended: number };
   const attendancePct = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : null;
@@ -314,6 +329,9 @@ export default async function Home() {
   const byType = (t: string): ContentItem[] =>
     contentRows.filter((r) => r.type === t).map((r) => ({
       id: r.id, title: r.title, body: r.body, author: r.author, course: r.course, createdAt: r.created_at, done: r.done === 1,
+      subject: resolveSubject(r.subject, r.title, r.body),
+      // Batch-agnostic material is what every student gets without buying anything.
+      free: r.course === null,
     }));
   const content = {
     video: byType("video"),
@@ -412,12 +430,12 @@ export default async function Home() {
   // ── Tests & practice papers (published, available to the student's batches) ──
   // Both run on the same engine; `type` decides which screen they surface on —
   // 'practice' goes to Practice Questions, everything else to Test Series.
-  const allPapers: TestListItem[] = (paperRows as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null }[])
+  const allPapers: TestListItem[] = (paperRows as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null; free: number }[])
     .map((t) => ({
       id: t.id, title: t.title, description: t.description, type: t.type,
       subject: t.subject ?? "",
       durationMin: t.duration_min, questionCount: t.qcount, myAttempts: t.my_attempts,
-      bestScore: t.best_score, bestTotal: t.best_total,
+      bestScore: t.best_score, bestTotal: t.best_total, free: t.free === 1,
     }));
 
   const tests = allPapers.filter((t) => t.type !== "practice");
@@ -640,6 +658,7 @@ export default async function Home() {
       notifyPrefs={notifyPrefs}
       certificates={certificates}
       syllabus={syllabus}
+      freeClasses={freeClasses}
       currentCourse={currentCourse}
       learning={learning}
     />

@@ -14,6 +14,10 @@ export type ContentItem = {
   course: string | null;
   createdAt: string;
   done: boolean;
+  /** The CLAT section it is filed under — Free Resources groups on this. */
+  subject?: string;
+  /** True when it belongs to no batch, so every student can open it. */
+  free?: boolean;
 };
 
 const meta: Record<string, { label: string; icon: IconName; tone: Tone; action: string }> = {
@@ -131,6 +135,7 @@ export default function ContentListPage({
   items,
   onToggleDone,
   banner,
+  subtitle,
 }: {
   onBack: () => void;
   type: string;
@@ -138,6 +143,8 @@ export default function ContentListPage({
   onToggleDone: (id: string) => void;
   /** Optional card shown above the list — e.g. the daily quiz on Current Affairs. */
   banner?: React.ReactNode;
+  /** Shown under the title — Free Resources passes the subject being listed. */
+  subtitle?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const doneCount = items.filter((i) => i.done).length;
@@ -151,7 +158,7 @@ export default function ContentListPage({
 
   return (
     <div style={page}>
-      <ScreenHeader title={m.label} onBack={onBack} />
+      <ScreenHeader title={m.label} subtitle={subtitle} onBack={onBack} />
 
       <div style={{ padding: "14px 16px 0" }}>
         {banner}

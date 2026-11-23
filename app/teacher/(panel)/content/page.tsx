@@ -4,6 +4,7 @@ import { requireRole } from "@/app/lib/auth";
 import { createContentAction, deleteContentAction } from "../../actions";
 import CurrentAffairsGenerator from "./CurrentAffairsGenerator";
 import { aiConfigured } from "@/app/lib/ai";
+import { CLAT_SUBJECTS } from "@/app/lib/subjects";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI digest generation can take longer than 10s
@@ -80,9 +81,24 @@ export default async function TeacherContentPage() {
           </div>
 
           <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Subject</span>
+            <select name="subject" className={inputCls} defaultValue="">
+              <option value="">— Pick a CLAT section —</option>
+              {CLAT_SUBJECTS.map((s) => (
+                <option key={s.slug} value={s.name}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <span className="block text-[11px] text-slate-400 mt-1">
+              Students browse Free Resources by subject, so pick the section this belongs to.
+            </span>
+          </label>
+
+          <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Course (optional)</span>
             <select name="courseId" className={inputCls} defaultValue="">
-              <option value="">— No specific course —</option>
+              <option value="">— No specific course (free for everyone) —</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

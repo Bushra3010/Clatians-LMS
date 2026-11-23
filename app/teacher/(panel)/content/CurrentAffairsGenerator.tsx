@@ -74,6 +74,8 @@ export default function CurrentAffairsGenerator({ courses }: { courses: Course[]
       {generated && (
         <form action={createContentAction} className="mt-5 border-t border-slate-100 pt-4 space-y-3">
           <input type="hidden" name="type" value="current-affairs" />
+          {/* A digest is GK material, so it files itself under that section. */}
+          <input type="hidden" name="subject" value="Current Affairs & GK" />
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Title</span>
             <input name="title" required value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
@@ -81,7 +83,7 @@ export default function CurrentAffairsGenerator({ courses }: { courses: Course[]
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Course (optional)</span>
             <select name="courseId" className={inputCls} defaultValue="">
-              <option value="">— No specific course —</option>
+              <option value="">— No specific course (free for everyone) —</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}

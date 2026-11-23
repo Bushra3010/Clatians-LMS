@@ -9,6 +9,7 @@ import { Check } from "../BatchInfo";
 import { WebsiteBatchHero, WebsiteBatchBody } from "../WebsiteBatch";
 import { AppIcon, courseIconName, subjectIconName, type IconName } from "../AppIcon";
 import * as kit from "../ui/kit";
+import { FREE_CATEGORIES, type FreeCategory } from "../detail/FreeResourcesPage";
 import { shareText } from "../../lib/share";
 
 /** Topics finished per enrolled course — loaded with the page for the My Learning list. */
@@ -222,8 +223,8 @@ interface LearningFlowProps {
   onOpenTopic: (topicId: string) => void;
   onBrowseCourses: () => void;
   onOpenLibrary: () => void;
-  /** Current Affairs = the website's blog, in its own page. */
-  onOpenCurrentAffairs?: () => void;
+  /** Opens Free Resources on one format — videos, notes, practice, CA or live. */
+  onOpenFree?: (category: FreeCategory) => void;
   /** Change the current screen in place (no Back step) — used for the list's tabs. */
   onReplaceNav?: (next: LearningNav) => void;
   onOpenNotifications?: () => void;
@@ -291,7 +292,7 @@ type ListTab = "enrolled" | "resources";
 /** My Learning opens on Free Resources unless the student was last on Enrolled. */
 const DEFAULT_LIST_TAB: ListTab = "resources";
 
-function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseCourses, onOpenLibrary, onOpenCurrentAffairs, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
+function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseCourses, onOpenLibrary, onOpenFree, onOpenNotifications, unreadCount = 0 }: LearningFlowProps) {
   const [localTab, setLocalTab] = useState<ListTab>(DEFAULT_LIST_TAB);
   const tab: ListTab = onReplaceNav ? (nav.view === "list" ? nav.tab ?? DEFAULT_LIST_TAB : DEFAULT_LIST_TAB) : localTab;
   const setTab = (t: ListTab) => (onReplaceNav ? onReplaceNav({ view: "list", tab: t }) : setLocalTab(t));
@@ -373,15 +374,22 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
               </button>
             </kit.HeroCard>
 
+            {/* The five formats. Each opens on its own subject list, so a student
+                goes format → subject → free material in that section. */}
             <kit.SectionTitle kicker="Pick a format" title="Explore resources" />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-              {[
-                { icon: "video" as IconName, label: "Video Lectures", sub: "Recorded classes by faculty", tone: "red" as kit.Tone },
-                { icon: "file" as IconName, label: "Study Notes", sub: "Chapter-wise notes & PDFs", tone: "blue" as kit.Tone },
-                { icon: "clipboard" as IconName, label: "Practice Questions", sub: "Topic-wise MCQs", tone: "purple" as kit.Tone },
-                { icon: "newspaper" as IconName, label: "Current Affairs", sub: "Daily notes for CLAT GK", tone: "green" as kit.Tone },
-              ].map((r) => (
-                <button key={r.label} onClick={r.label === "Current Affairs" && onOpenCurrentAffairs ? onOpenCurrentAffairs : onOpenLibrary} className="press" style={{ ...card, cursor: "pointer", textAlign: "left", padding: 14, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+              {FREE_CATEGORIES.map((r, i) => (
+                <button
+                  key={r.key}
+                  onClick={() => (onOpenFree ? onOpenFree(r.key) : onOpenLibrary())}
+                  className="press"
+                  style={{
+                    ...card, cursor: "pointer", textAlign: "left", padding: 14,
+                    display: "flex", flexDirection: "column", gap: 10, minWidth: 0,
+                    // Five tiles in a two-wide grid: the last one runs full width.
+                    gridColumn: i === FREE_CATEGORIES.length - 1 && FREE_CATEGORIES.length % 2 === 1 ? "1 / -1" : undefined,
+                  }}
+                >
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <kit.IconTile icon={r.icon} tone={r.tone} size={40} />
                     <AppIcon name="arrowRight" size={15} color="var(--text-disabled)" />
@@ -389,6 +397,7 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
                   <span>
                     <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{r.label}</span>
                     <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{r.sub}</span>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>5 subjects</span>
                   </span>
                 </button>
               ))}

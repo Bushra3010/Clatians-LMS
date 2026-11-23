@@ -63,21 +63,27 @@ export default function LiveClassesPage({
   attendancePct,
   onJoin,
   onWatchRecording,
+  title = "Live Classes",
+  subtitle,
 }: {
   onBack: () => void;
   upcoming: LiveClassItem[];
   past: LiveClassItem[];
+  /** null hides the attendance card — Free Resources has no batch to measure. */
   attendancePct: number | null;
   onJoin: (id: string) => void;
   onWatchRecording: (cls: LiveClassItem) => void;
+  title?: string;
+  /** Shown under the title — Free Resources passes the subject being listed. */
+  subtitle?: string;
 }) {
   return (
     <div style={page}>
-      <ScreenHeader title="Live Classes" onBack={onBack} />
+      <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} />
 
       <div style={{ padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Attendance summary */}
-        <div style={{
+        {attendancePct !== null && <div style={{
           ...heroSurface, padding: "16px 18px", color: "white",
           display: "flex", alignItems: "center", gap: 12,
           boxShadow: "0 8px 22px rgba(11,92,255,0.25)",
@@ -90,14 +96,14 @@ export default function LiveClassesPage({
             <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 800 }}>Live classes</p>
           </div>
           <div style={{ fontSize: 30, fontWeight: 900, color: "var(--gold)" }}>
-            {attendancePct === null ? "—" : `${attendancePct}%`}
+            {`${attendancePct}%`}
           </div>
-        </div>
+        </div>}
 
         {/* Timetable — upcoming & live, grouped by day */}
         <SectionTitle title="Timetable" />
         {upcoming.length === 0 && (
-          <EmptyState icon="calendar" title="No classes scheduled for your batch right now." />
+          <EmptyState icon="calendar" title="No classes scheduled right now." />
         )}
         {groupByDay(upcoming).map(([day, dayItems]) => (
           <div key={day}>

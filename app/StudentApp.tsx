@@ -12,6 +12,7 @@ import DoubtsScreen from "./components/DoubtsScreen";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
+import FreeResourcesPage, { type FreeCategory } from "./components/detail/FreeResourcesPage";
 import CurrentAffairsPage from "./components/detail/CurrentAffairsPage";
 import { AppIcon } from "./components/AppIcon";
 import { DEMO_VIDEO } from "./lib/demo-media";
@@ -81,7 +82,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | null;
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -112,17 +113,21 @@ interface StudentAppProps {
   notifyPrefs: NotifyPrefs;
   certificates: CertificateItem[];
   syllabus: SyllabusSubject[];
+  /** Classes behind no batch — Free Resources ▸ Live Classes. */
+  freeClasses: { upcoming: LiveClassItem[]; past: LiveClassItem[] };
   /** The course heading the home screen — null until one is chosen or bought. */
   currentCourse: { id: string; name: string; purchased: boolean } | null;
   /** My Learning progress per enrolled course. */
   learning: LearningProgress[];
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, currentCourse, learning }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, freeClasses, currentCourse, learning }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
   const [detailPage, setDetailPage] = useState<DetailPage>(null);
+  // Which format Free Resources opens on — null lands on the format list.
+  const [freeCategory, setFreeCategory] = useState<FreeCategory | null>(null);
   const [watchTarget, setWatchTarget] = useState<WatchTarget | null>(null);
   const [testSession, setTestSession] = useState<Extract<StartResult, { ok: true }> | null>(null);
   const [testResult, setTestResult] = useState<{ title: string; result: Extract<SubmitResult, { ok: true }> } | null>(null);
@@ -542,6 +547,20 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenCurrentAffairs={() => openDetail("current-affairs")}
             />
           )}
+          {detailPage === "free-resources" && (
+            <FreeResourcesPage
+              onBack={closeDetail}
+              initialCategory={freeCategory}
+              content={content}
+              papers={practicePapers}
+              classes={freeClasses}
+              onToggleDone={handleToggleDone}
+              onStartTest={(id) => handleStartTest(id)}
+              onJoinClass={handleJoinClass}
+              onWatchRecording={handleWatchRecording}
+              onBrowseCourses={() => goScreen("courses")}
+            />
+          )}
           {detailPage === "help" && <HelpSupportPage onBack={closeDetail} />}
           {detailPage === "settings" && (
             <SettingsPage onBack={closeDetail} profile={profile} initialPrefs={notifyPrefs} onLogout={() => { logoutAction(); }} />
@@ -598,8 +617,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onBack={back}
               onOpenTopic={handleOpenTopic}
               onBrowseCourses={() => goScreen("courses")}
-              onOpenLibrary={() => openDetail("study-library")}
-              onOpenCurrentAffairs={() => openDetail("current-affairs")}
+              onOpenLibrary={() => { setFreeCategory(null); openDetail("free-resources"); }}
+              onOpenFree={(cat) => { setFreeCategory(cat); openDetail("free-resources"); }}
               onReplaceNav={showLearning}
               onStartTest={(testId) => handleStartTest(testId, "tests")}
               onOpenNotifications={() => openDetail("notifications")}
