@@ -16,6 +16,8 @@ export type ContentItem = {
   done: boolean;
   /** The CLAT section it is filed under — Free Resources groups on this. */
   subject?: string;
+  /** The topic inside that section — Free Resources lists a subject topic-wise. */
+  topic?: string;
   /** True when it belongs to no batch, so every student can open it. */
   free?: boolean;
 };
@@ -136,6 +138,7 @@ export default function ContentListPage({
   onToggleDone,
   banner,
   subtitle,
+  groupByTopic = false,
 }: {
   onBack: () => void;
   type: string;
@@ -145,6 +148,8 @@ export default function ContentListPage({
   banner?: React.ReactNode;
   /** Shown under the title — Free Resources passes the subject being listed. */
   subtitle?: string;
+  /** List under topic headings (Free Resources ▸ a subject) instead of one flat list. */
+  groupByTopic?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const doneCount = items.filter((i) => i.done).length;
@@ -155,6 +160,43 @@ export default function ContentListPage({
   if (openItem) {
     return <ContentViewer item={openItem} type={type} onBack={() => setOpenId(null)} onToggleDone={onToggleDone} />;
   }
+
+  const renderRow = (it: ContentItem) => (
+    <div
+      key={it.id}
+      onClick={() => setOpenId(it.id)}
+      style={{ ...card, padding: "14px 15px", cursor: "pointer" }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <IconTile icon={m.icon} tone={m.tone} size={44} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{it.title}</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
+            {isUrl(it.body) ? "Tap to open in the app." : it.body || "No description."}
+          </p>
+          <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>
+            {it.author ?? "Faculty"}{it.course ? ` · ${it.course}` : ""}
+          </p>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleDone(it.id); }}
+          aria-label={it.done ? "Mark not done" : "Mark done"}
+          style={{
+            flexShrink: 0, display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
+            border: `1.5px solid ${it.done ? "var(--success-border)" : "var(--line-strong)"}`,
+            background: it.done ? "var(--success)" : "white",
+            color: it.done ? "var(--success-text)" : "var(--ink-soft)",
+            borderRadius: 20, padding: "5px 10px", fontSize: 11, fontWeight: 800,
+          }}
+        >
+          {it.done ? <><AppIcon name="check" size={12} strokeWidth={2.6} /> Done</> : "Mark done"}
+        </button>
+      </div>
+      <div style={{ ...primaryBtn, display: "flex", width: "100%", boxSizing: "border-box", marginTop: 12, padding: "10px", fontSize: 13, boxShadow: "none" }}>
+        {m.action} <AppIcon name="arrowRight" size={15} color="white" />
+      </div>
+    </div>
+  );
 
   return (
     <div style={page}>
@@ -171,45 +213,36 @@ export default function ContentListPage({
           <EmptyState icon={m.icon} title="Nothing here yet" text={`Your teachers haven't published ${m.label.toLowerCase()} for your batch yet.`} />
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {items.map((it) => (
-            <div
-              key={it.id}
-              onClick={() => setOpenId(it.id)}
-              style={{ ...card, padding: "14px 15px", cursor: "pointer" }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <IconTile icon={m.icon} tone={m.tone} size={44} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{it.title}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
-                    {isUrl(it.body) ? "Tap to open in the app." : it.body || "No description."}
-                  </p>
-                  <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>
-                    {it.author ?? "Faculty"}{it.course ? ` · ${it.course}` : ""}
-                  </p>
+        {groupByTopic ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {topicGroups(items).map(([topic, list]) => (
+              <section key={topic}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
+                  <span style={{ width: 4, height: 16, borderRadius: 2, background: "var(--blue)" }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{topic}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)" }}>{list.length} {list.length === 1 ? "item" : "items"}</span>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleDone(it.id); }}
-                  aria-label={it.done ? "Mark not done" : "Mark done"}
-                  style={{
-                    flexShrink: 0, display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
-                    border: `1.5px solid ${it.done ? "var(--success-border)" : "var(--line-strong)"}`,
-                    background: it.done ? "var(--success)" : "white",
-                    color: it.done ? "var(--success-text)" : "var(--ink-soft)",
-                    borderRadius: 20, padding: "5px 10px", fontSize: 11, fontWeight: 800,
-                  }}
-                >
-                  {it.done ? <><AppIcon name="check" size={12} strokeWidth={2.6} /> Done</> : "Mark done"}
-                </button>
-              </div>
-              <div style={{ ...primaryBtn, display: "flex", width: "100%", boxSizing: "border-box", marginTop: 12, padding: "10px", fontSize: 13, boxShadow: "none" }}>
-                {m.action} <AppIcon name="arrowRight" size={15} color="white" />
-              </div>
-            </div>
-          ))}
-        </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{list.map(renderRow)}</div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{items.map(renderRow)}</div>
+        )}
       </div>
     </div>
   );
+}
+
+export const OTHER_TOPICS = "Other topics";
+
+/** Items under their topic, topics A–Z with untagged material last. */
+export function topicGroups(items: ContentItem[]): [string, ContentItem[]][] {
+  const map = new Map<string, ContentItem[]>();
+  for (const it of items) {
+    const t = (it.topic || "").trim() || OTHER_TOPICS;
+    map.set(t, [...(map.get(t) ?? []), it]);
+  }
+  return [...map.entries()].sort(([a], [b]) =>
+    a === OTHER_TOPICS ? 1 : b === OTHER_TOPICS ? -1 : a.localeCompare(b));
 }

@@ -200,13 +200,49 @@ export async function listBlogPostsAction(): Promise<{ ok: true; posts: BlogPost
   }
 }
 
+/**
+ * The article body as the website renders it. /api/blogs has stopped sending
+ * `content` (it comes back blank), so the post page itself is read and its
+ * `<div class="blog-content">` lifted out — headings, bold highlights, lists
+ * and tables included. Cached alongside the list.
+ */
+async function fetchPostBody(slug: string): Promise<string> {
+  const base = process.env.WEBSITE_URL?.trim() || "https://clatians.com";
+  const res = await fetch(new URL(`/blogs/${encodeURIComponent(slug)}`, base), {
+    headers: { accept: "text/html" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) return "";
+  return extractDiv(await res.text(), "blog-content");
+}
+
+/** The inner HTML of the first `<div class="…name…">`, matching nested divs. */
+function extractDiv(html: string, className: string): string {
+  const open = new RegExp(`<div\\b[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`, "i").exec(html);
+  if (!open) return "";
+  const start = open.index + open[0].length;
+  const tag = /<(\/?)div\b[^>]*>/gi;
+  tag.lastIndex = start;
+  let depth = 1;
+  for (let m = tag.exec(html); m; m = tag.exec(html)) {
+    depth += m[1] ? -1 : 1;
+    if (depth === 0) return html.slice(start, m.index);
+  }
+  return "";
+}
+
 export async function getBlogPostAction(slug: string): Promise<{ ok: true; post: BlogPost; html: string } | { ok: false; error: string }> {
   await requireRole(["student", "teacher", "admin"]);
   try {
     const cache = await load();
     const post = cache.posts.find((p) => p.slug === slug);
     if (!post) return { ok: false, error: "This article is no longer on the website." };
-    const raw = cache.content.get(slug) ?? "";
+    let raw = (cache.content.get(slug) ?? "").trim();
+    if (!raw) {
+      raw = (await fetchPostBody(slug).catch(() => "")).trim();
+      if (raw) cache.content.set(slug, raw);
+    }
     return { ok: true, post, html: cleanHtml(isHtml(raw) ? raw : markdownToHtml(raw)) };
   } catch {
     return { ok: false, error: "Couldn't reach clatians.com. Check your connection and try again." };

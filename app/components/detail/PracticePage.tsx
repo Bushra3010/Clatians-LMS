@@ -24,6 +24,7 @@ export default function PracticePage({
   onOpenMaterial,
   onGenerate,
   subtitle,
+  groupByTopic = false,
 }: {
   onBack: () => void;
   papers: TestListItem[];
@@ -33,6 +34,8 @@ export default function PracticePage({
   onGenerate?: () => void;
   /** Shown under the title — Free Resources passes the subject being listed. */
   subtitle?: string;
+  /** List papers under topic headings (Free Resources ▸ a subject). */
+  groupByTopic?: boolean;
 }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -56,6 +59,39 @@ export default function PracticePage({
   const shown = subject === "All" ? papers : papers.filter((p) => p.subject === subject);
 
   const attempted = papers.filter((p) => p.myAttempts > 0).length;
+
+  const renderPaper = (p: TestListItem) => {
+    const pct = p.bestScore !== null && p.bestTotal ? Math.round((p.bestScore / p.bestTotal) * 100) : null;
+    return (
+      <div key={p.id} style={{ ...card, padding: "15px 16px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <IconTile icon="clipboard" tone="purple" size={42} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {(p.subject || pct !== null) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+                {p.subject && <Pill tone="blue">{p.subject}</Pill>}
+                {pct !== null && <Pill tone="green">Best {pct}%</Pill>}
+              </div>
+            )}
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{p.title}</p>
+            {p.description && (
+              <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.5 }}>{p.description}</p>
+            )}
+            <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--ink-mute)" }}>
+              {p.questionCount} questions · {p.durationMin > 0 ? `${p.durationMin} min` : "untimed"}
+              {p.myAttempts > 0 ? ` · ${p.myAttempts} attempt${p.myAttempts > 1 ? "s" : ""}` : ""}
+            </p>
+          </div>
+        </div>
+        <button onClick={() => start(p.id)} disabled={busy === p.id} style={{
+          ...primaryBtn, width: "100%", marginTop: 12,
+          cursor: busy === p.id ? "default" : "pointer", opacity: busy === p.id ? 0.7 : 1,
+        }}>
+          {busy === p.id ? "Loading…" : <>{p.myAttempts > 0 ? "Practise again" : "Start practice"} <AppIcon name="arrowRight" size={16} color="white" /></>}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div style={page}>
@@ -90,40 +126,22 @@ export default function PracticePage({
         {papers.length === 0 ? (
           <EmptyState icon="clipboard" title="No practice papers yet" text="Practice papers published for your batch will appear here." />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {shown.map((p) => {
-              const pct = p.bestScore !== null && p.bestTotal ? Math.round((p.bestScore / p.bestTotal) * 100) : null;
-              return (
-                <div key={p.id} style={{ ...card, padding: "15px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <IconTile icon="clipboard" tone="purple" size={42} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {(p.subject || pct !== null) && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-                          {p.subject && <Pill tone="blue">{p.subject}</Pill>}
-                          {pct !== null && <Pill tone="green">Best {pct}%</Pill>}
-                        </div>
-                      )}
-                      <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{p.title}</p>
-                      {p.description && (
-                        <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.5 }}>{p.description}</p>
-                      )}
-                      <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--ink-mute)" }}>
-                        {p.questionCount} questions · {p.durationMin > 0 ? `${p.durationMin} min` : "untimed"}
-                        {p.myAttempts > 0 ? ` · ${p.myAttempts} attempt${p.myAttempts > 1 ? "s" : ""}` : ""}
-                      </p>
-                    </div>
+          groupByTopic ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              {paperTopicGroups(shown).map(([topic, list]) => (
+                <section key={topic}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
+                    <span style={{ width: 4, height: 16, borderRadius: 2, background: "var(--blue)" }} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{topic}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)" }}>{list.length} {list.length === 1 ? "set" : "sets"}</span>
                   </div>
-                  <button onClick={() => start(p.id)} disabled={busy === p.id} style={{
-                    ...primaryBtn, width: "100%", marginTop: 12,
-                    cursor: busy === p.id ? "default" : "pointer", opacity: busy === p.id ? 0.7 : 1,
-                  }}>
-                    {busy === p.id ? "Loading…" : <>{p.myAttempts > 0 ? "Practise again" : "Start practice"} <AppIcon name="arrowRight" size={16} color="white" /></>}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{list.map(renderPaper)}</div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{shown.map(renderPaper)}</div>
+          )
         )}
 
         {/* ── AI practice ── */}
@@ -167,4 +185,24 @@ export default function PracticePage({
       </div>
     </div>
   );
+}
+
+/**
+ * A paper's topic, read from its title: "Legal Reasoning — Practice Set 1:
+ * Negligence & Consent" is filed under "Negligence & Consent".
+ */
+function paperTopic(p: TestListItem): string {
+  const i = p.title.lastIndexOf(":");
+  const t = i >= 0 ? p.title.slice(i + 1).trim() : "";
+  return t || "Other topics";
+}
+
+function paperTopicGroups(papers: TestListItem[]): [string, TestListItem[]][] {
+  const map = new Map<string, TestListItem[]>();
+  for (const p of papers) {
+    const t = paperTopic(p);
+    map.set(t, [...(map.get(t) ?? []), p]);
+  }
+  return [...map.entries()].sort(([a], [b]) =>
+    a === "Other topics" ? 1 : b === "Other topics" ? -1 : a.localeCompare(b));
 }

@@ -11,6 +11,7 @@ import { AppIcon, courseIconName, subjectIconName, type IconName } from "../AppI
 import * as kit from "../ui/kit";
 import { FREE_CATEGORIES, type FreeCategory } from "../detail/FreeResourcesPage";
 import { shareText } from "../../lib/share";
+import type { SlotBooking } from "../detail/SlotsPage";
 
 /** Topics finished per enrolled course — loaded with the page for the My Learning list. */
 export type LearningProgress = { courseId: string; lessons: number; done: number; minutes: number };
@@ -234,6 +235,13 @@ interface LearningFlowProps {
   onToggleSaveBatch?: (key: string, title: string, subtitle: string) => void;
   /** Starts a topic test; resolves with an error message when it can't start. */
   onStartTest?: (testId: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Mentorship: book a 1-on-1 slot, ask a doubt, open the planner, review mocks. */
+  onBookSession?: () => void;
+  onAskDoubt?: () => void;
+  onOpenPlanner?: () => void;
+  onOpenMocks?: () => void;
+  /** The student's booked 1-on-1 sessions, soonest first. */
+  mentorBookings?: SlotBooking[];
 }
 
 /**
@@ -248,6 +256,9 @@ export default function LearningFlow(props: LearningFlowProps) {
   // Right after a purchase the batch may not be in the catalog yet; fall back to the course's own enrolled batch.
   const batch = (nav.batchId ? course.batches.find((b) => b.id === nav.batchId) : undefined) ?? course.batches.find((b) => b.enrolled) ?? null;
   if (nav.view === "subject") return <SubjectView key={`${batch?.id ?? course.id}-${nav.subject}`} {...props} course={course} batch={batch} subject={nav.subject} />;
+  // Mock tests and mentorship aren't syllabus courses — each gets its own home.
+  if (course.category === "mock") return <MockSeriesHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
+  if (course.category === "mentorship") return <MentorshipHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
   return <BatchHome key={batch?.id ?? course.id} {...props} course={course} batch={batch} />;
 }
 
@@ -442,6 +453,231 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
 // ── 3 · Batch — mockup screen 3, with the batch's Subjects where the mockup lists batches ──
 
 type HomeTab = "overview" | "subjects" | "instructors" | "tests";
+
+// ── Mock Test Series — a test dashboard, not a course ──
+
+/** The CLAT UG paper every full mock follows. */
+const CLAT_PATTERN: { label: string; value: string }[] = [
+  { label: "Questions", value: "120" },
+  { label: "Duration", value: "120 min" },
+  { label: "Marking", value: "+1 / −0.25" },
+];
+const CLAT_SECTIONS = ["English", "GK", "Legal", "Logical", "Quant"];
+
+function MockSeriesHome({ course: c, batch: b, onBack, onStartTest }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+  const mocks = useBatchMocks(c.id);
+  const list = mocks ?? [];
+  const attempted = list.filter((t) => t.attempts > 0);
+  const pcts = attempted
+    .filter((t) => t.bestScore != null && t.bestTotal)
+    .map((t) => Math.round(((t.bestScore as number) / (t.bestTotal as number)) * 100));
+  const best = pcts.length ? Math.max(...pcts) : null;
+  const avg = pcts.length ? Math.round(pcts.reduce((a, n) => a + n, 0) / pcts.length) : null;
+  // "CLAT Mock Test Series — 20 Mocks" → 20; falls back to what is published.
+  const packSize = Number(/(\d+)\s*(full\s*)?mocks?/i.exec(b?.name ?? "")?.[1] ?? 0) || list.length;
+  const next = list.find((t, i) => t.attempts === 0 && (i === 0 || list[i - 1].attempts > 0));
+
+  return (
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <Header title={b?.name ?? c.name} subtitle="Mock Test Series" onBack={onBack} />
+
+      <div style={{ padding: "8px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
+        <kit.HeroCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 20, fontWeight: 900, lineHeight: 1, color: "var(--gold)" }}>{packSize || "—"}</span>
+              <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.08em", marginTop: 2 }}>MOCKS</span>
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>{b?.batchType || "Mock Test Series"}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>Full-length CLAT papers · exam-day conditions</span>
+            </span>
+          </div>
+          <div style={{ ...kit.heroStrip, display: "flex", padding: "10px 4px", marginTop: 14 }}>
+            {[
+              { v: `${attempted.length}/${packSize || list.length}`, l: "Attempted" },
+              { v: best != null ? `${best}%` : "—", l: "Best score" },
+              { v: avg != null ? `${avg}%` : "—", l: "Average" },
+            ].map((s, i) => (
+              <div key={s.l} style={{ flex: "1 1 0", textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gold)" }}>{s.v}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.7)" }}>{s.l}</p>
+              </div>
+            ))}
+          </div>
+          {next && onStartTest && (
+            <button onClick={() => onStartTest(next.testId)} className="press" style={{ ...kit.goldBtn, width: "100%", marginTop: 14, color: "var(--blue-dark)" }}>
+              <AppIcon name="play" size={13} color="var(--blue-dark)" fill="var(--blue-dark)" />
+              {attempted.length ? "Take your next mock" : "Take your first mock"}
+            </button>
+          )}
+        </kit.HeroCard>
+
+        {/* Exam pattern — what every mock simulates */}
+        <div style={{ ...card, padding: 14 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>Every mock follows the CLAT pattern</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+            {CLAT_PATTERN.map((x) => (
+              <div key={x.label} style={{ background: "var(--app-bg)", border: "1px solid var(--line)", borderRadius: 12, padding: "9px 8px", textAlign: "center" }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{x.value}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "var(--ink-soft)" }}>{x.label}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {CLAT_SECTIONS.map((s) => (
+              <span key={s} style={{ fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, background: "var(--blue-tint)", color: "var(--blue)" }}>{s}</span>
+            ))}
+          </div>
+        </div>
+
+        <kit.SectionTitle kicker="Attempt in order" title="Your mock tests" />
+        {mocks === null ? <Loading /> : list.length === 0 ? (
+          <Empty icon="clipboard" title="Mocks are on their way" text="Your series' tests appear here as they are released — you'll get a notification for each one." />
+        ) : (
+          <MockTestList tests={list} onStartTest={onStartTest} />
+        )}
+
+        {/* How to get the most out of a mock */}
+        <div style={{ ...card, padding: 14 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>How to use your mocks</p>
+          {[
+            "Sit each mock in one 2-hour block, phone away — like exam day.",
+            "Review every wrong and skipped question before the next mock.",
+            "Track your weakest section and give it extra practice that week.",
+          ].map((t) => <Check key={t}>{t}</Check>)}
+        </div>
+
+        {b && b.chips.length > 0 && (
+          <div style={{ ...card, padding: 14 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>Included in your pack</p>
+            {b.chips.map((t) => <Check key={t}>{t}</Check>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Mentorship — a mentor and your sessions, not a syllabus ──
+
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "M";
+
+function MentorshipHome({ course: c, batch: b, onBack, onBookSession, onAskDoubt, onOpenPlanner, onOpenMocks, mentorBookings = [] }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+  const mentor = b?.faculty[0] || c.batches.flatMap((x) => x.faculty)[0] || "Your CLATians mentor";
+  const next = mentorBookings[0];
+  const sessionsInc = c.includes.find((x) => /session/i.test(x.label))?.value;
+  const duration = (b?.duration || c.duration || "").replace(/\s*\(.*\)$/, "");
+  // Website data sometimes carries blank rows — drop them.
+  const journey = c.curriculum.filter((m) => m.module?.trim());
+  const features = (b?.highlights.length ? b.highlights : c.features).filter((f) => f?.trim());
+
+  const actions: { icon: IconName; label: string; sub: string; onClick?: () => void }[] = [
+    { icon: "calendar", label: "Book a session", sub: "Pick a 1-on-1 slot", onClick: onBookSession },
+    { icon: "chat", label: "Ask your mentor", sub: "Send a doubt anytime", onClick: onAskDoubt },
+    { icon: "list", label: "Study plan", sub: "Your weekly targets", onClick: onOpenPlanner },
+    { icon: "chart", label: "Mock review", sub: "Go over your tests", onClick: onOpenMocks },
+  ];
+
+  return (
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <Header title={b?.name ?? c.name} subtitle="1-on-1 Mentorship" onBack={onBack} />
+
+      <div style={{ padding: "8px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Mentor card */}
+        <kit.HeroCard>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 8 }}>
+            <AppIcon name="target" size={12} />Your personal mentor
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+            <span style={{ width: 58, height: 58, borderRadius: "50%", background: "var(--gold)", color: "var(--blue-dark)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, flexShrink: 0, border: "3px solid rgba(255,255,255,0.35)" }}>
+              {initials(mentor)}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>{mentor}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>NLU topper · {c.name}</span>
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            {[
+              { icon: "users" as IconName, text: "1-on-1" },
+              { icon: "phone" as IconName, text: "WhatsApp + Video call" },
+              duration && { icon: "clock" as IconName, text: duration },
+              sessionsInc && { icon: "calendar" as IconName, text: `${sessionsInc} sessions` },
+            ].filter(Boolean).map((m) => {
+              const x = m as { icon: IconName; text: string };
+              return (
+                <span key={x.text} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "white", background: "rgba(255,255,255,0.12)", padding: "4px 10px", borderRadius: 20 }}>
+                  <AppIcon name={x.icon} size={12} color="var(--gold)" />{x.text}
+                </span>
+              );
+            })}
+          </div>
+        </kit.HeroCard>
+
+        {/* Next session */}
+        <div style={{ ...card, padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+          <kit.IconTile icon="calendar" tone={next ? "green" : "gold"} size={46} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Next session</span>
+            {next ? <>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>
+                {fmtIST(next.startAt, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true })}
+              </span>
+              <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>with {next.teacher}{next.topic ? ` · ${next.topic}` : ""}</span>
+            </> : (
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginTop: 2 }}>No session booked yet</span>
+            )}
+          </span>
+          {onBookSession && (
+            <button onClick={onBookSession} className="press" style={{ ...primaryBtn, flexShrink: 0 }}>{next ? "Reschedule" : "Book"}</button>
+          )}
+        </div>
+
+        {/* What you do with your mentor */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          {actions.map((a) => (
+            <button key={a.label} onClick={a.onClick} disabled={!a.onClick} className="press" style={{ ...card, padding: 13, textAlign: "left", cursor: a.onClick ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 8 }}>
+              <kit.IconTile icon={a.icon} size={38} />
+              <span>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{a.label}</span>
+                <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2 }}>{a.sub}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* The mentorship journey */}
+        {journey.length > 0 && (
+          <>
+            <kit.SectionTitle kicker="Step by step" title="Your mentorship journey" />
+            <div style={{ ...card, padding: "14px 14px 4px" }}>
+              {journey.map((m, i) => (
+                <div key={m.module} style={{ display: "flex", gap: 12 }}>
+                  <span style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--blue-tint)", color: "var(--blue)", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
+                    {i < journey.length - 1 && <span style={{ flex: 1, width: 2, background: "var(--line)", margin: "4px 0" }} />}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, paddingBottom: 14 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.35, marginTop: 3 }}>{m.module}</span>
+                    {m.topics.length > 0 && <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.5 }}>{m.topics.join(" · ")}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {features.length > 0 && (
+          <div style={{ ...card, padding: 14 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>What your mentorship includes</p>
+            {features.map((t) => <Check key={t}>{t}</Check>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, onStartTest, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
   const [tab, setTabState] = useState<HomeTab>(nav.view === "batch" && nav.tab ? nav.tab : "subjects");

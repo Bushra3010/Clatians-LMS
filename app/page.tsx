@@ -27,7 +27,7 @@ type ClassQueryRow = {
   join_url: string; recording_url: string; notes: string; attended: number;
 };
 type ContentRow = {
-  id: string; title: string; body: string; type: string; subject: string;
+  id: string; title: string; body: string; type: string; subject: string; topic: string;
   author: string | null; course: string | null; created_at: string; done: number;
 };
 type DoubtRow = {
@@ -129,7 +129,7 @@ export default async function Home() {
        (SELECT COUNT(*) FROM live_classes lc JOIN class_attendance a ON a.class_id = lc.id WHERE lc.status IN ('live','ended') AND a.user_id = ? AND lc.course_id IN (SELECT course_id FROM enrollments WHERE user_id = ?)) AS attended`
   ).get(user.id, user.id, user.id),
     db.prepare(
-    `SELECT ct.id, ct.title, ct.body, ct.type, ct.subject, ct.created_at, u.name AS author, c.name AS course,
+    `SELECT ct.id, ct.title, ct.body, ct.type, ct.subject, ct.topic, ct.created_at, u.name AS author, c.name AS course,
             (EXISTS(SELECT 1 FROM content_progress cp WHERE cp.content_id = ct.id AND cp.user_id = ?))::int AS done
      FROM content ct
      LEFT JOIN users u ON u.id = ct.author_id
@@ -330,6 +330,7 @@ export default async function Home() {
     contentRows.filter((r) => r.type === t).map((r) => ({
       id: r.id, title: r.title, body: r.body, author: r.author, course: r.course, createdAt: r.created_at, done: r.done === 1,
       subject: resolveSubject(r.subject, r.title, r.body),
+      topic: (r.topic || "").trim(),
       // Batch-agnostic material is what every student gets without buying anything.
       free: r.course === null,
     }));

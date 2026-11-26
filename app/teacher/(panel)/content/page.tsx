@@ -96,6 +96,14 @@ export default async function TeacherContentPage() {
           </label>
 
           <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Topic</span>
+            <input name="topic" className={inputCls} placeholder="e.g. Law of Torts" maxLength={120} />
+            <span className="block text-[11px] text-slate-400 mt-1">
+              Inside a subject, Free Resources lists material topic-wise. Use the same topic name for related items.
+            </span>
+          </label>
+
+          <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Course (optional)</span>
             <select name="courseId" className={inputCls} defaultValue="">
               <option value="">— No specific course (free for everyone) —</option>

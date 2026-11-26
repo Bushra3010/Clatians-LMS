@@ -9,7 +9,7 @@
 // Admin ▸ Content) with the real CLATians lecture for that section.
 // ─────────────────────────────────────────────────────────────
 
-export type SeedFreeVideo = { title: string; subject: string; url: string };
+export type SeedFreeVideo = { title: string; subject: string; topic: string; url: string };
 export type SeedFreeClass = {
   title: string;
   subject: string;
@@ -24,11 +24,11 @@ export type SeedFreeClass = {
 const PLACEHOLDER = "https://youtu.be/jNQXAC9IVRw";
 
 export const SEED_FREE_VIDEOS: SeedFreeVideo[] = [
-  { title: "English Language: cracking the CLAT passage in 6 minutes", subject: "English Language", url: PLACEHOLDER },
-  { title: "Current Affairs & GK: building a daily 30-minute routine", subject: "Current Affairs & GK", url: PLACEHOLDER },
-  { title: "Legal Reasoning: principle-and-facts, worked end to end", subject: "Legal Reasoning", url: PLACEHOLDER },
-  { title: "Logical Reasoning: assumptions, inferences and traps", subject: "Logical Reasoning", url: PLACEHOLDER },
-  { title: "Quantitative Techniques: percentages and ratios, fast", subject: "Quantitative Techniques", url: PLACEHOLDER },
+  { title: "English Language: cracking the CLAT passage in 6 minutes", subject: "English Language", topic: "Reading Comprehension", url: PLACEHOLDER },
+  { title: "Current Affairs & GK: building a daily 30-minute routine", subject: "Current Affairs & GK", topic: "Preparation Strategy", url: PLACEHOLDER },
+  { title: "Legal Reasoning: principle-and-facts, worked end to end", subject: "Legal Reasoning", topic: "Principle & Facts", url: PLACEHOLDER },
+  { title: "Logical Reasoning: assumptions, inferences and traps", subject: "Logical Reasoning", topic: "Assumptions & Inferences", url: PLACEHOLDER },
+  { title: "Quantitative Techniques: percentages and ratios, fast", subject: "Quantitative Techniques", topic: "Percentages & Ratios", url: PLACEHOLDER },
 ];
 
 export const SEED_FREE_CLASSES: SeedFreeClass[] = [

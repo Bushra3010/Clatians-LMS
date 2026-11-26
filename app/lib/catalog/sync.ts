@@ -401,13 +401,13 @@ async function runEnsureCatalog(): Promise<void> {
 
   // Free Resources: a free lecture and a free live class per CLAT section.
   const claimFree = await db.prepare(
-    "INSERT INTO meta (key) VALUES ('free_resources_v2') ON CONFLICT DO NOTHING"
+    "INSERT INTO meta (key) VALUES ('free_resources_v3') ON CONFLICT DO NOTHING"
   ).run();
   if (claimFree.changes === 1) {
     try {
       await seedFreeResources();
     } catch (e) {
-      await db.prepare("DELETE FROM meta WHERE key = 'free_resources_v2'").run();
+      await db.prepare("DELETE FROM meta WHERE key = 'free_resources_v3'").run();
       throw e;
     }
   }
@@ -460,9 +460,9 @@ async function seedNotes(rows: SeedNote[], authorId: string | null): Promise<num
     if (exists) continue;
     // course_id NULL = free CLAT material, visible to every student.
     await db.prepare(
-      `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
-       VALUES (?, ?, ?, ?, ?, 'approved', ?, NULL)`
-    ).run(newId(), note.title, note.type, note.body, note.subject ?? "", authorId);
+      `INSERT INTO content (id, title, type, body, subject, topic, status, author_id, course_id)
+       VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, NULL)`
+    ).run(newId(), note.title, note.type, note.body, note.subject ?? "", note.topic ?? "", authorId);
     n++;
   }
   return n;
@@ -523,9 +523,9 @@ async function seedFreeVideos(authorId: string | null): Promise<number> {
     const exists = await db.prepare("SELECT 1 FROM content WHERE title = ?").get(v.title);
     if (exists) continue;
     await db.prepare(
-      `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
-       VALUES (?, ?, 'video', ?, ?, 'approved', ?, NULL)`
-    ).run(newId(), v.title, v.url, v.subject, authorId);
+      `INSERT INTO content (id, title, type, body, subject, topic, status, author_id, course_id)
+       VALUES (?, ?, 'video', ?, ?, ?, 'approved', ?, NULL)`
+    ).run(newId(), v.title, v.url, v.subject, v.topic, authorId);
     n++;
   }
   return n;
@@ -563,6 +563,14 @@ async function backfillSubjects(): Promise<number> {
     const r = await db.prepare(
       "UPDATE content SET subject = ? WHERE title = ? AND subject = ''"
     ).run(note.subject, note.title);
+    n += r.changes ?? 0;
+  }
+  // Same for topics: starter rows saved before content carried one.
+  for (const row of [...SEED_NOTES, ...SEED_CURRENT_AFFAIRS, ...SEED_FREE_VIDEOS]) {
+    if (!row.topic) continue;
+    const r = await db.prepare(
+      "UPDATE content SET topic = ? WHERE title = ? AND topic = ''"
+    ).run(row.topic, row.title);
     n += r.changes ?? 0;
   }
   return n;

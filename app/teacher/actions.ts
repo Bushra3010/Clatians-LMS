@@ -25,6 +25,8 @@ export async function createContentAction(formData: FormData) {
   const picked = String(formData.get("subject") ?? "").trim();
   // Anything unrecognised is left blank, and the app falls back to the title.
   const subject = SUBJECTS.includes(picked) ? picked : "";
+  // Free-text topic inside the section; Free Resources lists a subject topic-wise.
+  const topic = String(formData.get("topic") ?? "").trim().slice(0, 120);
 
   if (!title || !CONTENT_TYPES.includes(type)) return;
 
@@ -41,9 +43,9 @@ export async function createContentAction(formData: FormData) {
   }
 
   await db.prepare(
-    `INSERT INTO content (id, title, type, body, subject, status, author_id, course_id)
-     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`
-  ).run(newId(), title, type, body, subject, user.id, courseId);
+    `INSERT INTO content (id, title, type, body, subject, topic, status, author_id, course_id)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+  ).run(newId(), title, type, body, subject, topic, user.id, courseId);
 
   revalidatePath("/teacher/content");
   revalidatePath("/teacher");

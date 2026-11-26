@@ -65,6 +65,7 @@ export default function LiveClassesPage({
   onWatchRecording,
   title = "Live Classes",
   subtitle,
+  hidePast = false,
 }: {
   onBack: () => void;
   upcoming: LiveClassItem[];
@@ -76,6 +77,8 @@ export default function LiveClassesPage({
   title?: string;
   /** Shown under the title — Free Resources passes the subject being listed. */
   subtitle?: string;
+  /** Only the ongoing & upcoming list — Free Resources ▸ Live Classes. */
+  hidePast?: boolean;
 }) {
   return (
     <div style={page}>
@@ -152,6 +155,7 @@ export default function LiveClassesPage({
         ))}
 
         {/* Past & recordings */}
+        {!hidePast && <>
         <SectionTitle title="Past classes & recordings" />
         {past.length === 0 && (
           <EmptyState icon="video" title="No past classes yet." />
@@ -179,6 +183,7 @@ export default function LiveClassesPage({
             );
           })}
         </div>
+        </>}
       </div>
     </div>
   );

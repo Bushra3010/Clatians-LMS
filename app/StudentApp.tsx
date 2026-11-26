@@ -625,6 +625,11 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               unreadCount={unreadCount}
               savedBatchKeys={saved.filter((it) => it.kind === "batch").map((it) => it.key)}
               onToggleSaveBatch={(key, title, subtitle) => handleToggleSave("batch", key, title, subtitle)}
+              onBookSession={() => openDetail("slots")}
+              onAskDoubt={() => goScreen("doubts")}
+              onOpenPlanner={() => openDetail("planner")}
+              onOpenMocks={() => openDetail("tests")}
+              mentorBookings={slots.mine}
             />
           )}
           {!detailPage && activeScreen === "doubts"  && (

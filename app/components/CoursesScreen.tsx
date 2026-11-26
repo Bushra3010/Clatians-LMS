@@ -543,6 +543,103 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
   const activeBatches = !active ? [] : liveBatches(active);
   const courseAccess = !!active && active.enrolled && !active.batches.some((b) => b.enrolled);
 
+  // ── Mock packs: sold by the number of papers, not as a course ──
+  const mockCard = (c: CatalogItem, b: CatalogBatch) => {
+    const n = /(\d+)\s*(full\s*)?mocks?/i.exec(b.name)?.[1] ?? "";
+    const off = pctOff(b);
+    return (
+      <div key={b.id} onClick={() => openBatch(c, b)} className="press" style={{ ...kit.card, borderRadius: 22, padding: 14, cursor: "pointer", border: b.status === "filling-fast" ? "1.5px solid var(--gold)" : kit.card.border }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span style={{ width: 64, height: 64, borderRadius: 18, background: kit.gradient, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 6px 14px rgba(11,92,255,0.25)" }}>
+            <span style={{ fontSize: 24, fontWeight: 900, lineHeight: 1, color: "var(--gold)" }}>{n || <AppIcon name="clipboard" size={24} color="white" />}</span>
+            {n && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", marginTop: 3 }}>MOCKS</span>}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {b.batchType && <kit.Pill tone="blue">{b.batchType}</kit.Pill>}
+              {b.enrolled ? <kit.Pill tone="green">Purchased</kit.Pill> : b.status === "filling-fast" && <kit.Pill tone="gold">Most popular</kit.Pill>}
+            </span>
+            <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--ink)", marginTop: 5, lineHeight: 1.3 }}>{n ? `${n} Full-length CLAT Mocks` : b.name}</span>
+            <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2 }}>120 Qs · 120 min · {(b.endDate || "12 months").replace(/^Till\s+/i, "")}</span>
+          </span>
+        </div>
+        {b.chips.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            {b.chips.map((x) => (
+              <span key={x} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", background: "var(--app-bg)", border: "1px solid var(--line)", padding: "4px 9px", borderRadius: 999 }}>
+                <AppIcon name="check" size={11} strokeWidth={3} color="var(--green)" />{x}
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--line-strong)" }}>
+          {b.enrolled ? (
+            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 6 }}><AppIcon name="checkCircle" size={16} />Ready in My Learning</span>
+          ) : (
+            <span style={{ display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: b.fee === 0 ? "var(--green)" : "var(--ink)" }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</span>
+              {b.originalFee > b.fee && <span style={{ fontSize: 12, color: "var(--text-disabled)", textDecoration: "line-through" }}>{inr(b.originalFee)}</span>}
+              {off > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--success-text)" }}>{off}% off</span>}
+            </span>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); if (b.enrolled && onOpenCourseLearning) onOpenCourseLearning(c.id, b.id); else openBatch(c, b); }} className="press" style={{ ...kit.primaryBtn, padding: "10px 16px", fontSize: 13, borderRadius: 14, flexShrink: 0 }}>
+            {b.enrolled ? "Take mocks" : "Buy pack"}<AppIcon name="arrowRight" size={15} strokeWidth={2.4} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Mentorship plans: a mentor and a plan, not a batch ──
+  const mentorCard = (c: CatalogItem, b: CatalogBatch) => {
+    const mentors = b.faculty.length ? b.faculty : c.batches.flatMap((x) => x.faculty);
+    const off = pctOff(b);
+    return (
+      <div key={b.id} onClick={() => openBatch(c, b)} className="press" style={{ ...kit.card, borderRadius: 22, padding: 14, cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ display: "flex", flexShrink: 0 }}>
+            {(mentors.length ? mentors.slice(0, 3) : ["Mentor"]).map((m, i) => (
+              <span key={m + i} style={{ width: 40, height: 40, borderRadius: "50%", marginLeft: i ? -12 : 0, border: "2.5px solid white", background: ["var(--blue)", "var(--gold)", "var(--green)"][i % 3], color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900 }}>
+                {m.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+              </span>
+            ))}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{b.name}</span>
+            <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2 }}>1-on-1 with {mentors[0] ?? "an NLU topper mentor"}{mentors.length > 1 ? ` +${mentors.length - 1}` : ""}</span>
+          </span>
+          {b.enrolled && <kit.Pill tone="green">Active</kit.Pill>}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginTop: 12 }}>
+          {[
+            { icon: "clock" as IconName, label: "Duration", value: (b.duration || c.duration || "—").replace(/\s*\(.*\)$/, "") },
+            { icon: "calendar" as IconName, label: "Sessions", value: c.includes.find((x) => /session/i.test(x.label))?.value ?? "1-on-1" },
+            { icon: "phone" as IconName, label: "Mode", value: "Call + Chat" },
+          ].map((x) => (
+            <div key={x.label} style={{ background: "var(--app-bg)", border: "1px solid var(--line)", borderRadius: 14, padding: "9px 8px", minWidth: 0 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 600 }}><AppIcon name={x.icon} size={11} color="var(--blue)" strokeWidth={2.4} />{x.label}</span>
+              <span style={{ display: "block", marginTop: 3, fontSize: 12.5, fontWeight: 800, color: "var(--ink)", overflowWrap: "anywhere" }}>{x.value}</span>
+            </div>
+          ))}
+        </div>
+        {(b.chips.length ? b.chips : c.features).slice(0, 4).map((x) => <Tick key={x}>{x}</Tick>)}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line-strong)" }}>
+          {b.enrolled ? (
+            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 6 }}><AppIcon name="checkCircle" size={16} />Your mentor is assigned</span>
+          ) : (
+            <span style={{ display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "var(--ink)" }}>{b.fee === 0 ? "FREE" : inr(b.fee)}</span>
+              {off > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--success-text)" }}>{off}% off</span>}
+            </span>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); if (b.enrolled && onOpenCourseLearning) onOpenCourseLearning(c.id, b.id); else openBatch(c, b); }} className="press" style={{ ...kit.primaryBtn, padding: "10px 16px", fontSize: 13, borderRadius: 14, flexShrink: 0 }}>
+            {b.enrolled ? "Open mentorship" : "Get a mentor"}<AppIcon name="arrowRight" size={15} strokeWidth={2.4} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ ...kit.page, paddingBottom: 28 }}>
       {/* ── Promo card — same gradient, glows and stat strip as Home's hero ── */}
@@ -663,6 +760,8 @@ export default function CoursesScreen({ catalog, onEnroll, onEnrollBatch, onOpen
               )}
 
               {activeBatches.map((b) => {
+                if (active.category === "mock") return mockCard(active, b);
+                if (active.category === "mentorship") return mentorCard(active, b);
                 const left = seatsLeft(b);
                 const urgent = left !== null && left <= 5 && b.filled > 0;
                 const off = pctOff(b);

@@ -13,9 +13,12 @@ import { resolveSubject, subjectOrder } from "../../lib/subjects";
 import * as kit from "../ui/kit";
 
 /**
- * Free Resources — three screens deep, the same shape every time:
+ * Free Resources — three screens deep for study material:
  *
- *   formats  →  subjects  →  that subject's free material
+ *   formats  →  subjects  →  that subject's free material, topic-wise
+ *
+ * Live Classes skips the subject step: tapping it lists the ongoing and
+ * upcoming free classes straight away.
  *
  * The formats are the five things a student can do for free (watch, read,
  * practise, follow the news, sit in a live class). Inside each one the five
@@ -101,6 +104,14 @@ export default function FreeResourcesPage({
     };
   }, [content, papers, classes]);
 
+  /** Free classes that are live or still to come — live ones first, then by start time. */
+  const liveNow = useMemo(
+    () => classes.upcoming
+      .filter((c) => c.status !== "ended")
+      .sort((a, b) => (a.status === "live" ? 0 : 1) - (b.status === "live" ? 0 : 1) || a.startAt.localeCompare(b.startAt)),
+    [classes],
+  );
+
   /** How many free items a format holds for a section. */
   const countFor = (cat: FreeCategory, s: string): number => {
     if (cat === "practice") return (free.practice.get(s)?.length ?? 0) + (free.practiceMaterial.get(s)?.length ?? 0);
@@ -109,7 +120,7 @@ export default function FreeResourcesPage({
   };
 
   const totalFor = (cat: FreeCategory): number =>
-    subjectsFor(cat).reduce((n, s) => n + countFor(cat, s), 0);
+    cat === "live" ? liveNow.length : subjectsFor(cat).reduce((n, s) => n + countFor(cat, s), 0);
 
   /** The five sections, plus General when something landed there. */
   function subjectsFor(cat: FreeCategory): string[] {
@@ -129,30 +140,30 @@ export default function FreeResourcesPage({
 
   const openCategory = (c: FreeCategory) => { setFromHub(true); setCategory(c); };
 
-  // ── 3 · One section's free material ──
-  if (category && subject) {
-    const def = FREE_CATEGORIES.find((c) => c.key === category)!;
+  // ── Live Classes: no subject step, just what is on now and next ──
+  if (category === "live") {
+    return (
+      <LiveClassesPage
+        onBack={back}
+        title="Live Classes"
+        subtitle="Ongoing & upcoming · free for all"
+        upcoming={liveNow}
+        past={[]}
+        hidePast
+        attendancePct={null}
+        onJoin={onJoinClass}
+        onWatchRecording={onWatchRecording}
+      />
+    );
+  }
 
-    if (category === "live") {
-      const all = free.live.get(subject) ?? [];
-      return (
-        <LiveClassesPage
-          onBack={back}
-          title={def.label}
-          subtitle={subject}
-          upcoming={all.filter((c) => c.status !== "ended")}
-          past={all.filter((c) => c.status === "ended")}
-          attendancePct={null}
-          onJoin={onJoinClass}
-          onWatchRecording={onWatchRecording}
-        />
-      );
-    }
+  // ── 3 · One section's free material, topic-wise ──
+  if (category && subject) {
 
     if (category === "practice") {
       const material = free.practiceMaterial.get(subject) ?? [];
       if (practiceMaterial) {
-        return <ContentListPage onBack={back} type="practice" subtitle={subject} items={material} onToggleDone={onToggleDone} />;
+        return <ContentListPage onBack={back} type="practice" subtitle={subject} items={material} onToggleDone={onToggleDone} groupByTopic />;
       }
       return (
         <PracticePage
@@ -160,6 +171,7 @@ export default function FreeResourcesPage({
           subtitle={subject}
           papers={free.practice.get(subject) ?? []}
           material={material}
+          groupByTopic
           onStart={onStartTest}
           onOpenMaterial={() => setPracticeMaterial(true)}
         />
@@ -173,6 +185,7 @@ export default function FreeResourcesPage({
         subtitle={subject}
         items={free[category].get(subject) ?? []}
         onToggleDone={onToggleDone}
+        groupByTopic
       />
     );
   }
@@ -193,7 +206,7 @@ export default function FreeResourcesPage({
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{def.sub}</span>
               <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>
-                {plural(total, def.unit)} free · pick a subject
+                {plural(total, def.unit)} free · pick a subject, then a topic
               </span>
             </span>
           </div>
@@ -264,7 +277,7 @@ export default function FreeResourcesPage({
                 <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{c.label}</span>
                 <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{c.sub}</span>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>
-                  {plural(n, c.unit)} · 5 subjects
+                  {c.key === "live" ? `${plural(n, c.unit)} · ongoing & upcoming` : `${plural(n, c.unit)} · 5 subjects`}
                 </span>
               </span>
               <AppIcon name="chevronRight" size={18} color="var(--text-muted)" />
