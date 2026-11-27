@@ -1,6 +1,6 @@
 "use client";
 
-type Screen = "home" | "courses" | "study" | "doubts";
+type Screen = "home" | "courses" | "study" | "ai";
 type Tab = Screen | "tests";
 
 interface BottomNavProps {
@@ -41,7 +41,8 @@ const StudyIcon = ({ c }: { c: string }) => (
   </svg>
 );
 
-const DoubtsIcon = ({ c }: { c: string }) => (
+/** AI Prep — a friendly bot face with a spark. */
+const AiIcon = ({ c }: { c: string }) => (
   <svg width="21" height="21" viewBox="0 0 24 24" fill={c}>
     <path d="M9.8 4.6a4 4 0 0 1 5.6 0l4 4a4 4 0 0 1 0 5.6l-4 4a4 4 0 0 1-5.6 0l-4-4a4 4 0 0 1 0-5.6l4-4z" />
     <circle cx="10.2" cy="10.6" r="1.15" fill="white" />
@@ -64,7 +65,7 @@ const tabs: { id: Tab; label: string; Icon: ({ c }: { c: string }) => React.Reac
   { id: "home", label: "Home", Icon: HomeIcon },
   { id: "courses", label: "Courses", Icon: CoursesIcon },
   { id: "study", label: "My Learning", Icon: StudyIcon },
-  { id: "doubts", label: "Doubts", Icon: DoubtsIcon },
+  { id: "ai", label: "AI Prep", Icon: AiIcon },
   { id: "tests", label: "Tests", Icon: TestsIcon },
 ];
 

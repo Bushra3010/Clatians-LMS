@@ -12,6 +12,7 @@ import * as kit from "../ui/kit";
 import { FREE_CATEGORIES, type FreeCategory } from "../detail/FreeResourcesPage";
 import { shareText } from "../../lib/share";
 import type { SlotBooking } from "../detail/SlotsPage";
+import type { DoubtItem } from "../DoubtsScreen";
 
 /** Topics finished per enrolled course — loaded with the page for the My Learning list. */
 export type LearningProgress = { courseId: string; lessons: number; done: number; minutes: number };
@@ -242,6 +243,10 @@ interface LearningFlowProps {
   onOpenMocks?: () => void;
   /** The student's booked 1-on-1 sessions, soonest first. */
   mentorBookings?: SlotBooking[];
+  /** The student's doubts — a batch lists its own, topic-wise. */
+  doubts?: DoubtItem[];
+  /** Opens the full My Doubts page. */
+  onOpenDoubts?: () => void;
 }
 
 /**
@@ -452,7 +457,7 @@ function ChapterRow({ ch, n, onOpen }: { ch: LearningChapter; n: number; onOpen:
 
 // ── 3 · Batch — mockup screen 3, with the batch's Subjects where the mockup lists batches ──
 
-type HomeTab = "overview" | "subjects" | "instructors" | "tests";
+type HomeTab = "overview" | "subjects" | "instructors" | "tests" | "doubts";
 
 // ── Mock Test Series — a test dashboard, not a course ──
 
@@ -679,7 +684,92 @@ function MentorshipHome({ course: c, batch: b, onBack, onBookSession, onAskDoubt
   );
 }
 
-function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, onStartTest, savedBatchKeys = [], onToggleSaveBatch }: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+// ── A batch's doubts, topic-wise ──
+
+/** Topic doubts are saved as "Subject · Topic"; general ones carry just a subject. */
+const doubtTopic = (d: DoubtItem) => {
+  const parts = d.subject.split(" · ");
+  return { subject: parts.length > 1 ? parts[0] : "", topic: parts.length > 1 ? parts.slice(1).join(" · ") : d.subject || "General" };
+};
+
+function BatchDoubts({ doubts, onOpenTopic, onOpenDoubts, onOpenSubjects }: {
+  doubts: DoubtItem[];
+  onOpenTopic: (topicId: string) => void;
+  onOpenDoubts?: () => void;
+  onOpenSubjects: () => void;
+}) {
+  const groups = new Map<string, { subject: string; lessonId: string | null; items: DoubtItem[] }>();
+  for (const d of [...doubts].sort((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+    const { subject, topic } = doubtTopic(d);
+    const g = groups.get(topic) ?? { subject, lessonId: d.lessonId ?? null, items: [] };
+    g.items.push(d);
+    groups.set(topic, g);
+  }
+  const answered = doubts.filter((d) => d.status === "answered").length;
+
+  return (
+    <>
+      <div style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+        <kit.IconTile icon="chat" size={42} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>Topic-wise doubts</span>
+          <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Open a topic and use its Doubt tab — faculty see exactly what it's about.</span>
+        </span>
+        <span style={{ textAlign: "right", flexShrink: 0 }}>
+          <span style={{ display: "block", fontSize: 16, fontWeight: 900, color: "var(--ink-primary)", lineHeight: 1 }}>{answered}/{doubts.length}</span>
+          <span style={{ display: "block", fontSize: 10.5, color: "var(--text-muted)", marginTop: 3 }}>answered</span>
+        </span>
+      </div>
+
+      {doubts.length === 0 ? (
+        <Empty
+          icon="chat"
+          title="No doubts in this batch yet"
+          text="Stuck on something? Pick a subject, open the topic and ask in its Doubt tab."
+          action={<button onClick={onOpenSubjects} className="press" style={primaryBtn}>Go to subjects</button>}
+        />
+      ) : [...groups.entries()].map(([topic, g]) => (
+        <div key={topic} style={{ ...card, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {g.subject && <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{g.subject}</span>}
+              <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)", marginTop: 1 }}>{topic}</span>
+            </span>
+            {g.lessonId && (
+              <button onClick={() => onOpenTopic(g.lessonId!)} className="press" style={{ ...kit.smallBtn, flexShrink: 0, whiteSpace: "nowrap" }}>
+                Open topic <AppIcon name="arrowRight" size={13} />
+              </button>
+            )}
+          </div>
+          {g.items.map((d) => (
+            <div key={d.id} style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--line)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <p style={{ flex: 1, margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{d.body}</p>
+                <kit.Pill tone={d.status === "answered" ? "green" : "gold"}>{d.status === "answered" ? "Answered" : "Awaiting"}</kit.Pill>
+              </div>
+              {d.answer && (
+                <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "var(--ink)", background: "var(--success)", borderRadius: 10, padding: "8px 10px", lineHeight: 1.5 }}>
+                  <b>{d.teacher ?? "Faculty"}:</b> {d.answer}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {onOpenDoubts && (
+        <button onClick={onOpenDoubts} className="press" style={{ ...card, padding: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}>
+          <kit.IconTile icon="list" tone="grey" size={36} />
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>All my doubts & replies</span>
+          <AppIcon name="chevronRight" size={16} color="var(--text-muted)" />
+        </button>
+      )}
+    </>
+  );
+}
+
+function BatchHome(props: LearningFlowProps & { course: CatalogItem; batch: CatalogBatch | null }) {
+  const { course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOpenTopic, onStartTest, savedBatchKeys = [], onToggleSaveBatch } = props;
   const [tab, setTabState] = useState<HomeTab>(nav.view === "batch" && nav.tab ? nav.tab : "subjects");
   const setTab = (t: HomeTab) => {
     setTabState(t);
@@ -774,7 +864,7 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
 
       <div style={{ padding: "14px 0 0" }}>
         <Tabs<HomeTab>
-          tabs={[{ key: "subjects", label: "Subjects" }, { key: "overview", label: "Overview" }, { key: "tests", label: "Mock Test" }, { key: "instructors", label: "Faculty" }]}
+          tabs={[{ key: "subjects", label: "Subjects" }, { key: "overview", label: "Overview" }, { key: "tests", label: "Mock Test" }, { key: "doubts", label: "Doubts" }, { key: "instructors", label: "Faculty" }]}
           active={tab}
           onChange={setTab}
         />
@@ -843,6 +933,10 @@ function BatchHome({ course: c, batch: b, nav, onBack, onNav, onReplaceNav, onOp
         {tab === "tests" && (!mocks ? <Loading /> : mocks.length === 0 ? (
           <Empty icon="clipboard" title="Mock tests coming soon" text="Full mock tests for this batch will appear here." />
         ) : <MockTestList tests={mocks} onStartTest={onStartTest} />)}
+
+        {tab === "doubts" && (
+          <BatchDoubts doubts={(props.doubts ?? []).filter((d) => d.courseId === c.id)} onOpenTopic={onOpenTopic} onOpenDoubts={props.onOpenDoubts} onOpenSubjects={() => setTab("subjects")} />
+        )}
 
         {tab === "instructors" && (
           faculty.length === 0 ? (

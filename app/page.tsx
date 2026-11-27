@@ -33,6 +33,7 @@ type ContentRow = {
 type DoubtRow = {
   id: string; subject: string; body: string; status: string;
   answer: string; teacher: string | null; created_at: string; attachment_url: string;
+  course_id: string | null; lesson_id: string | null;
 };
 type CourseQueryRow = {
   id: string; slug: string | null; name: string; description: string; price: number;
@@ -145,7 +146,7 @@ export default async function Home() {
      ORDER BY m.created_at ASC`
   ).all(user.id),
     db.prepare(
-    `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, d.attachment_url, u.name AS teacher
+    `SELECT d.id, d.subject, d.body, d.status, d.answer, d.created_at, d.attachment_url, d.course_id, d.lesson_id, u.name AS teacher
      FROM doubts d LEFT JOIN users u ON u.id = d.answered_by
      WHERE d.student_id = ? ORDER BY d.created_at DESC`
   ).all(user.id),
@@ -355,6 +356,8 @@ export default async function Home() {
     answer: d.answer, teacher: d.teacher, createdAt: d.created_at,
     messages: msgsByDoubt.get(d.id) ?? [],
     attachmentUrl: d.attachment_url || "",
+    courseId: d.course_id,
+    lessonId: d.lesson_id,
   }));
 
   // ── Course catalog (for enroll / buy) ──

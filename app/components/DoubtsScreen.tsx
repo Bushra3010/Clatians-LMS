@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, Send, Clock } from "./icons";
 import type { DoubtMessage } from "../lib/doubt-actions";
 import { AppIcon } from "./AppIcon";
-import { card, input, primaryBtn, IconTile, EmptyState, Pill, PageTitle, HeroCard, SectionTitle, heroStrip, goldBtn, type Tone } from "./ui/kit";
+import { ScreenHeader, card, input, primaryBtn, IconTile, EmptyState, Pill, PageTitle, HeroCard, SectionTitle, heroStrip, goldBtn, type Tone } from "./ui/kit";
 import { AttachmentPicker, AttachmentPreview, type Attachment } from "./DoubtAttachment";
 
 export type DoubtItem = {
@@ -18,12 +18,17 @@ export type DoubtItem = {
   messages: DoubtMessage[];
   /** A photo or PDF the student attached. */
   attachmentUrl?: string;
+  /** The batch it was asked in, and the topic when asked from a topic page. */
+  courseId?: string | null;
+  lessonId?: string | null;
 };
 
 interface DoubtsScreenProps {
   doubts: DoubtItem[];
   onAskDoubt: (subject: string, body: string, attachmentUrl?: string) => Promise<void>;
   onFollowUp: (doubtId: string, body: string) => Promise<{ ok: boolean }>;
+  /** Opened as a page (from a batch or mentorship) rather than a tab. */
+  onBack?: () => void;
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -38,7 +43,7 @@ const statusBadge = (s: string) => {
   return <Pill tone={b.tone}>{b.icon && <AppIcon name={b.icon} size={10} strokeWidth={2.6} />}{b.label}</Pill>;
 };
 
-export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsScreenProps) {
+export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp, onBack }: DoubtsScreenProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [replyMap, setReplyMap] = useState<Record<string, string>>({});
@@ -64,7 +69,9 @@ export default function DoubtsScreen({ doubts, onAskDoubt, onFollowUp }: DoubtsS
 
   return (
     <div style={{ background: "var(--app-bg)", paddingBottom: 80 }}>
-      <PageTitle kicker="Ask questions · get help from mentors" title="Doubts" />
+      {onBack
+        ? <ScreenHeader title="My Doubts" subtitle="Answered by your faculty & mentors" onBack={onBack} />
+        : <PageTitle kicker="Ask questions · get help from mentors" title="Doubts" />}
 
       <div style={{ padding: "12px 16px 0" }}>
       {/* Summary — Home's blue card */}

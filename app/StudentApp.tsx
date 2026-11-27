@@ -9,6 +9,7 @@ import CoursesScreen, { type CatalogItem } from "./components/CoursesScreen";
 import PracticePage from "./components/detail/PracticePage";
 import StudyScreen, { type SyllabusSubject } from "./components/StudyScreen";
 import DoubtsScreen from "./components/DoubtsScreen";
+import AiPrepScreen from "./components/AiPrepScreen";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
@@ -81,8 +82,8 @@ type ContentBuckets = {
   "current-affairs": ContentItem[];
 };
 
-type Screen = "home" | "courses" | "study" | "doubts";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | null;
+type Screen = "home" | "courses" | "study" | "ai";
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "ai-vocab" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -402,6 +403,9 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           )}
           {detailPage === "practice-material" && <ContentListPage onBack={back} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
+          {detailPage === "doubts" && (
+            <DoubtsScreen doubts={doubts} onAskDoubt={handleAskDoubt} onFollowUp={handleFollowUp} onBack={closeDetail} />
+          )}
           {detailPage === "slots"           && <SlotsPage onBack={closeDetail} openSlots={slots.open} myBookings={slots.mine} />}
           {detailPage === "payments"        && <MyPaymentsPage onBack={closeDetail} payments={payments} studentName={profile.name} studentEmail={profile.email} />}
           {detailPage === "planner"         && <StudyPlannerPage onBack={closeDetail} initialTasks={tasks} />}
@@ -471,10 +475,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "leaderboard" && (
             <LeaderboardPage onBack={closeDetail} engagement={engagement} />
           )}
-          {(detailPage === "clat-tools" || detailPage === "ca-quiz") && (
+          {(detailPage === "clat-tools" || detailPage === "ca-quiz" || detailPage === "ai-vocab") && (
             <ClatToolsPage
               onBack={back}
-              initialTab={detailPage === "ca-quiz" ? "quiz" : "predictor"}
+              initialTab={detailPage === "ca-quiz" ? "quiz" : detailPage === "ai-vocab" ? "vocab" : "predictor"}
               vocab={resources.vocab}
               caq={resources.caq}
               nlus={resources.nlus}
@@ -626,14 +630,21 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               savedBatchKeys={saved.filter((it) => it.kind === "batch").map((it) => it.key)}
               onToggleSaveBatch={(key, title, subtitle) => handleToggleSave("batch", key, title, subtitle)}
               onBookSession={() => openDetail("slots")}
-              onAskDoubt={() => goScreen("doubts")}
+              onAskDoubt={() => openDetail("doubts")}
+              doubts={doubts}
+              onOpenDoubts={() => openDetail("doubts")}
               onOpenPlanner={() => openDetail("planner")}
               onOpenMocks={() => openDetail("tests")}
               mentorBookings={slots.mine}
             />
           )}
-          {!detailPage && activeScreen === "doubts"  && (
-            <DoubtsScreen doubts={doubts} onAskDoubt={handleAskDoubt} onFollowUp={handleFollowUp} />
+          {!detailPage && activeScreen === "ai" && (
+            <AiPrepScreen
+              onOpenTutor={() => router.push("/tutor")}
+              onOpenPractice={() => openDetail("ai-practice")}
+              onOpenCoach={() => openDetail("progress")}
+              onOpenVocab={() => openDetail("ai-vocab")}
+            />
           )}
         </div>
 
