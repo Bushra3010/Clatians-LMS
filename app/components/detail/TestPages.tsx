@@ -22,6 +22,8 @@ export type TestListItem = {
   bestTotal: number | null;
   /** True when no batch stands behind it — free practice for everyone. */
   free?: boolean;
+  /** The syllabus topic it tests, when it is a topic test. */
+  topic?: string;
 };
 
 const typeLabel: Record<string, string> = { mock: "Full Mock", sectional: "Sectional", pyq: "Previous Year", practice: "Practice" };

@@ -557,6 +557,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               initialCategory={freeCategory}
               content={content}
               papers={practicePapers}
+              tests={tests}
               classes={freeClasses}
               onToggleDone={handleToggleDone}
               onStartTest={(id) => handleStartTest(id)}

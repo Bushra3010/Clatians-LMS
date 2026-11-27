@@ -223,6 +223,8 @@ export default async function Home() {
             -- A paper is "a <subject> paper" only when every question shares one.
             (SELECT CASE WHEN COUNT(DISTINCT q.subject) = 1 THEN MIN(q.subject) ELSE '' END
                FROM questions q WHERE q.test_id = t.id) AS subject,
+            -- The syllabus topic a test belongs to (topic tests), for Free Resources ▸ Tests.
+            (SELECT l.title FROM lesson_tests lt JOIN lessons l ON l.id = lt.lesson_id WHERE lt.test_id = t.id LIMIT 1) AS topic,
             (SELECT COUNT(*) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS my_attempts,
             (SELECT MAX(a.score) FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted') AS best_score,
             (SELECT a.total FROM test_attempts a WHERE a.test_id = t.id AND a.user_id = ? AND a.status='submitted' ORDER BY a.score DESC LIMIT 1) AS best_total,
@@ -434,12 +436,13 @@ export default async function Home() {
   // ── Tests & practice papers (published, available to the student's batches) ──
   // Both run on the same engine; `type` decides which screen they surface on —
   // 'practice' goes to Practice Questions, everything else to Test Series.
-  const allPapers: TestListItem[] = (paperRows as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null; free: number }[])
+  const allPapers: TestListItem[] = (paperRows as { id: string; title: string; description: string; type: string; duration_min: number; qcount: number; subject: string | null; my_attempts: number; best_score: number | null; best_total: number | null; free: number; topic: string | null }[])
     .map((t) => ({
       id: t.id, title: t.title, description: t.description, type: t.type,
       subject: t.subject ?? "",
       durationMin: t.duration_min, questionCount: t.qcount, myAttempts: t.my_attempts,
       bestScore: t.best_score, bestTotal: t.best_total, free: t.free === 1,
+      topic: t.topic ?? "",
     }));
 
   const tests = allPapers.filter((t) => t.type !== "practice");

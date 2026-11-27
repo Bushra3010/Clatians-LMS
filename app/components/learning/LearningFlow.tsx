@@ -413,7 +413,7 @@ function MyLearningList({ catalog, progress, nav, onNav, onReplaceNav, onBrowseC
                   <span>
                     <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{r.label}</span>
                     <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{r.sub}</span>
-                    <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>5 subjects</span>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>{r.key === "tests" ? "Mock · Subject · Topic" : r.key === "live" ? "Ongoing & upcoming" : "5 subjects"}</span>
                   </span>
                 </button>
               ))}
