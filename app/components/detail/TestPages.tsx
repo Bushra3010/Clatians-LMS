@@ -230,7 +230,7 @@ export function TestTakePage({ session, onSubmit, onExit }: { session: Extract<S
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", display: "flex", flexDirection: "column" }}>
       {/* Header: title, progress, timer, map */}
-      <div style={{ position: "sticky", top: 0, zIndex: 5, background: "white", borderBottom: "1px solid var(--line)", padding: "12px 16px 10px" }}>
+      <div style={{ position: "sticky", top: "var(--top-h, 0px)", zIndex: 5, background: "white", borderBottom: "1px solid var(--line)", padding: "12px 16px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={() => setSheet("exit")} aria-label="Exit test" style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--app-bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AppIcon name="close" size={18} color="var(--ink)" strokeWidth={2.5} />

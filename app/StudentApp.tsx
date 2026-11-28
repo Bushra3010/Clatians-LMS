@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import TopBar from "./components/TopBar";
+import TopBar, { TOP_BAR_H } from "./components/TopBar";
 import BottomNav from "./components/BottomNav";
 import HomeScreen from "./components/HomeScreen";
 import CoursesScreen, { type CatalogItem } from "./components/CoursesScreen";
@@ -11,12 +11,13 @@ import StudyScreen, { type SyllabusSubject } from "./components/StudyScreen";
 import DoubtsScreen from "./components/DoubtsScreen";
 import AiPrepScreen from "./components/AiPrepScreen";
 import AiVocabPage from "./components/detail/AiVocabPage";
+import AiTestPage from "./components/detail/AiTestPage";
+import CollegePredictorPage from "./components/detail/CollegePredictorPage";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
 import FreeResourcesPage, { type FreeCategory } from "./components/detail/FreeResourcesPage";
 import CurrentAffairsPage from "./components/detail/CurrentAffairsPage";
-import { AppIcon } from "./components/AppIcon";
 import { DEMO_VIDEO } from "./lib/demo-media";
 import AiPracticePage from "./components/detail/AiPracticePage";
 import SlotsPage, { type SlotOpen, type SlotBooking } from "./components/detail/SlotsPage";
@@ -83,7 +84,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "ai";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "study-coach" | "ai-vocab" | null;
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "study-coach" | "ai-vocab" | "ai-test" | "college-predictor" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -371,7 +372,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         )}
 
         {/* Top Bar — hidden while taking a test, which needs the whole screen */}
-        {detailPage !== "test-take" && <TopBar course={currentCourse} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => goScreen("courses")} />}
+        {detailPage !== "test-take" && <TopBar onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onPredictorClick={() => openDetail("college-predictor")} />}
 
         {/* Scrollable content */}
         <div
@@ -386,6 +387,10 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             paddingBottom: showNav ? "calc(76px + env(safe-area-inset-bottom))" : undefined,
             // Bottom-pinned action bars sit on top of the nav, not under it.
             ["--nav-h" as string]: showNav ? "calc(70px + env(safe-area-inset-bottom))" : "0px",
+            // The top bar floats over the page; start content below it, and let
+            // sticky bars pin just under it.
+            paddingTop: detailPage !== "test-take" ? TOP_BAR_H : undefined,
+            ["--top-h" as string]: detailPage !== "test-take" ? `${TOP_BAR_H}px` : "0px",
           }}
           className="no-scroll"
         >
@@ -404,6 +409,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           )}
           {detailPage === "practice-material" && <ContentListPage onBack={back} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
+          {detailPage === "ai-test" && <AiTestPage onBack={closeDetail} />}
+          {detailPage === "college-predictor" && <CollegePredictorPage onBack={closeDetail} nlus={resources.nlus} />}
           {detailPage === "ai-vocab" && (
             <AiVocabPage
               onBack={closeDetail}
@@ -612,8 +619,6 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onToggleSaveBatch={(key, title, subtitle) => handleToggleSave("batch", key, title, subtitle)}
               onBookSession={() => openDetail("slots")}
               onAskDoubt={() => openDetail("doubts")}
-              doubts={doubts}
-              onOpenDoubts={() => openDetail("doubts")}
               onOpenPlanner={() => openDetail("planner")}
               onOpenMocks={() => openDetail("tests")}
               mentorBookings={slots.mine}
@@ -625,6 +630,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenPractice={() => openDetail("ai-practice")}
               onOpenCoach={() => openDetail("study-coach")}
               onOpenVocab={() => openDetail("ai-vocab")}
+              onOpenTest={() => openDetail("ai-test")}
               onOpenDoubts={() => openDetail("doubts")}
               activity={{
                 sessions: progress.practice.sessions,

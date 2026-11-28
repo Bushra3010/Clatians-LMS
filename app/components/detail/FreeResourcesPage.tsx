@@ -145,7 +145,7 @@ export default function FreeResourcesPage({
 
   const totalFor = (cat: FreeCategory): number =>
     cat === "tests" ? freeTests.total :
-    cat === "live" ? liveNow.length : subjectsFor(cat).reduce((n, s) => n + countFor(cat, s), 0);
+    cat === "live" ? liveNow.length + classes.past.length : subjectsFor(cat).reduce((n, s) => n + countFor(cat, s), 0);
 
   /** The five sections, plus General when something landed there. */
   function subjectsFor(cat: FreeCategory): string[] {
@@ -269,10 +269,9 @@ export default function FreeResourcesPage({
       <LiveClassesPage
         onBack={back}
         title="Live Classes"
-        subtitle="Ongoing & upcoming · free for all"
+        subtitle="Free for every student"
         upcoming={liveNow}
-        past={[]}
-        hidePast
+        past={classes.past}
         attendancePct={null}
         onJoin={onJoinClass}
         onWatchRecording={onWatchRecording}
@@ -400,7 +399,7 @@ export default function FreeResourcesPage({
                 <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{c.label}</span>
                 <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{c.sub}</span>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>
-                  {c.key === "current-affairs" ? "Blogs · Question practice" : c.key === "tests" ? `${plural(n, c.unit)} · mock, subject & topic` : c.key === "live" ? `${plural(n, c.unit)} · ongoing & upcoming` : `${plural(n, c.unit)} · 5 subjects`}
+                  {c.key === "current-affairs" ? "Blogs · Question practice" : c.key === "tests" ? `${plural(n, c.unit)} · mock, subject & topic` : c.key === "live" ? `${plural(n, c.unit)} · live, upcoming & completed` : `${plural(n, c.unit)} · 5 subjects`}
                 </span>
               </span>
               <AppIcon name="chevronRight" size={18} color="var(--text-muted)" />

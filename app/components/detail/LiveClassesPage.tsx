@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { fmtIST } from "../../lib/dates";
 import { AppIcon, type IconName } from "../AppIcon";
-import { heroSurface, ScreenHeader, SectionTitle, EmptyState, card, page, smallBtn } from "../ui/kit";
+import { heroSurface, ScreenHeader, Segmented, EmptyState, card, page, smallBtn } from "../ui/kit";
 
 export type LiveClassItem = {
   id: string;
@@ -40,7 +41,7 @@ function dayLabel(iso: string): string {
   const today = new Date();
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOf(d) - startOf(today)) / 86400000);
-  if (diffDays <= 0) return "Today";
+  if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
   return d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
 }
@@ -65,7 +66,6 @@ export default function LiveClassesPage({
   onWatchRecording,
   title = "Live Classes",
   subtitle,
-  hidePast = false,
 }: {
   onBack: () => void;
   upcoming: LiveClassItem[];
@@ -77,9 +77,17 @@ export default function LiveClassesPage({
   title?: string;
   /** Shown under the title — Free Resources passes the subject being listed. */
   subtitle?: string;
-  /** Only the ongoing & upcoming list — Free Resources ▸ Live Classes. */
-  hidePast?: boolean;
 }) {
+  // A scheduled class whose time has fully passed was never started — it is
+  // finished, not upcoming, so it moves to Completed.
+  const [now] = useState(() => Date.now());
+  const over = (c: LiveClassItem) => c.status !== "live" && new Date(c.startAt).getTime() + c.durationMin * 60000 < now;
+  const live = upcoming.filter((c) => c.status === "live");
+  const later = upcoming.filter((c) => c.status !== "live" && !over(c));
+  const completed = [...upcoming.filter(over), ...past].sort((a, b) => b.startAt.localeCompare(a.startAt));
+  // Open on what matters now: a running class, else the next ones.
+  const [tab, setTab] = useState<"live" | "upcoming" | "completed">(live.length ? "live" : "upcoming");
+
   return (
     <div style={page}>
       <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} />
@@ -103,87 +111,102 @@ export default function LiveClassesPage({
           </div>
         </div>}
 
-        {/* Timetable — upcoming & live, grouped by day */}
-        <SectionTitle title="Timetable" />
-        {upcoming.length === 0 && (
-          <EmptyState icon="calendar" title="No classes scheduled right now." />
-        )}
-        {groupByDay(upcoming).map(([day, dayItems]) => (
+        <Segmented<"live" | "upcoming" | "completed">
+          tabs={[
+            { key: "live", label: `Live now${live.length ? ` (${live.length})` : ""}` },
+            { key: "upcoming", label: `Upcoming${later.length ? ` (${later.length})` : ""}` },
+            { key: "completed", label: `Completed${completed.length ? ` (${completed.length})` : ""}` },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+
+        {/* Live now */}
+        {tab === "live" && (live.length === 0 ? (
+          <EmptyState icon="mic" title="No class is live right now" text="Check Upcoming for the next one." />
+        ) : live.map((c) => {
+          const st = subjectStyle(c.subject);
+          return (
+            <div key={c.id} style={{ ...card, padding: 14, border: "1.5px solid var(--error-text)", boxShadow: "0 6px 18px rgba(220,38,38,0.12)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ width: 48, height: 48, borderRadius: 14, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <AppIcon name={st.icon} size={22} color="white" />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--error)", color: "var(--error-text)", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>
+                    <span className="live-dot" />LIVE NOW
+                  </span>
+                  <p style={{ margin: "5px 0 0", fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{c.title}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--ink-mute)" }}>{c.subject || "Class"} · {c.teacher ?? "Faculty"}</p>
+                </div>
+              </div>
+              <button onClick={() => onJoin(c.id)} className="press" style={{ width: "100%", marginTop: 12, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", color: "white", background: "linear-gradient(135deg,var(--error-text),#B91C1C)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                Join now <AppIcon name="arrowRight" size={15} color="white" />
+              </button>
+            </div>
+          );
+        }))}
+
+        {/* Upcoming — grouped by day */}
+        {tab === "upcoming" && (later.length === 0 ? (
+          <EmptyState icon="calendar" title="No upcoming classes" text="New classes appear here once they're scheduled." />
+        ) : groupByDay(later).map(([day, dayItems]) => (
           <div key={day}>
             <p style={{ margin: "2px 2px 8px", fontSize: 12, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{day}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {dayItems.map((c) => {
                 const st = subjectStyle(c.subject);
-                const isLive = c.status === "live";
                 return (
                   <div key={c.id} style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ width: 46, height: 46, borderRadius: 14, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <AppIcon name={st.icon} size={21} color="white" />
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{c.subject || "Class"}</span>
-                        {isLive && (
-                          <span style={{ background: "var(--error)", color: "var(--error-text)", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 20, display: "flex", alignItems: "center", gap: 3 }}>
-                            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--error-text)" }} />LIVE
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", fontWeight: 500 }}>{c.title}</p>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap", fontSize: 11, color: "var(--ink-mute)" }}>
-                        <span>{c.teacher ?? "Faculty"}</span>
-                        <span>•</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <AppIcon name="clock" size={12} color="var(--ink-mute)" />
-                          {fmtTime(c.startAt)}
-                        </span>
-                      </div>
+                      <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{c.title}</p>
+                      <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--ink-mute)", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                        <AppIcon name="clock" size={12} color="var(--ink-mute)" />{fmtTime(c.startAt)} · {c.teacher ?? "Faculty"}
+                      </p>
                     </div>
-                    <button
-                      onClick={() => onJoin(c.id)}
-                      style={isLive
-                        ? { ...smallBtn, background: "linear-gradient(135deg,var(--error-text),#B91C1C)", color: "white", whiteSpace: "nowrap" }
-                        : { ...smallBtn, whiteSpace: "nowrap" }}
-                    >
-                      {isLive ? <>Join <AppIcon name="arrowRight" size={14} /></> : <><AppIcon name="bell" size={14} /> Remind</>}
+                    <button onClick={() => onJoin(c.id)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
+                      <AppIcon name="bell" size={14} /> Remind
                     </button>
                   </div>
                 );
               })}
             </div>
           </div>
-        ))}
+        )))}
 
-        {/* Past & recordings */}
-        {!hidePast && <>
-        <SectionTitle title="Past classes & recordings" />
-        {past.length === 0 && (
-          <EmptyState icon="video" title="No past classes yet." />
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {past.map((c) => {
-            const st = subjectStyle(c.subject);
-            return (
-              <div key={c.id} style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ width: 42, height: 42, borderRadius: 13, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 0.9 }}>
-                  <AppIcon name={st.icon} size={19} color="white" />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{c.title}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>{c.subject} · {fmtTime(c.startAt)}</p>
+        {/* Completed — previous classes and their recordings */}
+        {tab === "completed" && (completed.length === 0 ? (
+          <EmptyState icon="video" title="No completed classes yet" text="Finished classes and their recordings show up here." />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {completed.map((c) => {
+              const st = subjectStyle(c.subject);
+              return (
+                <div key={c.id} style={{ ...card, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 13, background: st.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 0.85 }}>
+                    <AppIcon name={st.icon} size={19} color="white" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{c.title}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>{c.subject} · {fmtTime(c.startAt)}</p>
+                    {c.attended && <p style={{ margin: "3px 0 0", fontSize: 11, fontWeight: 700, color: "var(--success-text)" }}>Attended</p>}
+                  </div>
+                  {c.recordingUrl ? (
+                    <button onClick={() => onWatchRecording(c)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
+                      <AppIcon name="play" size={13} /> Recording
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 11, color: "var(--ink-mute)", flexShrink: 0 }}>No recording</span>
+                  )}
                 </div>
-                {c.recordingUrl ? (
-                  <button onClick={() => onWatchRecording(c)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
-                    <AppIcon name="play" size={13} /> Recording
-                  </button>
-                ) : (
-                  <span style={{ fontSize: 11, color: "var(--ink-mute)" }}>No recording</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        </>}
+              );
+            })}
+          </div>
+        ))}
+        <style>{`.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--error-text);animation:livepulse 1.2s infinite}@keyframes livepulse{50%{opacity:.3}}@media (prefers-reduced-motion: reduce){.live-dot{animation:none}}`}</style>
       </div>
     </div>
   );

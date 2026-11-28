@@ -517,7 +517,8 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
           </>
         )}
 
-        {/* ── 8 · LIVE CLASS ── */}
+        {/* ── 8 · LIVE CLASS — ongoing, upcoming, previous ── */}
+        {tab === "live" && <style>{`.topic-live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E03131;animation:tlpulse 1.2s infinite}@keyframes tlpulse{50%{opacity:.3}}@media (prefers-reduced-motion: reduce){.topic-live-dot{animation:none}}`}</style>}
         {tab === "live" && (() => {
           const isDemo = !next;
           const isLive = cls.status === "live";
@@ -528,14 +529,38 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
             : isDemo ? [{ id: "demo-rec", title: `${topic.title} — Doubt Session`, subject: topic.subject, teacher: "CLATians Faculty", startAt: demoTimes.past, durationMin: 45, status: "ended", joinUrl: "", attended: false, recordingUrl: "demo" }] : [];
           return (
             <>
-              <div style={card}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink-primary)" }}>{isLive ? "Live Now" : "Upcoming Live Class"}</p>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "#E03131" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E03131" }} />Live
+              {/* 1 · Ongoing */}
+              <p style={{ ...sectionTitle, marginTop: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                <span className="topic-live-dot" />Ongoing Live Class
+              </p>
+              {isLive ? (
+                <div style={{ ...card, border: "1.5px solid #E03131", boxShadow: "0 6px 18px rgba(224,49,49,0.14)" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#FDECEC", color: "#E03131", fontSize: 10.5, fontWeight: 800, padding: "3px 9px", borderRadius: 20 }}>
+                    <span className="topic-live-dot" />LIVE NOW
                   </span>
+                  <p style={{ margin: "8px 0 0", fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>{cls.title}</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                    {teacher} · started {fmtIST(cls.startAt, { hour: "numeric", minute: "2-digit", hour12: true })}, ends {fmtIST(end, { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </p>
+                  <button onClick={() => onJoinClass(cls.id)} style={{ ...primaryBtn, marginTop: 12, width: "100%", background: "linear-gradient(135deg,#E03131,#B91C1C)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <AppIcon name="video" size={16} color="white" />Join now
+                  </button>
                 </div>
-                <p style={{ margin: "10px 0 0", display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-secondary)" }}>
+              ) : (
+                <div style={{ ...card, padding: "14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--surface-dim)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="mic" size={18} color="var(--text-muted)" /></span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>No class is live right now. When the faculty starts one, it shows here.</span>
+                </div>
+              )}
+
+              {/* 2 · Upcoming */}
+              <p style={sectionTitle}>Upcoming Live Class</p>
+              {isLive ? (
+                <div style={{ ...card, padding: "14px", fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>The next class will be listed here once it&apos;s scheduled.</div>
+              ) : (
+              <div style={card}>
+                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: "var(--ink-primary)" }}>{cls.title}</p>
+                <p style={{ margin: "8px 0 0", display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-secondary)" }}>
                   <AppIcon name="calendar" size={15} color="var(--blue)" />
                   {fmtIST(cls.startAt, { day: "numeric", month: "short", year: "numeric" })}
                   <span style={{ color: "var(--text-disabled)" }}>•</span>
@@ -568,7 +593,9 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
                 </button>
                 {isDemo && <p style={{ margin: "10px 0 0", display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-muted)" }}><AppIcon name="info" size={13} />Sample class — tap Join to see how a live class works.</p>}
               </div>
+              )}
 
+              {/* 3 · Previous */}
               <p style={sectionTitle}>Previous Live Classes</p>
               {pastList.length === 0 ? (
                 <Empty icon="video" title="No recordings yet" text="Recordings of past classes appear here." />

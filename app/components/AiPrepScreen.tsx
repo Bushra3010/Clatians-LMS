@@ -18,6 +18,7 @@ export default function AiPrepScreen({
   onOpenPractice,
   onOpenCoach,
   onOpenVocab,
+  onOpenTest,
   onOpenDoubts,
   activity,
 }: {
@@ -25,10 +26,12 @@ export default function AiPrepScreen({
   onOpenPractice: () => void;
   onOpenCoach: () => void;
   onOpenVocab: () => void;
+  onOpenTest: () => void;
   onOpenDoubts: () => void;
   activity: { sessions: number; accuracy: number | null; words: number };
 }) {
   const tools: Tool[] = [
+    { key: "test", title: "AI Test", sub: "Timed mock", icon: "clipboard", tone: "red", onClick: onOpenTest },
     { key: "practice", title: "AI Practice", sub: "Instant quiz", icon: "bolt", tone: "gold", onClick: onOpenPractice },
     { key: "coach", title: "Study Coach", sub: "Weekly plan", icon: "chart", tone: "green", onClick: onOpenCoach },
     { key: "vocab", title: "Vocab Builder", sub: "Word flashcards", icon: "language", tone: "purple", onClick: onOpenVocab },
@@ -82,7 +85,22 @@ export default function AiPrepScreen({
         {/* Tools */}
         <kit.SectionTitle title="AI tools" />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: -4 }}>
-          {tools.map((t) => (
+          {tools.map((t, i) => i === 0 ? (
+            // The AI Test leads, full width.
+            <button key={t.key} onClick={t.onClick} className="press" style={{ ...kit.card, gridColumn: "1 / -1", textAlign: "left", padding: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+              <kit.IconTile icon={t.icon} tone={t.tone} size={48} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{t.title}</span>
+                  <kit.Pill tone="gold">NEW</kit.Pill>
+                </span>
+                <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>{t.sub} · CLAT pattern</span>
+              </span>
+              <span style={{ width: 34, height: 34, borderRadius: "50%", background: kit.gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AppIcon name="arrowRight" size={16} color="white" />
+              </span>
+            </button>
+          ) : (
             <button key={t.key} onClick={t.onClick} className="press" style={{ ...kit.card, textAlign: "left", padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
               <span style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <kit.IconTile icon={t.icon} tone={t.tone} size={44} />

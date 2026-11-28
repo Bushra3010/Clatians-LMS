@@ -100,7 +100,7 @@ export function batchInfoTabs(b: CatalogBatch, owned: boolean): { key: BatchInfo
 /** Pill-style segmented control that sticks under the header while scrolling. */
 export function BatchInfoSwitch({ tabs, active, onChange }: { tabs: { key: BatchInfoTab; label: string }[]; active: BatchInfoTab; onChange: (t: BatchInfoTab) => void }) {
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 4, background: "var(--app-bg)", padding: "10px 16px" }}>
+    <div style={{ position: "sticky", top: "var(--top-h, 0px)", zIndex: 4, background: "var(--app-bg)", padding: "10px 16px" }}>
       <div style={{ display: "flex", gap: 4, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,41,0.06)", overflowX: "auto", scrollbarWidth: "none" }}>
         {tabs.map((t) => {
           const on = t.key === active;

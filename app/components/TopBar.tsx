@@ -1,25 +1,25 @@
 "use client";
 
 interface TopBarProps {
-  /**
-   * The student's chosen or purchased course. Null hides the course chips —
-   * the bar then only invites them to pick one. FREE marks a course that is
-   * chosen but not bought.
-   */
-  course?: { name: string; purchased: boolean } | null;
-  /** Tapping the CLATians logo (shown until a course is picked) goes home. */
+  /** Tapping the CLATians logo goes home. */
   onLogoClick?: () => void;
   onBellClick?: () => void;
   unreadCount?: number;
-  onChangeCourse?: () => void;
+  /** Opens the NLU College Predictor. */
+  onPredictorClick?: () => void;
 }
 
 const ICON = "var(--text-secondary)";
 
-const TutorSvg = () => (
+/** Height of the floating bar; the page scrolls under it. */
+export const TOP_BAR_H = 64;
+
+/** College Predictor — a graduation cap. */
+const PredictorSvg = () => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ICON} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    {/* A bolt, not the four-point sparkle every AI product uses. */}
-    <path d="M13 2.5L4.5 13.5h6.5l-1 8 8.5-11h-6.5l1-8z" />
+    <path d="M2.5 9 12 4.5 21.5 9 12 13.5z" />
+    <path d="M6.5 11v4.6c0 1.4 2.5 2.9 5.5 2.9s5.5-1.5 5.5-2.9V11" />
+    <path d="M21.5 9v5" />
   </svg>
 );
 
@@ -30,20 +30,21 @@ const BellSvg = () => (
   </svg>
 );
 
-export default function TopBar({ course = null, onLogoClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
+export default function TopBar({ onLogoClick, onBellClick, unreadCount = 0, onPredictorClick }: TopBarProps) {
   const actions = [
-    { icon: <TutorSvg />, count: 0, href: "/tutor", onClick: undefined, label: "AI Tutor" },
+    { icon: <PredictorSvg />, count: 0, href: undefined, onClick: onPredictorClick, label: "College Predictor" },
     { icon: <BellSvg />, count: unreadCount, href: undefined, onClick: onBellClick, label: "Notifications" },
   ];
 
   return (
+    // Floats over the page: frosted, so content shows through as it scrolls under.
     <div style={{
-      background: "var(--app-bg)",
-      padding: "12px 16px 10px",
-      zIndex: 40,
-      flexShrink: 0,
+      position: "absolute", top: 0, left: 0, right: 0, height: TOP_BAR_H, boxSizing: "border-box",
+      background: "color-mix(in srgb, var(--app-bg) 70%, transparent)",
+      backdropFilter: "blur(14px) saturate(1.4)", WebkitBackdropFilter: "blur(14px) saturate(1.4)",
+      padding: "11px 16px", zIndex: 40,
     }}>
-      {/* Row 1 — course chips + actions */}
+      {/* Logo + actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         {/* Brand — always the CLATians logo; the course lives on the Courses tab. */}
         <button onClick={() => onLogoClick?.()} aria-label="CLATians home" className="press" style={{
@@ -82,18 +83,6 @@ export default function TopBar({ course = null, onLogoClick, onBellClick, unread
         </div>
       </div>
 
-      {/* Row 2 — a quiet course switcher, once a course is picked */}
-      {course && <button onClick={() => onChangeCourse?.()} className="press" style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        background: "none", border: "none", cursor: "pointer",
-        color: "var(--blue)", fontSize: 13, fontWeight: 700,
-        padding: "8px 0 0",
-      }}>
-        Change course
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
-          <polygon points="2,1 11,6 2,11" />
-        </svg>
-      </button>}
     </div>
   );
 }
