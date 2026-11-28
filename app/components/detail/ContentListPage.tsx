@@ -152,6 +152,9 @@ export default function ContentListPage({
   groupByTopic?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  // Topic dropdowns: null = only the first topic open (the default).
+  const [openTopics, setOpenTopics] = useState<Set<string> | null>(null);
+  const [query, setQuery] = useState("");
   const doneCount = items.filter((i) => i.done).length;
   const m = meta[type] ?? fallbackMeta;
 
@@ -213,20 +216,68 @@ export default function ContentListPage({
           <EmptyState icon={m.icon} title="Nothing here yet" text={`Your teachers haven't published ${m.label.toLowerCase()} for your batch yet.`} />
         )}
 
-        {groupByTopic ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {topicGroups(items).map(([topic, list]) => (
-              <section key={topic}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
-                  <span style={{ width: 4, height: 16, borderRadius: 2, background: "var(--blue)" }} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{topic}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)" }}>{list.length} {list.length === 1 ? "item" : "items"}</span>
+        {groupByTopic ? (() => {
+          const q = query.trim().toLowerCase();
+          const shown = q ? items.filter((it) => it.title.toLowerCase().includes(q) || (it.topic || "").toLowerCase().includes(q)) : items;
+          const groups = topicGroups(shown);
+          const isOpen = (t: string, i: number) => !!q || (openTopics ? openTopics.has(t) : i === 0);
+          const toggle = (t: string, i: number) => setOpenTopics((prev) => {
+            const next = new Set(prev ?? (groups[0] ? [groups[0][0]] : []));
+            if (isOpen(t, i)) next.delete(t); else next.add(t);
+            return next;
+          });
+          const allOpen = groups.length > 0 && groups.every(([t], i) => isOpen(t, i));
+          return (
+            <>
+              {items.length > 6 && (
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <AppIcon name="search" size={16} color="var(--ink-mute)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${m.label.toLowerCase()}…`} style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px 11px 36px", borderRadius: 14, border: "1px solid var(--line)", background: "white", fontSize: 13.5, color: "var(--ink)", outline: "none" }} />
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{list.map(renderRow)}</div>
-              </section>
-            ))}
-          </div>
-        ) : (
+              )}
+              {groups.length > 1 && !q && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 2px 10px" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)" }}>{groups.length} topics</span>
+                  <button onClick={() => setOpenTopics(allOpen ? new Set() : new Set(groups.map(([t]) => t)))} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 800, color: "var(--blue)" }}>
+                    {allOpen ? "Collapse all" : "Expand all"}
+                  </button>
+                </div>
+              )}
+              {q && groups.length === 0 && <EmptyState icon="search" title="No match" text={`Nothing called "${query.trim()}" here.`} />}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {groups.map(([topic, list], i) => {
+                  const open = isOpen(topic, i);
+                  const done = list.filter((x) => x.done).length;
+                  return (
+                    <section key={topic} style={{ ...card, overflow: "hidden" }}>
+                      <button onClick={() => toggle(topic, i)} aria-expanded={open} style={{ width: "100%", border: "none", background: open ? "var(--blue-tint)" : "white", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                        <IconTile icon={m.icon} tone={m.tone} size={38} />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{topic}</span>
+                          <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2 }}>
+                            {list.length} {list.length === 1 ? "item" : "items"}{done ? ` · ${done} done` : ""}
+                          </span>
+                        </span>
+                        <AppIcon name="chevronDown" size={18} color="var(--ink-soft)" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                      </button>
+                      {open && list.map((it, j) => (
+                        <div key={it.id} onClick={() => setOpenId(it.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: "1px solid var(--line)", cursor: "pointer" }}>
+                          <span style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, background: it.done ? "var(--success)" : "var(--surface-dim)", color: it.done ? "var(--success-text)" : "var(--ink-soft)" }}>
+                            {it.done ? <AppIcon name="check" size={13} strokeWidth={3} /> : j + 1}
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink)", lineHeight: 1.35 }}>{it.title}</span>
+                          <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 800, color: "var(--blue)" }}>
+                            <AppIcon name={type === "video" ? "play" : "arrowRight"} size={13} />{m.action}
+                          </span>
+                        </div>
+                      ))}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })() : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{items.map(renderRow)}</div>
         )}
       </div>

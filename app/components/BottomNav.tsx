@@ -1,13 +1,13 @@
 "use client";
 
 type Screen = "home" | "courses" | "study" | "ai";
-type Tab = Screen | "tests";
+type Tab = Screen | "profile";
 
 interface BottomNavProps {
   active: Tab;
   onChange: (screen: Screen) => void;
-  /** Tests live on a detail page, so the tab hands off instead of switching screens. */
-  onOpenTests?: () => void;
+  /** Profile is a sheet over the app, so the tab opens it instead of switching screens. */
+  onOpenProfile?: () => void;
 }
 
 /* Solid glyphs — at 21px a filled shape stays legible where a stroke icon muddies. */
@@ -52,12 +52,10 @@ const AiIcon = ({ c }: { c: string }) => (
   </svg>
 );
 
-const TestsIcon = ({ c }: { c: string }) => (
+const ProfileIcon = ({ c }: { c: string }) => (
   <svg width="21" height="21" viewBox="0 0 24 24" fill={c}>
-    <path d="M9 2.6h6a1.6 1.6 0 0 1 0 3.2H9a1.6 1.6 0 0 1 0-3.2z" />
-    <path d="M6.4 4.4h1.2a3 3 0 0 0 2.6 3h3.6a3 3 0 0 0 2.6-3h1.2A2.4 2.4 0 0 1 20 6.8v12.8a2.4 2.4 0 0 1-2.4 2.4H6.4A2.4 2.4 0 0 1 4 19.6V6.8a2.4 2.4 0 0 1 2.4-2.4z" />
-    <path d="M8 15.5c2.4.6 4.4-.4 6.4-2.6" stroke="white" strokeWidth="1.7" strokeLinecap="round" fill="none" />
-    <path d="M13.4 18.2l4.9-4.9 1.7 1.7-4.9 4.9-2.2.5.5-2.2z" fill={c} stroke="white" strokeWidth="1.1" />
+    <circle cx="12" cy="7.6" r="4.4" />
+    <path d="M3.6 20.2a8.4 8.4 0 0 1 16.8 0 1.3 1.3 0 0 1-1.3 1.3H4.9a1.3 1.3 0 0 1-1.3-1.3z" />
   </svg>
 );
 
@@ -66,17 +64,18 @@ const tabs: { id: Tab; label: string; Icon: ({ c }: { c: string }) => React.Reac
   { id: "courses", label: "Courses", Icon: CoursesIcon },
   { id: "study", label: "My Learning", Icon: StudyIcon },
   { id: "ai", label: "AI Prep", Icon: AiIcon },
-  { id: "tests", label: "Tests", Icon: TestsIcon },
+  { id: "profile", label: "Profile", Icon: ProfileIcon },
 ];
 
-export default function BottomNav({ active, onChange, onOpenTests }: BottomNavProps) {
+export default function BottomNav({ active, onChange, onOpenProfile }: BottomNavProps) {
   return (
     // Floats over the content with no backdrop of its own — only the pill is solid.
     <div style={{
       position: "absolute", left: 0, right: 0, bottom: 0,
       padding: "0 14px calc(10px + env(safe-area-inset-bottom))",
       pointerEvents: "none",
-      zIndex: 50,
+      // Above the Profile sheet (z 100), so the bar stays put there too.
+      zIndex: 110,
     }}>
       <div style={{
         display: "flex",
@@ -97,7 +96,7 @@ export default function BottomNav({ active, onChange, onOpenTests }: BottomNavPr
               key={tab.id}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
-              onClick={() => (tab.id === "tests" ? onOpenTests?.() : onChange(tab.id as Screen))}
+              onClick={() => (tab.id === "profile" ? onOpenProfile?.() : onChange(tab.id as Screen))}
               style={{
                 flex: 1,
                 display: "flex", flexDirection: "column",

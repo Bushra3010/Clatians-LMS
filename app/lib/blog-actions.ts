@@ -248,3 +248,89 @@ export async function getBlogPostAction(slug: string): Promise<{ ok: true; post:
     return { ok: false, error: "Couldn't reach clatians.com. Check your connection and try again." };
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Question practice — every daily CA post ends each topic with
+// "Possible CLAT Questions" (Q1–Q5, options A–D) and an answer line
+// ("Answers: Q1-B, Q2-C, …"). They are read out of the post here so the
+// app can run them as a quiz.
+// ─────────────────────────────────────────────────────────────
+
+export type BlogQuestion = { id: string; text: string; options: string[]; answer: number };
+export type BlogQuestionSet = { topic: string; questions: BlogQuestion[] };
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", ndash: "–", mdash: "—", hellip: "…" };
+const decode = (t: string) => t.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+  if (e[0] === "#") {
+    const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+    return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+  }
+  return ENTITIES[e.toLowerCase()] ?? m;
+});
+
+/** The post as plain lines, with each h2 / "## " heading marked "## ". */
+function postText(raw: string): string {
+  if (!isHtml(raw)) return raw.replace(/\r\n?/g, "\n");
+  return decode(
+    raw
+      .replace(/<h2\b[^>]*>/gi, "\n## ")
+      .replace(/<\/(h[1-6]|p|li|div|tr)>|<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  );
+}
+
+/** Topic-wise question sets from one post; topics with no questions are left out. */
+export async function parseBlogQuestions(raw: string): Promise<BlogQuestionSet[]> {
+  const sets: BlogQuestionSet[] = [];
+  const sections = postText(raw).split(/\n\s*#{1,2}\s+/);
+  sections.forEach((section, si) => {
+    const at = section.search(/possible clat questions|practice questions|\bQ\s*1\s*[.)]/i);
+    if (at < 0) return;
+    const topic = section.split("\n")[0].replace(/^\s*\d+\.\s*/, "").replace(/\*\*/g, "").trim() || `Topic ${si}`;
+    const body = section.slice(at).replace(/\*\*/g, "");
+
+    const answers = new Map<number, number>();
+    const ansLine = /answers?\s*[:\-–]([^\n]*)/i.exec(body);
+    for (const m of (ansLine?.[1] ?? "").matchAll(/Q\s*(\d+)\s*[-–:.)]\s*\(?([A-D])\)?/gi)) answers.set(Number(m[1]), "ABCD".indexOf(m[2].toUpperCase()));
+
+    const questions: BlogQuestion[] = [];
+    const qs = body.split(/\n?\s*Q\s*(\d+)\s*[.)]\s*/i);
+    // split with a capture group → [before, n1, text1, n2, text2, …]
+    for (let i = 1; i < qs.length; i += 2) {
+      const n = Number(qs[i]);
+      const block = qs[i + 1].split(/answers?\s*[:\-–]/i)[0];
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const options: string[] = [];
+      const stem: string[] = [];
+      for (const l of lines) {
+        const o = /^\(?([A-D])[.)]\s*(.+)$/.exec(l);
+        if (o && options.length === "ABCD".indexOf(o[1])) options.push(o[2].trim());
+        else if (!options.length) stem.push(l);
+      }
+      const answer = answers.get(n);
+      if (stem.length && options.length >= 2 && answer !== undefined && answer < options.length) {
+        questions.push({ id: `${si}-${n}`, text: stem.join(" "), options, answer });
+      }
+    }
+    if (questions.length) sets.push({ topic, questions });
+  });
+  return sets;
+}
+
+/** The practice questions in one post, topic-wise. */
+export async function getBlogQuestionsAction(slug: string): Promise<{ ok: true; post: BlogPost; sets: BlogQuestionSet[] } | { ok: false; error: string }> {
+  await requireRole(["student", "teacher", "admin"]);
+  try {
+    const cache = await load();
+    const post = cache.posts.find((p) => p.slug === slug);
+    if (!post) return { ok: false, error: "This article is no longer on the website." };
+    let raw = (cache.content.get(slug) ?? "").trim();
+    if (!raw) {
+      raw = (await fetchPostBody(slug).catch(() => "")).trim();
+      if (raw) cache.content.set(slug, raw);
+    }
+    return { ok: true, post, sets: await parseBlogQuestions(raw) };
+  } catch {
+    return { ok: false, error: "Couldn't reach clatians.com. Check your connection and try again." };
+  }
+}

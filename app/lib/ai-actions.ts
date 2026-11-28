@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, newId } from "./db";
 import { requireRole } from "./auth";
-import { runTutor, generateQuestions, generatePractice, generateVocab, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ, type VocabWord } from "./ai";
+import { runTutor, generateQuestions, generatePractice, explainAnswer, coachStudy, draftDoubtAnswer, generateCurrentAffairs, aiConfigured, type ChatMsg, type Role, type PracticeMCQ } from "./ai";
 
 // NOTE: no `export type {...}` here — this Next version's server-actions loader
 // turns every export of a "use server" module into a runtime server reference,
@@ -360,19 +360,4 @@ export async function savePracticeResultAction(input: {
     console.error("savePracticeResult error:", err);
     return { ok: false };
   }
-}
-
-export type VocabOutcome = { ok: boolean; words?: VocabWord[]; error?: string };
-
-/** Generate CLAT English vocabulary flashcards on demand. count clamped 4–10. */
-export async function generateVocabAction(input: { theme: string; count: number }): Promise<VocabOutcome> {
-  await requireRole(["student", "teacher", "admin"]);
-  if (!aiConfigured()) return { ok: false, error: "The AI Tutor isn't switched on — an admin needs to set GEMINI_API_KEY." };
-
-  const theme = String(input.theme ?? "").trim().slice(0, 200);
-  const count = Math.min(10, Math.max(4, Math.round(Number(input.count) || 6)));
-
-  const { words, error } = await generateVocab(theme, count);
-  if (error) return { ok: false, error };
-  return { ok: true, words };
 }

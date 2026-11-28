@@ -107,7 +107,6 @@ const toppers = [
 ];
 
 const knowMore: { icon: IconName; label: string; color: string; id: string }[] = [
-  { icon: "pen", label: "CLAT\nStudy Tools", color: "var(--purple)", id: "study-tools" },
   { icon: "trophy", label: "CLATians\nToppers", color: "var(--gold)", id: "toppers" },
   { icon: "sparkle", label: "What's\nNew", color: "var(--blue)", id: "whats-new" },
   { icon: "bulb", label: "Tips &\nTricks", color: "var(--green)", id: "tips" },
@@ -343,7 +342,7 @@ export default function HomeScreen({ onNavigate, onLogoClick, onToolClick, onKno
           </defs>
         </svg>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           {knowMore.map((item, i) => (
             <button key={i} onClick={() => onKnowMoreClick?.(item.id)} className="press" style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 10,

@@ -7,7 +7,6 @@ interface TopBarProps {
    * chosen but not bought.
    */
   course?: { name: string; purchased: boolean } | null;
-  onProfileClick?: () => void;
   /** Tapping the CLATians logo (shown until a course is picked) goes home. */
   onLogoClick?: () => void;
   onBellClick?: () => void;
@@ -31,39 +30,10 @@ const BellSvg = () => (
   </svg>
 );
 
-const UserSvg = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ICON} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9.5" />
-    <circle cx="12" cy="10" r="3.2" />
-    <path d="M5.6 19a7 7 0 0 1 12.8 0" />
-  </svg>
-);
-
-/** Flat chip — the course context reads as a row of tags, not a title bar. */
-function Chip({ children, tone = "plain" }: { children: React.ReactNode; tone?: "plain" | "free" }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      background: tone === "free" ? "var(--success)" : "var(--surface)",
-      color: tone === "free" ? "var(--success-text)" : "var(--text-secondary)",
-      borderRadius: 10,
-      padding: "7px 12px",
-      fontSize: 14, fontWeight: 600,
-      lineHeight: 1.2,
-      whiteSpace: "nowrap",
-      overflow: "hidden", textOverflow: "ellipsis",
-      flexShrink: 0,
-    }}>
-      {children}
-    </span>
-  );
-}
-
-export default function TopBar({ course = null, onProfileClick, onLogoClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
+export default function TopBar({ course = null, onLogoClick, onBellClick, unreadCount = 0, onChangeCourse }: TopBarProps) {
   const actions = [
     { icon: <TutorSvg />, count: 0, href: "/tutor", onClick: undefined, label: "AI Tutor" },
     { icon: <BellSvg />, count: unreadCount, href: undefined, onClick: onBellClick, label: "Notifications" },
-    { icon: <UserSvg />, count: 0, href: undefined, onClick: onProfileClick, label: "Profile" },
   ];
 
   return (
@@ -75,24 +45,15 @@ export default function TopBar({ course = null, onProfileClick, onLogoClick, onB
     }}>
       {/* Row 1 — course chips + actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          {course ? (
-            <>
-              <Chip>{course.name}</Chip>
-              {!course.purchased && <Chip tone="free">FREE</Chip>}
-            </>
-          ) : (
-            // No course yet — show the brand. Courses are picked from the Courses tab.
-            <button onClick={() => onLogoClick?.()} aria-label="CLATians home" className="press" style={{
-              display: "flex", alignItems: "center",
-              background: "none", border: "none", cursor: "pointer", padding: 0,
-            }}>
-              {/* Tightly cropped copy — the full logo file is mostly empty margin. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/clatians-logo-tight.png" alt="CLATians" style={{ height: 40, width: "auto", display: "block" }} />
-            </button>
-          )}
-        </div>
+        {/* Brand — always the CLATians logo; the course lives on the Courses tab. */}
+        <button onClick={() => onLogoClick?.()} aria-label="CLATians home" className="press" style={{
+          display: "flex", alignItems: "center", minWidth: 0,
+          background: "none", border: "none", cursor: "pointer", padding: 0,
+        }}>
+          {/* Tightly cropped copy — the full logo file is mostly empty margin. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/clatians-logo-tight.png" alt="CLATians — Learn | Practice | Achieve" style={{ height: 42, width: "auto", display: "block" }} />
+        </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
           {actions.map((item, i) => {
@@ -121,15 +82,15 @@ export default function TopBar({ course = null, onProfileClick, onLogoClick, onB
         </div>
       </div>
 
-      {/* Row 2 — course switcher (only once a course is shown above) */}
+      {/* Row 2 — a quiet course switcher, once a course is picked */}
       {course && <button onClick={() => onChangeCourse?.()} className="press" style={{
-        display: "flex", alignItems: "center", gap: 7,
+        display: "inline-flex", alignItems: "center", gap: 6,
         background: "none", border: "none", cursor: "pointer",
-        color: "var(--blue)", fontSize: 15, fontWeight: 600,
-        padding: "6px 0 0",
+        color: "var(--blue)", fontSize: 13, fontWeight: 700,
+        padding: "8px 0 0",
       }}>
         Change course
-        <svg width="13" height="13" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="var(--blue)" aria-hidden="true">
           <polygon points="2,1 11,6 2,11" />
         </svg>
       </button>}

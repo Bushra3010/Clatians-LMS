@@ -554,7 +554,6 @@ export default async function Home() {
   const savedRows = savedQuery as { kind: string; item_key: string; title: string; subtitle: string }[];
   const saved: SavedItem[] = savedRows.map((r) => ({ kind: r.kind, key: r.item_key, title: r.title, subtitle: r.subtitle }));
   const savedTipKeys = savedRows.filter((r) => r.kind === "tip").map((r) => r.item_key);
-  const savedVocabKeys = savedRows.filter((r) => r.kind === "vocab").map((r) => r.item_key);
 
   // ── Editorial resources (teacher/admin-managed) ──
   const resRows = resourceQuery as { type: string; title: string; body: string; data: string }[];
@@ -565,10 +564,7 @@ export default async function Home() {
     tips: ofType("tip").map((r) => ({ title: r.title, body: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "💡"), color: String(r.d.color ?? "var(--blue)"), points: Array.isArray(r.d.points) ? (r.d.points as string[]) : [] })),
     stories: ofType("story").map((r) => ({ name: r.title, quote: r.body, college: String(r.d.college ?? ""), rank: String(r.d.rank ?? ""), initials: String(r.d.initials ?? r.title.slice(0, 2).toUpperCase()), color: String(r.d.color ?? "var(--blue)") })),
     updates: ofType("update").map((r) => ({ title: r.title, desc: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "✨"), color: String(r.d.color ?? "#0891B2"), dateLabel: String(r.d.dateLabel ?? "New"), more: String(r.d.more ?? ""), hot: !!r.d.hot })),
-    vocab: ofType("vocab").map((r) => ({ word: r.title, meaning: r.body, example: String(r.d.example ?? "") })),
-    caq: ofType("caq").map((r) => ({ q: r.title, options: Array.isArray(r.d.options) ? (r.d.options as string[]) : [], correct: Number(r.d.correct ?? 0), explain: String(r.d.explain ?? "") })),
     banners: ofType("banner").map((r) => ({ title: r.title, image: String(r.d.image ?? ""), link: String(r.d.link ?? "") })).filter((b) => b.image),
-    nlus: ofType("nlu").map((r) => ({ name: r.title, city: String(r.d.city ?? ""), closing: { general: Number(r.d.general ?? 0), obc: Number(r.d.obc ?? 0), ews: Number(r.d.ews ?? 0), sc: Number(r.d.sc ?? 0), st: Number(r.d.st ?? 0) } })),
   };
 
   // ── Notifications ──
@@ -655,7 +651,6 @@ export default async function Home() {
       engagement={engagement}
       saved={saved}
       savedTipKeys={savedTipKeys}
-      savedVocabKeys={savedVocabKeys}
       resources={resources}
       slots={slots}
       payments={myPayments}

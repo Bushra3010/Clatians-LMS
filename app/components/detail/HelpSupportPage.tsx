@@ -13,7 +13,7 @@ const faqs = [
   { q: "Where can I see my fee receipts?", a: "Profile → Payments & Invoices lists every payment, including cash/office payments. Tap Invoice on any entry to print it or save it as a PDF." },
   { q: "How do I ask a doubt?", a: "Open the Doubts tab → Ask Faculty. A teacher will answer and you'll get a notification when they reply." },
   { q: "How do I change my password?", a: "Profile → Settings → Change password. Enter your current password and a new one (at least 6 characters)." },
-  { q: "Where are my saved notes?", a: "Profile → Saved Content. Anything you save from Tips & Tricks or mark as learned in Vocabulary shows up there." },
+  { q: "Where are my saved notes?", a: "Profile → Saved Content. Anything you save from Tips & Tricks, topics or batches shows up there." },
 ];
 
 export default function HelpSupportPage({ onBack }: { onBack: () => void }) {

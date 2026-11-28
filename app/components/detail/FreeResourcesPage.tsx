@@ -7,6 +7,7 @@ import type { TestListItem } from "./TestPages";
 import type { LiveClassItem } from "./LiveClassesPage";
 import LiveClassesPage from "./LiveClassesPage";
 import PracticePage from "./PracticePage";
+import CurrentAffairsPage from "./CurrentAffairsPage";
 import type { StartResult } from "../../lib/test-actions";
 import { AppIcon, subjectIconName, type IconName } from "../AppIcon";
 import { resolveSubject, subjectOrder } from "../../lib/subjects";
@@ -43,7 +44,7 @@ export const FREE_CATEGORIES: CategoryDef[] = [
   { key: "video", label: "Video Lectures", sub: "Recorded classes by faculty", icon: "video", tone: "blue", unit: ["video", "videos"] },
   { key: "notes", label: "Study Notes", sub: "Chapter-wise notes & PDFs", icon: "file", tone: "teal", unit: ["note", "notes"] },
   { key: "practice", label: "Practice", sub: "Subject-wise question sets", icon: "clipboard", tone: "purple", unit: ["set", "sets"] },
-  { key: "current-affairs", label: "Current Affairs", sub: "Daily digests for CLAT GK", icon: "newspaper", tone: "gold", unit: ["digest", "digests"] },
+  { key: "current-affairs", label: "Current Affairs", sub: "Daily blogs & question practice", icon: "newspaper", tone: "gold", unit: ["digest", "digests"] },
   { key: "tests", label: "Tests", sub: "Mock, subject-wise & topic-wise tests", icon: "award", tone: "green", unit: ["test", "tests"] },
   { key: "live", label: "Live Classes", sub: "Free masterclasses, open to all", icon: "mic", tone: "red", unit: ["class", "classes"] },
 ];
@@ -165,6 +166,9 @@ export default function FreeResourcesPage({
   };
 
   const openCategory = (c: FreeCategory) => { setFromHub(true); setCategory(c); };
+
+  // ── Current Affairs: not by subject — the daily blogs, and their questions ──
+  if (category === "current-affairs") return <CurrentAffairsPage onBack={back} />;
 
   // ── Tests: Mock → all mocks; Subject-wise → subject → tests; Topic-wise → subject → topics ──
   if (category === "tests") {
@@ -396,7 +400,7 @@ export default function FreeResourcesPage({
                 <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--ink)", lineHeight: 1.25 }}>{c.label}</span>
                 <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.35 }}>{c.sub}</span>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--blue)", marginTop: 5 }}>
-                  {c.key === "tests" ? `${plural(n, c.unit)} · mock, subject & topic` : c.key === "live" ? `${plural(n, c.unit)} · ongoing & upcoming` : `${plural(n, c.unit)} · 5 subjects`}
+                  {c.key === "current-affairs" ? "Blogs · Question practice" : c.key === "tests" ? `${plural(n, c.unit)} · mock, subject & topic` : c.key === "live" ? `${plural(n, c.unit)} · ongoing & upcoming` : `${plural(n, c.unit)} · 5 subjects`}
                 </span>
               </span>
               <AppIcon name="chevronRight" size={18} color="var(--text-muted)" />

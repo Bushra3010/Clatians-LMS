@@ -4,7 +4,7 @@ import { useState } from "react";
 import { aiCoachAction } from "../../lib/ai-actions";
 import AiText from "../AiText";
 import { AppIcon } from "../AppIcon";
-import { heroSurface, card, gradient, goldBtn, smallBtn, page, body, ScreenHeader, SectionTitle, IconTile, EmptyState } from "../ui/kit";
+import { heroSurface, card, gradient, goldBtn, smallBtn, page, body, ScreenHeader } from "../ui/kit";
 
 export type StudentProgress = {
   contentTotal: number;
@@ -42,12 +42,15 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
   };
 
   return (
-    <div style={{ ...heroSurface, padding: "16px", color: "white", marginTop: 8 }}>
+    <div style={{ ...heroSurface, padding: "16px", color: "white", border: "2px solid var(--gold)", boxShadow: "0 10px 26px rgba(245,166,35,0.28)" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#CFFB6B", color: "var(--blue-dark)", fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8, marginBottom: 10 }}>
+        <AppIcon name="sparkle" size={12} />Personalised for you
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <AppIcon name="bolt" size={18} color="var(--gold)" />
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <AppIcon name="bolt" size={20} color="var(--blue-dark)" />
         </span>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>AI Study Coach</p>
+        <p style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>AI Study <span style={{ color: "var(--gold)" }}>Coach</span></p>
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.78)" }}>
         A personalised plan based on your mock-test performance.
@@ -84,7 +87,7 @@ function AiStudyPlan({ hasData }: { hasData: boolean }) {
 
 const escHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 
-export default function ProgressPage({ onBack, progress, student }: { onBack: () => void; progress: StudentProgress; student: { name: string; batch: string; attendancePct: number | null } }) {
+export default function ProgressPage({ onBack, progress, student, title = "My Progress" }: { onBack: () => void; progress: StudentProgress; student: { name: string; batch: string; attendancePct: number | null }; title?: string }) {
   const overall = progress.contentTotal > 0 ? Math.round((progress.contentDone / progress.contentTotal) * 100) : 0;
 
   const downloadReport = () => {
@@ -152,105 +155,103 @@ export default function ProgressPage({ onBack, progress, student }: { onBack: ()
     w.document.close();
   };
 
-  const stats = (items: { v: string; l: string }[]) => (
-    <div style={{ display: "flex", gap: 8 }}>
-      {items.map((s, i) => (
-        <div key={i} style={{ ...card, flex: 1, padding: "14px 10px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "var(--blue)" }}>{s.v}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-soft)" }}>{s.l}</p>
-        </div>
-      ))}
-    </div>
-  );
+  const pctText = (p: number | null) => (p === null ? "—" : `${p}%`);
+  const snapshot: { icon: "checkCircle" | "clipboard" | "chart" | "trophy"; v: string; l: string; tone: string }[] = [
+    { icon: "checkCircle", v: `${overall}%`, l: "Completed", tone: "var(--blue)" },
+    { icon: "clipboard", v: String(progress.testsTaken), l: "Tests taken", tone: "var(--purple)" },
+    { icon: "chart", v: pctText(progress.testAvgPct), l: "Average score", tone: "var(--gold-dark)" },
+    { icon: "trophy", v: pctText(progress.testBestPct), l: "Best score", tone: "var(--green)" },
+  ];
+  const subjects = [...progress.subjects].sort((x, y) => x.pct - y.pct);
+  const cardTitle: React.CSSProperties = { margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "var(--ink)" };
 
   return (
     <div style={page}>
-      <ScreenHeader title="My Progress" onBack={onBack} right={
-        <button onClick={downloadReport} style={smallBtn}>
+      <ScreenHeader title={title} onBack={onBack} right={
+        <button onClick={downloadReport} style={smallBtn} aria-label="Download report">
           <AppIcon name="download" size={15} color="var(--blue)" strokeWidth={2.4} />
-          Download report
+          Report
         </button>
       } />
 
-      <div style={body}>
-        {/* Overall completion */}
-        <div style={{ ...heroSurface, padding: "20px", color: "white", }}>
-          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Course completion</p>
-          <p style={{ margin: "6px 0 10px", fontSize: 40, fontWeight: 900 }}>{overall}%</p>
-          <div style={{ height: 8, borderRadius: 20, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${overall}%`, background: "var(--gold)", borderRadius: 20 }} />
-          </div>
-          <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.7)" }}>{progress.contentDone} of {progress.contentTotal} study items completed</p>
-        </div>
+      <div style={{ ...body, gap: 14 }}>
+        {/* AI study coach first — it's what AI Prep sends students here for */}
+        <AiStudyPlan hasData={progress.subjects.length > 0} />
 
-        {/* Per-batch progress */}
-        {progress.batches.length > 0 && (
-          <>
-            <SectionTitle title="By batch" />
-            {progress.batches.map((b) => {
-              const p = b.total > 0 ? Math.round((b.done / b.total) * 100) : 0;
-              return (
-                <div key={b.name} style={{ ...card, padding: "13px 14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{b.name}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>{b.done}/{b.total}</span>
-                  </div>
-                  <div style={{ height: 7, borderRadius: 20, background: "var(--blue-tint)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${p}%`, background: gradient, borderRadius: 20 }} />
-                  </div>
-                </div>
-              );
-            })}
-          </>
-        )}
-
-        {/* Test performance */}
-        <SectionTitle title="Test performance" />
-        {stats([
-          { v: String(progress.testsTaken), l: "Tests taken" },
-          { v: progress.testAvgPct === null ? "—" : `${progress.testAvgPct}%`, l: "Average" },
-          { v: progress.testBestPct === null ? "—" : `${progress.testBestPct}%`, l: "Best" },
-        ])}
-
-        {/* AI practice activity */}
-        {progress.practice.sessions > 0 && (
-          <>
-            <SectionTitle title="AI Practice" right={<IconTile icon="bolt" tone="gold" size={30} />} />
-            {stats([
-              { v: String(progress.practice.sessions), l: "Sessions" },
-              { v: String(progress.practice.questions), l: "Questions" },
-              { v: progress.practice.accuracy === null ? "—" : `${progress.practice.accuracy}%`, l: "Accuracy" },
-            ])}
-          </>
-        )}
-
-        {/* Weak areas */}
-        <SectionTitle title="Subject accuracy" />
-        {progress.subjects.length === 0 ? (
-          <EmptyState icon="chart" title="Subject accuracy" text="Attempt a test to see your subject-wise strengths and weak areas." />
-        ) : (
-          <>
-            {progress.subjects.map((s) => (
-              <div key={s.subject} style={{ ...card, padding: "13px 14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, alignItems: "center" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{s.subject}</span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: barColor(s.pct) }}>{s.pct}%</span>
-                </div>
-                <div style={{ height: 7, borderRadius: 20, background: "var(--surface-dim)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${s.pct}%`, background: barColor(s.pct), borderRadius: 20 }} />
-                </div>
-                <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--ink-soft)" }}>{s.correct}/{s.total} correct</p>
+        {/* Snapshot */}
+        <div style={{ ...card, padding: 16 }}>
+          <p style={cardTitle}>Snapshot</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+            {snapshot.map((x) => (
+              <div key={x.l} style={{ background: "var(--app-bg)", borderRadius: 14, padding: "12px", display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <AppIcon name={x.icon} size={17} color={x.tone} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 18, fontWeight: 900, color: "var(--ink)", lineHeight: 1.1 }}>{x.v}</span>
+                  <span style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginTop: 2 }}>{x.l}</span>
+                </span>
               </div>
             ))}
-            <p style={{ margin: "0 2px", fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 6 }}>
-              <AppIcon name="bulb" size={14} color="var(--gold-dark)" />
-              Focus on the red/amber subjects to improve fastest.
+          </div>
+          {progress.practice.sessions > 0 && (
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 6 }}>
+              <AppIcon name="bolt" size={13} color="var(--gold-dark)" />
+              AI Practice: {progress.practice.sessions} sessions · {pctText(progress.practice.accuracy)} accuracy
             </p>
-          </>
-        )}
+          )}
+        </div>
 
-      {/* AI study coach — always visible; unlocks once there is test data */}
-        <AiStudyPlan hasData={progress.subjects.length > 0} />
+        {/* Subject accuracy — weakest first */}
+        <div style={{ ...card, padding: 16 }}>
+          <p style={cardTitle}>Subject accuracy</p>
+          {subjects.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 8 }}>
+              <AppIcon name="chart" size={16} color="var(--ink-mute)" /> Take a test to see your strong and weak sections.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {subjects.map((s, i) => (
+                <div key={s.subject}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{s.subject}</span>
+                    {i === 0 && subjects.length > 1 && s.pct < 70 && (
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "var(--error-text)", background: "var(--error)", padding: "2px 7px", borderRadius: 20 }}>Focus</span>
+                    )}
+                    <span style={{ fontSize: 13, fontWeight: 800, color: barColor(s.pct) }}>{s.pct}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 20, background: "var(--surface-dim)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${s.pct}%`, background: barColor(s.pct), borderRadius: 20 }} />
+                  </div>
+                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--ink-mute)" }}>{s.correct}/{s.total} correct</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Progress by batch */}
+        {progress.batches.length > 0 && (
+          <div style={{ ...card, padding: 16 }}>
+            <p style={cardTitle}>By batch</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {progress.batches.map((b) => {
+                const p = b.total > 0 ? Math.round((b.done / b.total) * 100) : 0;
+                return (
+                  <div key={b.name}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--blue)", flexShrink: 0 }}>{b.done}/{b.total}</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 20, background: "var(--blue-tint)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${p}%`, background: gradient, borderRadius: 20 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

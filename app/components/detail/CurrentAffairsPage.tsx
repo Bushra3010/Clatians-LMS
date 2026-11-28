@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppIcon } from "../AppIcon";
-import { listBlogPostsAction, getBlogPostAction, type BlogPost } from "../../lib/blog-actions";
+import { listBlogPostsAction, getBlogPostAction, getBlogQuestionsAction, type BlogPost, type BlogQuestionSet } from "../../lib/blog-actions";
 import { shareText } from "../../lib/share";
-import { heroSurface, ScreenHeader } from "../ui/kit";
+import { heroSurface, ScreenHeader, Segmented, Pill } from "../ui/kit";
 
 // ─────────────────────────────────────────────────────────────
 // Current Affairs = the website's blog (The CLATians Journal,
@@ -75,7 +75,7 @@ const articleCss = `
 .ca-article th { background: var(--surface-dim); color: var(--ink-primary); font-weight: 800; }
 `;
 
-function Reader({ slug, onBack }: { slug: string; onBack: () => void }) {
+function Reader({ slug, onBack, onPractice }: { slug: string; onBack: () => void; onPractice?: () => void }) {
   const [state, setState] = useState<{ post: BlogPost; html: string } | { error: string } | null>(null);
   const [note, setNote] = useState("");
 
@@ -117,6 +117,16 @@ function Reader({ slug, onBack }: { slug: string; onBack: () => void }) {
                 ? <div className="ca-article" dangerouslySetInnerHTML={{ __html: state.html }} />
                 : <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7 }}>{state.post.excerpt}</p>}
             </div>
+            {onPractice && (
+              <button onClick={onPractice} className="press" style={{ ...card, width: "100%", border: "1.5px solid var(--blue)", cursor: "pointer", textAlign: "left", padding: "13px 14px", marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--blue-tint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="clipboard" size={20} color="var(--blue)" /></span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>Practise this blog&apos;s questions</span>
+                  <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Tap an answer, see if you got it right</span>
+                </span>
+                <AppIcon name="arrowRight" size={16} color="var(--blue)" />
+              </button>
+            )}
             {state.post.tags.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
                 {state.post.tags.map((t) => (
@@ -164,6 +174,8 @@ export default function CurrentAffairsPage({ onBack, banner }: {
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE);
   const [openSlug, setOpenSlug] = useState<string | null>(null);
+  const [tab, setTab] = useState<"blogs" | "practice">("blogs");
+  const [practiceSlug, setPracticeSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -191,13 +203,26 @@ export default function CurrentAffairsPage({ onBack, banner }: {
 
   const pickCategory = (c: string) => { setCategory(c); setMonth("all"); setShown(PAGE); };
 
-  if (openSlug) return <Reader slug={openSlug} onBack={() => setOpenSlug(null)} />;
+  if (practiceSlug) return <PracticeSession slug={practiceSlug} onBack={() => setPracticeSlug(null)} />;
+  if (openSlug) return <Reader slug={openSlug} onBack={() => setOpenSlug(null)} onPractice={() => setPracticeSlug(openSlug)} />;
 
   return (
     <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 24 }}>
       <BackBar label="Current Affairs" onBack={onBack} />
 
       <div style={{ padding: "14px 14px 0" }}>
+        <Segmented<"blogs" | "practice">
+          tabs={[{ key: "blogs", label: "Blogs", icon: "newspaper" }, { key: "practice", label: "Question Practice", icon: "clipboard" }]}
+          active={tab}
+          onChange={setTab}
+          style={{ marginBottom: 14 }}
+        />
+      </div>
+
+      {tab === "practice" ? (
+        <PracticeList posts={posts} error={error} onRetry={() => { setError(""); setAttempt((n) => n + 1); }} onOpen={setPracticeSlug} />
+      ) : (
+      <div style={{ padding: "0 14px 0" }}>
         {/* Journal header, as on clatians.com/blogs */}
         <div style={{ ...heroSurface, padding: "16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
           <span style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--blue-dark)", background: "#CFFB6B", padding: "4px 10px", borderRadius: 8 }}>
@@ -282,6 +307,201 @@ export default function CurrentAffairsPage({ onBack, banner }: {
           <button onClick={() => setShown((n) => n + PAGE)} style={{ width: "100%", marginTop: 12, cursor: "pointer", borderRadius: 14, padding: "12px", fontSize: 13, fontWeight: 800, border: "1.5px solid var(--blue)", background: "white", color: "var(--blue)" }}>
             Show more ({rest.length - shown} left)
           </button>
+        )}
+      </div>
+      )}
+    </div>
+  );
+}
+
+// ── Question Practice: the "Possible CLAT Questions" from each daily post ──
+
+/** Daily CA posts, newest first — each one is a practice set. */
+function PracticeList({ posts, error, onRetry, onOpen }: { posts: BlogPost[] | null; error: string; onRetry: () => void; onOpen: (slug: string) => void }) {
+  const [shown, setShown] = useState(PAGE);
+  const daily = (posts ?? []).filter((p) => p.category === DEFAULT_CATEGORY);
+
+  return (
+    <div style={{ padding: "0 14px 0" }}>
+      <div style={{ ...heroSurface, padding: 16, marginBottom: 14 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--blue-dark)", background: "#CFFB6B", padding: "4px 10px", borderRadius: 8 }}>
+          <AppIcon name="clipboard" size={12} color="var(--blue-dark)" />Question Practice
+        </span>
+        <p style={{ margin: "10px 0 4px", fontSize: 20, fontWeight: 700, color: "white" }}>Practise each day&apos;s <span style={{ color: "var(--gold)" }}>CA questions</span></p>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>The CLAT-style questions from every daily blog, topic-wise, with instant answers.</p>
+      </div>
+
+      {!posts && !error && <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[0, 1, 2].map((i) => <div key={i} style={{ ...card, padding: 16 }}><Skeleton lines={2} /></div>)}</div>}
+      {!posts && error && <ErrorCard text={error} onRetry={onRetry} />}
+      {posts && daily.length === 0 && <ErrorCard text="No daily current affairs posts yet." />}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {daily.slice(0, shown).map((p) => (
+          <button key={p.slug} onClick={() => onOpen(p.slug)} className="press" style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: "var(--blue-tint)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--blue)" }}>
+              <span style={{ fontSize: 15, fontWeight: 900, lineHeight: 1 }}>{p.isoDate ? Number(p.isoDate.slice(8, 10)) : "—"}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, textTransform: "uppercase", marginTop: 2 }}>{p.isoDate ? MONTH_NAMES[Number(p.isoDate.slice(5, 7)) - 1]?.slice(0, 3) : ""}</span>
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{p.date ? `Questions · ${p.date}` : "Daily questions"}</span>
+              <span style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 3, fontSize: 11.5, color: "var(--text-muted)" }}>{p.excerpt || p.title}</span>
+            </span>
+            <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 800, color: "var(--blue)", display: "inline-flex", alignItems: "center", gap: 3 }}>Practise<AppIcon name="chevronRight" size={14} /></span>
+          </button>
+        ))}
+      </div>
+      {daily.length > shown && (
+        <button onClick={() => setShown((n) => n + PAGE)} style={{ width: "100%", marginTop: 12, cursor: "pointer", borderRadius: 14, padding: "12px", fontSize: 13, fontWeight: 800, border: "1.5px solid var(--blue)", background: "white", color: "var(--blue)" }}>
+          Show more ({daily.length - shown} left)
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Questions per practice set — a day's 55 become 25 + 25 + 5. */
+const SET_SIZE = 25;
+
+type FlatQuestion = BlogQuestionSet["questions"][number] & { topic: string };
+
+/** One post's questions in sets of 25: pick a set, tap an option to check it. */
+function PracticeSession({ slug, onBack }: { slug: string; onBack: () => void }) {
+  const [state, setState] = useState<{ post: BlogPost; sets: BlogQuestionSet[] } | { error: string } | null>(null);
+  const [picked, setPicked] = useState<Record<string, number>>({});
+  const [setIdx, setSetIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    getBlogQuestionsAction(slug).then((r) => { if (live) setState(r.ok ? { post: r.post, sets: r.sets } : { error: r.error }); });
+    return () => { live = false; };
+  }, [slug]);
+
+  const all: FlatQuestion[] = state && "sets" in state ? state.sets.flatMap((t) => t.questions.map((q) => ({ ...q, topic: t.topic }))) : [];
+  const chunks: FlatQuestion[][] = [];
+  for (let i = 0; i < all.length; i += SET_SIZE) chunks.push(all.slice(i, i + SET_SIZE));
+  const stats = (qs: FlatQuestion[]) => ({
+    answered: qs.filter((q) => picked[q.id] !== undefined).length,
+    correct: qs.filter((q) => picked[q.id] === q.answer).length,
+  });
+
+  const scroller = () => document.getElementById("screen-content")?.scrollTo({ top: 0 });
+  const openSet = (i: number | null) => { setSetIdx(i); scroller(); };
+
+  // ── One set ──
+  if (state && "post" in state && setIdx !== null && chunks[setIdx]) {
+    const qs = chunks[setIdx];
+    const st = stats(qs);
+    const finished = st.answered === qs.length;
+    return (
+      <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+        <BackBar label={`Set ${setIdx + 1} of ${chunks.length}`} onBack={() => openSet(null)} />
+        <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: "var(--ink-primary)" }}>{state.post.date} · Set {setIdx + 1}</span>
+              <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{st.answered}/{qs.length} answered · {st.correct} correct</span>
+            </span>
+            {st.answered > 0 && (
+              <button onClick={() => setPicked((p) => { const n = { ...p }; for (const q of qs) delete n[q.id]; return n; })} style={{ border: "none", background: "none", color: "var(--blue)", fontSize: 12, fontWeight: 800, cursor: "pointer", padding: 0 }}>Reset</button>
+            )}
+          </div>
+
+          <div style={{ ...card, overflow: "hidden" }}>
+            {qs.map((q, qi) => {
+              const choice = picked[q.id];
+              const shown = choice !== undefined;
+              const newTopic = qi === 0 || qs[qi - 1].topic !== q.topic;
+              return (
+                <div key={q.id} style={{ padding: "12px 14px", borderTop: qi ? "1px solid var(--line)" : "none" }}>
+                  {newTopic && <p style={{ margin: "0 0 8px", fontSize: 10.5, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{q.topic}</p>}
+                  <p style={{ margin: "0 0 9px", fontSize: 13.5, fontWeight: 700, color: "var(--ink-primary)", lineHeight: 1.5 }}><span style={{ color: "var(--blue)" }}>Q{setIdx * SET_SIZE + qi + 1}.</span> {q.text}</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {q.options.map((o, oi) => {
+                      const right = shown && oi === q.answer;
+                      const wrong = shown && oi === choice && oi !== q.answer;
+                      return (
+                        <button key={oi} disabled={shown} onClick={() => setPicked((p) => ({ ...p, [q.id]: oi }))} style={{
+                          display: "flex", alignItems: "center", gap: 9, textAlign: "left", cursor: shown ? "default" : "pointer",
+                          padding: "9px 11px", borderRadius: 12, fontSize: 13, lineHeight: 1.4,
+                          border: `1.5px solid ${right ? "var(--success-border)" : wrong ? "var(--error-text)" : "var(--line)"}`,
+                          background: right ? "var(--success)" : wrong ? "var(--error)" : "white",
+                          color: right ? "var(--success-text)" : wrong ? "var(--error-text)" : "var(--text-secondary)",
+                        }}>
+                          <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, background: right ? "var(--green)" : wrong ? "var(--error-text)" : "var(--surface-dim)", color: right || wrong ? "white" : "var(--text-muted)" }}>
+                            {right ? <AppIcon name="check" size={12} strokeWidth={3} color="white" /> : wrong ? <AppIcon name="close" size={12} strokeWidth={3} color="white" /> : "ABCD"[oi]}
+                          </span>
+                          <span style={{ flex: 1 }}>{o}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {shown && <div style={{ marginTop: 8 }}><Pill tone={choice === q.answer ? "green" : "red"}>{choice === q.answer ? "Correct" : `Answer: ${"ABCD"[q.answer]}`}</Pill></div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {finished && (
+            <div style={{ ...heroSurface, padding: 16, color: "white", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>Set {setIdx + 1} done</p>
+              <p style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 900, color: "var(--gold)" }}>{st.correct}/{qs.length}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.72)" }}>{Math.round((st.correct / qs.length) * 100)}% correct</p>
+            </div>
+          )}
+
+          <button onClick={() => openSet(setIdx + 1 < chunks.length ? setIdx + 1 : null)} className="press" style={{ width: "100%", cursor: "pointer", borderRadius: 14, padding: 13, fontSize: 13.5, fontWeight: 800, border: "none", background: "linear-gradient(135deg,var(--blue-dark),var(--blue))", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            {setIdx + 1 < chunks.length ? <>Next: Set {setIdx + 2} <AppIcon name="arrowRight" size={15} color="white" /></> : "Back to all sets"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── The day's sets ──
+  const total = stats(all);
+  return (
+    <div style={{ background: "var(--app-bg)", minHeight: "100%", paddingBottom: 28 }}>
+      <BackBar label="Question Practice" onBack={onBack} />
+      <div style={{ padding: "14px 14px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+        {!state && <div style={{ ...card, padding: 18 }}><Skeleton lines={6} /></div>}
+        {state && "error" in state && <ErrorCard text={state.error} />}
+        {state && "post" in state && (
+          <>
+            <div style={{ ...heroSurface, padding: 16, color: "white" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{state.post.date}</p>
+              <p style={{ margin: "4px 0 12px", fontSize: 15.5, fontWeight: 700, lineHeight: 1.35 }}>{state.post.title}</p>
+              <div style={{ display: "flex", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 14, padding: "9px 4px" }}>
+                {[{ v: all.length, l: "Questions" }, { v: chunks.length, l: "Sets" }, { v: total.correct, l: "Correct" }].map((x, i) => (
+                  <div key={x.l} style={{ flex: 1, textAlign: "center", borderLeft: i ? "1px solid rgba(255,255,255,0.16)" : "none" }}>
+                    <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gold)" }}>{x.v}</p>
+                    <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.7)" }}>{x.l}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {chunks.length === 0 && <ErrorCard text="This blog has no practice questions." />}
+
+            {chunks.map((qs, i) => {
+              const st = stats(qs);
+              const done = st.answered === qs.length;
+              const topics = [...new Set(qs.map((q) => q.topic))];
+              return (
+                <button key={i} onClick={() => openSet(i)} className="press" style={{ ...card, border: "none", cursor: "pointer", textAlign: "left", padding: "13px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: done ? "var(--success)" : "var(--blue-tint)", color: done ? "var(--success-text)" : "var(--blue)" }}>
+                    <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" }}>SET</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{i + 1}</span>
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--ink-primary)" }}>{qs.length} questions</span>
+                    <span style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{topics.length} topics · {topics.join(", ")}</span>
+                    {st.answered > 0 && <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: done ? "var(--success-text)" : "var(--blue)", marginTop: 3 }}>{done ? `Done · ${st.correct}/${qs.length} correct` : `${st.answered}/${qs.length} answered`}</span>}
+                  </span>
+                  <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 800, color: "var(--blue)", display: "inline-flex", alignItems: "center", gap: 3 }}>{st.answered ? "Continue" : "Start"}<AppIcon name="chevronRight" size={14} /></span>
+                </button>
+              );
+            })}
+          </>
         )}
       </div>
     </div>

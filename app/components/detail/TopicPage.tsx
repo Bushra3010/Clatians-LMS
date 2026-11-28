@@ -773,7 +773,7 @@ export default function TopicPage({ topic, onBack, onStartTest, onAskDoubt, onTo
       )}
 
       {/* Mark complete → next topic */}
-      <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: "1px solid var(--line)", padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", display: "flex", gap: 8 }}>
+      <div style={{ position: "sticky", bottom: "var(--nav-h, 0px)", background: "white", borderTop: "1px solid var(--line)", padding: "12px 16px", display: "flex", gap: 8 }}>
         <button onClick={toggle} disabled={busy === "done"} style={{
           flex: 1, borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer",
           border: topic.completed ? "1.5px solid var(--success-border)" : "none",

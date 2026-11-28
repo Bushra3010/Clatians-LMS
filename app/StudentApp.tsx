@@ -34,7 +34,6 @@ import { TestSeriesPage, TestTakePage, TestResultPage, type TestListItem } from 
 import NotificationsPage, { type NotificationItem } from "./components/detail/NotificationsPage";
 import ProgressPage, { type StudentProgress } from "./components/detail/ProgressPage";
 import LeaderboardPage, { type Engagement } from "./components/detail/LeaderboardPage";
-import ClatToolsPage from "./components/detail/ClatToolsPage";
 import SavedItemsPage, { type SavedItem } from "./components/detail/SavedItemsPage";
 import CertificatePage, { type CertificateItem } from "./components/detail/CertificatePage";
 import HelpSupportPage from "./components/detail/HelpSupportPage";
@@ -83,7 +82,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "ai";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "clat-tools" | "ca-quiz" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "ai-vocab" | null;
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "study-coach" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -104,7 +103,6 @@ interface StudentAppProps {
   engagement: Engagement;
   saved: SavedItem[];
   savedTipKeys: string[];
-  savedVocabKeys: string[];
   resources: StudentResources;
   slots: { open: SlotOpen[]; mine: SlotBooking[] };
   payments: PaymentItem[];
@@ -122,7 +120,7 @@ interface StudentAppProps {
   learning: LearningProgress[];
 }
 
-export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, savedVocabKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, freeClasses, currentCourse, learning }: StudentAppProps) {
+export default function StudentApp({ upcomingClasses, pastClasses, attendancePct, content, doubts, profile, catalog, tests, practicePapers, notifications, unreadCount, progress, engagement, saved, savedTipKeys, resources, slots, payments, tasks, notes, referral, notifyPrefs, certificates, syllabus, freeClasses, currentCourse, learning }: StudentAppProps) {
   const router = useRouter();
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const [showProfile, setShowProfile] = useState(false);
@@ -194,7 +192,6 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
 
   const handleKnowMoreClick = (item: string) => {
     const map: Record<string, DetailPage> = {
-      "study-tools": "clat-tools", // real CLAT tools (predictor / CA quiz / vocab)
       "toppers": "leaderboard", // real leaderboard replaces the mock toppers page
       "whats-new": "whats-new",
       "tips": "tips",
@@ -354,7 +351,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
   };
 
   // Tests is a nav tab even though it opens as a detail page, so it keeps the nav.
-  const showNav = !detailPage || detailPage === "tests";
+  // Always on, so every page can jump to another tab — except mid-test, where a stray tap would abandon the attempt.
+  const showNav = detailPage !== "test-take";
 
   return (
     // Pinned to the viewport so the page itself never scrolls — only #screen-content does.
@@ -372,7 +370,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
         )}
 
         {/* Top Bar — hidden while taking a test, which needs the whole screen */}
-        {detailPage !== "test-take" && <TopBar course={currentCourse} onProfileClick={() => navigate({ profile: true })} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => goScreen("courses")} />}
+        {detailPage !== "test-take" && <TopBar course={currentCourse} onLogoClick={() => goScreen("home")} onBellClick={openNotifications} unreadCount={unreadCount} onChangeCourse={() => goScreen("courses")} />}
 
         {/* Scrollable content */}
         <div
@@ -385,6 +383,8 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             WebkitOverflowScrolling: "touch",
             // Clear the floating bottom nav so the last card can scroll above it.
             paddingBottom: showNav ? "calc(76px + env(safe-area-inset-bottom))" : undefined,
+            // Bottom-pinned action bars sit on top of the nav, not under it.
+            ["--nav-h" as string]: showNav ? "calc(70px + env(safe-area-inset-bottom))" : "0px",
           }}
           className="no-scroll"
         >
@@ -414,24 +414,6 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "current-affairs" && (
             <CurrentAffairsPage
               onBack={closeDetail}
-              banner={resources.caq.length > 0 ? (
-                <button onClick={() => openDetail("ca-quiz")} style={{
-                  width: "100%", marginBottom: 14, cursor: "pointer", textAlign: "left",
-                  background: "linear-gradient(135deg,var(--blue-dark),var(--blue))",
-                  border: "none", borderRadius: 16, padding: "15px 16px",
-                  display: "flex", alignItems: "center", gap: 12,
-                  boxShadow: "0 6px 18px rgba(61,36,17,0.25)",
-                }}>
-                  <span style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><AppIcon name="puzzle" size={22} color="white" /></span>
-                  <span style={{ flex: 1 }}>
-                    <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "white" }}>Today&apos;s Current Affairs quiz</span>
-                    <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>
-                      {resources.caq.length} questions · instant answers
-                    </span>
-                  </span>
-                  <AppIcon name="arrowRight" size={16} color="white" />
-                </button>
-              ) : null}
             />
           )}
           {detailPage === "toppers"         && <TopperStoriesPage onBack={closeDetail} stories={resources.stories} />}
@@ -469,22 +451,11 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           {detailPage === "notifications" && (
             <NotificationsPage onBack={closeDetail} items={notifications} />
           )}
-          {detailPage === "progress" && (
-            <ProgressPage onBack={closeDetail} progress={progress} student={{ name: profile.name, batch: profile.batches[0] ?? "", attendancePct: profile.attendancePct }} />
+          {(detailPage === "progress" || detailPage === "study-coach") && (
+            <ProgressPage onBack={closeDetail} progress={progress} student={{ name: profile.name, batch: profile.batches[0] ?? "", attendancePct: profile.attendancePct }} title={detailPage === "study-coach" ? "Study Coach" : "My Progress"} />
           )}
           {detailPage === "leaderboard" && (
             <LeaderboardPage onBack={closeDetail} engagement={engagement} />
-          )}
-          {(detailPage === "clat-tools" || detailPage === "ca-quiz" || detailPage === "ai-vocab") && (
-            <ClatToolsPage
-              onBack={back}
-              initialTab={detailPage === "ca-quiz" ? "quiz" : detailPage === "ai-vocab" ? "vocab" : "predictor"}
-              vocab={resources.vocab}
-              caq={resources.caq}
-              nlus={resources.nlus}
-              savedVocabKeys={savedVocabKeys}
-              onToggleSave={(word, meaning) => handleToggleSave("vocab", word, word, meaning)}
-            />
           )}
           {detailPage === "saved" && (
             <SavedItemsPage
@@ -500,7 +471,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                   navLearning({ view: "batch", courseId, batchId: batchId || null });
                   return;
                 }
-                openDetail(kind === "vocab" ? "clat-tools" : "tips");
+                openDetail("tips");
               }}
             />
           )}
@@ -643,22 +614,21 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
             <AiPrepScreen
               onOpenTutor={() => router.push("/tutor")}
               onOpenPractice={() => openDetail("ai-practice")}
-              onOpenCoach={() => openDetail("progress")}
-              onOpenVocab={() => openDetail("ai-vocab")}
+              onOpenCoach={() => openDetail("study-coach")}
             />
           )}
         </div>
 
-        {/* Bottom Nav — hidden on detail pages */}
+        {/* Bottom Nav — on every page except while taking a test */}
         {showNav && (
           <BottomNav
-            active={detailPage === "tests" ? "tests" : activeScreen}
+            active={showProfile ? "profile" : activeScreen}
             onChange={(s) => {
               // The My Learning tab always opens on its main list, not on whatever batch / chapter was open last.
               if (s === "study") showLearning({ view: "list" });
               goScreen(s);
             }}
-            onOpenTests={() => openDetail("tests")}
+            onOpenProfile={() => { if (!showProfile) navigate({ profile: true }); }}
           />
         )}
       </div>

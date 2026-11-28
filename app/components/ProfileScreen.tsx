@@ -62,6 +62,8 @@ export default function ProfileScreen({ profile, onLogout, onClose, onMenu }: Pr
       position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)",
       width: "100%", maxWidth: 430, height: "100dvh", background: "var(--app-bg)",
       zIndex: 100, overflowY: "auto",
+      // Room for the bottom bar, which stays over this sheet.
+      paddingBottom: "calc(84px + env(safe-area-inset-bottom))", boxSizing: "border-box",
     }}
     className="no-scroll"
     >

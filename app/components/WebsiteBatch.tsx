@@ -435,7 +435,7 @@ export function WebsiteBatchStickyBar({ b, onEnroll, enrolled }: { b: CatalogBat
   const { open, left, pct } = seatInfo(b);
   const full = !enrolled && !open && left === 0;
   return (
-    <div style={{ position: "sticky", bottom: 0, zIndex: 6, padding: "0 12px 10px" }}>
+    <div style={{ position: "sticky", bottom: "var(--nav-h, 0px)", zIndex: 6, padding: "0 12px 10px" }}>
       <div style={{ ...kit.card, borderRadius: 20, overflow: "hidden", boxShadow: "0 12px 30px rgba(15,23,41,0.18)" }}>
         <div style={{ padding: "11px 12px 11px 16px", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
