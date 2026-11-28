@@ -564,6 +564,7 @@ export default async function Home() {
     tips: ofType("tip").map((r) => ({ title: r.title, body: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "💡"), color: String(r.d.color ?? "var(--blue)"), points: Array.isArray(r.d.points) ? (r.d.points as string[]) : [] })),
     stories: ofType("story").map((r) => ({ name: r.title, quote: r.body, college: String(r.d.college ?? ""), rank: String(r.d.rank ?? ""), initials: String(r.d.initials ?? r.title.slice(0, 2).toUpperCase()), color: String(r.d.color ?? "var(--blue)") })),
     updates: ofType("update").map((r) => ({ title: r.title, desc: r.body, tag: String(r.d.tag ?? ""), icon: String(r.d.icon ?? "✨"), color: String(r.d.color ?? "#0891B2"), dateLabel: String(r.d.dateLabel ?? "New"), more: String(r.d.more ?? ""), hot: !!r.d.hot })),
+    vocab: ofType("vocab").map((r) => ({ word: r.title, meaning: r.body, example: String(r.d.example ?? "") })),
     banners: ofType("banner").map((r) => ({ title: r.title, image: String(r.d.image ?? ""), link: String(r.d.link ?? "") })).filter((b) => b.image),
   };
 

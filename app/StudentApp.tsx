@@ -10,6 +10,7 @@ import PracticePage from "./components/detail/PracticePage";
 import StudyScreen, { type SyllabusSubject } from "./components/StudyScreen";
 import DoubtsScreen from "./components/DoubtsScreen";
 import AiPrepScreen from "./components/AiPrepScreen";
+import AiVocabPage from "./components/detail/AiVocabPage";
 import ProfileScreen, { type ProfileMenuKey } from "./components/ProfileScreen";
 
 import ContentListPage, { type ContentItem } from "./components/detail/ContentListPage";
@@ -82,7 +83,7 @@ type ContentBuckets = {
 };
 
 type Screen = "home" | "courses" | "study" | "ai";
-type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "study-coach" | null;
+type DetailPage = "videos" | "notes" | "practice" | "practice-material" | "ai-practice" | "current-affairs" | "toppers" | "whats-new" | "tips" | "live-classes" | "watch-class" | "slots" | "planner" | "my-notes" | "refer" | "tests" | "test-take" | "test-result" | "notifications" | "progress" | "leaderboard" | "saved" | "payments" | "certificates" | "help" | "settings" | "topic" | "study-library" | "free-resources" | "doubts" | "study-coach" | "ai-vocab" | null;
 
 // Phone-app shell: fluid width up to a phablet cap, centered on desktop.
 const SHELL_MAX_W = 430;
@@ -403,6 +404,14 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
           )}
           {detailPage === "practice-material" && <ContentListPage onBack={back} type="practice" items={content.practice} onToggleDone={handleToggleDone} />}
           {detailPage === "ai-practice"     && <AiPracticePage onBack={closeDetail} />}
+          {detailPage === "ai-vocab" && (
+            <AiVocabPage
+              onBack={closeDetail}
+              vocab={resources.vocab}
+              learned={saved.filter((it) => it.kind === "vocab").map((it) => it.key)}
+              onToggleLearned={(word, meaning) => handleToggleSave("vocab", word, word, meaning)}
+            />
+          )}
           {detailPage === "doubts" && (
             <DoubtsScreen doubts={doubts} onAskDoubt={handleAskDoubt} onFollowUp={handleFollowUp} onBack={closeDetail} />
           )}
@@ -471,7 +480,7 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
                   navLearning({ view: "batch", courseId, batchId: batchId || null });
                   return;
                 }
-                openDetail("tips");
+                openDetail(kind === "vocab" ? "ai-vocab" : "tips");
               }}
             />
           )}
@@ -615,6 +624,13 @@ export default function StudentApp({ upcomingClasses, pastClasses, attendancePct
               onOpenTutor={() => router.push("/tutor")}
               onOpenPractice={() => openDetail("ai-practice")}
               onOpenCoach={() => openDetail("study-coach")}
+              onOpenVocab={() => openDetail("ai-vocab")}
+              onOpenDoubts={() => openDetail("doubts")}
+              activity={{
+                sessions: progress.practice.sessions,
+                accuracy: progress.practice.accuracy,
+                words: saved.filter((it) => it.kind === "vocab").length,
+              }}
             />
           )}
         </div>

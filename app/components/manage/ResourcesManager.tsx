@@ -7,6 +7,7 @@ const TABS: { type: string; label: string; one: string }[] = [
   { type: "tip", label: "Tips & Tricks", one: "tip" },
   { type: "story", label: "Success Stories", one: "success story" },
   { type: "update", label: "What's New", one: "update" },
+  { type: "vocab", label: "Vocabulary", one: "word" },
   { type: "banner", label: "Home Banners", one: "banner" },
 ];
 
